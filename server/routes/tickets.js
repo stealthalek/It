@@ -8,6 +8,9 @@ router.use(authenticate);
 const STATUSES = ['open', 'in_progress', 'resolved', 'closed'];
 const PRIORITIES = ['low', 'medium', 'high', 'urgent'];
 
+const STATUS_LABELS = { open: 'Aperto', in_progress: 'In lavorazione', resolved: 'Risolto', closed: 'Chiuso' };
+const PRIORITY_LABELS = { low: 'Bassa', medium: 'Media', high: 'Alta', urgent: 'Urgente' };
+
 const TICKET_SELECT = `
   SELECT
     t.*,
@@ -38,6 +41,39 @@ function getTicketOr404(req, res) {
     return null;
   }
   return ticket;
+}
+
+function resolveCategory(requested) {
+  const categories = db.prepare('SELECT name FROM categories ORDER BY name ASC').all().map((c) => c.name);
+  if (requested && categories.includes(requested)) return requested;
+  return categories.includes('Altro') ? 'Altro' : categories[0];
+}
+
+function logEvent(ticketId, actorId, message) {
+  db.prepare('INSERT INTO ticket_events (ticket_id, actor_id, message) VALUES (?, ?, ?)').run(ticketId, actorId, message);
+}
+
+function listActivity(ticketId, includeInternal) {
+  const internalClause = includeInternal ? '' : 'AND c.is_internal = 0';
+  const comments = db
+    .prepare(
+      `SELECT c.id, c.message, c.is_internal, c.created_at, u.name AS author_name, u.role AS author_role
+       FROM comments c JOIN users u ON u.id = c.user_id
+       WHERE c.ticket_id = ? ${internalClause}`
+    )
+    .all(ticketId)
+    .map((c) => ({ kind: 'comment', ...c }));
+
+  const events = db
+    .prepare(
+      `SELECT e.id, e.message, e.created_at, u.name AS actor_name
+       FROM ticket_events e LEFT JOIN users u ON u.id = e.actor_id
+       WHERE e.ticket_id = ?`
+    )
+    .all(ticketId)
+    .map((e) => ({ kind: 'event', ...e }));
+
+  return [...comments, ...events].sort((a, b) => (a.created_at < b.created_at ? -1 : a.created_at > b.created_at ? 1 : 0));
 }
 
 router.get('/', (req, res) => {
@@ -86,7 +122,7 @@ router.post('/', (req, res) => {
     return res.status(400).json({ error: 'La descrizione è obbligatoria' });
   }
   const finalPriority = PRIORITIES.includes(priority) ? priority : 'medium';
-  const finalCategory = category && category.trim() ? category.trim() : 'generale';
+  const finalCategory = resolveCategory(category && category.trim());
 
   const info = db
     .prepare(
@@ -94,27 +130,18 @@ router.post('/', (req, res) => {
     )
     .run(subject.trim(), description.trim(), finalPriority, finalCategory, req.user.id);
 
+  logEvent(info.lastInsertRowid, req.user.id, 'Ticket creato');
+
   const ticket = db.prepare(`${TICKET_SELECT} WHERE t.id = ?`).get(info.lastInsertRowid);
   res.status(201).json({ ticket });
 });
-
-function listComments(ticketId, includeInternal) {
-  const internalClause = includeInternal ? '' : 'AND c.is_internal = 0';
-  return db
-    .prepare(
-      `SELECT c.id, c.message, c.is_internal, c.created_at, u.name AS author_name, u.role AS author_role
-       FROM comments c JOIN users u ON u.id = c.user_id
-       WHERE c.ticket_id = ? ${internalClause} ORDER BY c.created_at ASC`
-    )
-    .all(ticketId);
-}
 
 router.get('/:id', (req, res) => {
   const ticket = getTicketOr404(req, res);
   if (!ticket) return;
 
-  const comments = listComments(ticket.id, isStaff(req.user));
-  res.json({ ticket, comments });
+  const activity = listActivity(ticket.id, isStaff(req.user));
+  res.json({ ticket, activity });
 });
 
 router.patch('/:id', (req, res) => {
@@ -124,38 +151,54 @@ router.patch('/:id', (req, res) => {
   const updates = [];
   const params = {};
   const body = req.body || {};
+  const events = [];
 
   if (isStaff(req.user)) {
     if (body.status !== undefined) {
       if (!STATUSES.includes(body.status)) {
         return res.status(400).json({ error: 'Stato non valido' });
       }
-      updates.push('status = @status');
-      params.status = body.status;
+      if (body.status !== ticket.status) {
+        updates.push('status = @status');
+        params.status = body.status;
+        events.push(`Stato cambiato da "${STATUS_LABELS[ticket.status]}" a "${STATUS_LABELS[body.status]}"`);
+      }
     }
     if (body.priority !== undefined) {
       if (!PRIORITIES.includes(body.priority)) {
         return res.status(400).json({ error: 'Priorità non valida' });
       }
-      updates.push('priority = @priority');
-      params.priority = body.priority;
+      if (body.priority !== ticket.priority) {
+        updates.push('priority = @priority');
+        params.priority = body.priority;
+        events.push(`Priorità cambiata da "${PRIORITY_LABELS[ticket.priority]}" a "${PRIORITY_LABELS[body.priority]}"`);
+      }
     }
     if (body.category !== undefined && body.category.trim()) {
-      updates.push('category = @category');
-      params.category = body.category.trim();
+      const resolvedCategory = resolveCategory(body.category.trim());
+      if (resolvedCategory !== ticket.category) {
+        updates.push('category = @category');
+        params.category = resolvedCategory;
+      }
     }
     if (body.assigned_to !== undefined) {
       if (body.assigned_to === null) {
-        updates.push('assigned_to = NULL');
+        if (ticket.assigned_to !== null) {
+          updates.push('assigned_to = NULL');
+          events.push('Rimossa l\'assegnazione');
+        }
       } else {
         const assignee = db
-          .prepare("SELECT id FROM users WHERE id = ? AND role IN ('agent', 'admin')")
+          .prepare("SELECT id, name FROM users WHERE id = ? AND role IN ('agent', 'admin')")
           .get(body.assigned_to);
         if (!assignee) {
           return res.status(400).json({ error: 'Utente assegnatario non valido' });
         }
-        updates.push('assigned_to = @assignedTo');
-        params.assignedTo = body.assigned_to;
+        if (assignee.id !== ticket.assigned_to) {
+          updates.push('assigned_to = @assignedTo');
+          params.assignedTo = body.assigned_to;
+          events.push(`Assegnato a ${assignee.name}`);
+        }
       }
     }
   }
@@ -166,6 +209,7 @@ router.patch('/:id', (req, res) => {
     if (wantsReopen) {
       updates.push('status = @status');
       params.status = 'open';
+      events.push('Ticket riaperto dal richiedente');
     } else if (body.status !== undefined) {
       return res.status(403).json({ error: 'Non puoi impostare questo stato' });
     }
@@ -192,6 +236,7 @@ router.patch('/:id', (req, res) => {
   updates.push("updated_at = datetime('now')");
   params.id = ticket.id;
   db.prepare(`UPDATE tickets SET ${updates.join(', ')} WHERE id = @id`).run(params);
+  events.forEach((message) => logEvent(ticket.id, req.user.id, message));
 
   const updated = db.prepare(`${TICKET_SELECT} WHERE t.id = ?`).get(ticket.id);
   res.json({ ticket: updated });
@@ -226,8 +271,8 @@ router.post('/:id/comments', (req, res) => {
   );
   db.prepare("UPDATE tickets SET updated_at = datetime('now') WHERE id = ?").run(ticket.id);
 
-  const comments = listComments(ticket.id, isStaff(req.user));
-  res.status(201).json({ comments });
+  const activity = listActivity(ticket.id, isStaff(req.user));
+  res.status(201).json({ activity });
 });
 
 module.exports = router;

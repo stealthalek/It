@@ -1,8 +1,10 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const db = require('../db/database');
 const { authenticate, JWT_SECRET } = require('../middleware/auth');
+const { getSsoConfig, verifyGoogleCredential, verifyMicrosoftToken } = require('../sso');
 
 const router = express.Router();
 
@@ -14,6 +16,18 @@ function issueToken(user) {
 
 function publicUser(user) {
   return { id: user.id, name: user.name, email: user.email, role: user.role };
+}
+
+function findOrCreateSsoUser(email, name) {
+  const existing = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+  if (existing) return existing;
+
+  const randomPassword = crypto.randomBytes(24).toString('hex');
+  const hash = bcrypt.hashSync(randomPassword, 10);
+  const info = db
+    .prepare('INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)')
+    .run(name, email, hash, 'customer');
+  return db.prepare('SELECT * FROM users WHERE id = ?').get(info.lastInsertRowid);
 }
 
 router.post('/register', (req, res) => {
@@ -57,6 +71,40 @@ router.post('/login', (req, res) => {
 
   const token = issueToken(user);
   res.json({ token, user: publicUser(user) });
+});
+
+router.get('/sso-config', (req, res) => {
+  res.json(getSsoConfig());
+});
+
+router.post('/google', async (req, res) => {
+  const { credential } = req.body || {};
+  if (!credential) {
+    return res.status(400).json({ error: 'Credenziale Google mancante' });
+  }
+  try {
+    const { email, name } = await verifyGoogleCredential(credential);
+    const user = findOrCreateSsoUser(email, name);
+    const token = issueToken(user);
+    res.json({ token, user: publicUser(user) });
+  } catch (err) {
+    res.status(401).json({ error: 'Accesso con Google non riuscito' });
+  }
+});
+
+router.post('/microsoft', async (req, res) => {
+  const { idToken } = req.body || {};
+  if (!idToken) {
+    return res.status(400).json({ error: 'Token Microsoft mancante' });
+  }
+  try {
+    const { email, name } = await verifyMicrosoftToken(idToken);
+    const user = findOrCreateSsoUser(email, name);
+    const token = issueToken(user);
+    res.json({ token, user: publicUser(user) });
+  } catch (err) {
+    res.status(401).json({ error: 'Accesso con Microsoft non riuscito' });
+  }
 });
 
 router.get('/me', authenticate, (req, res) => {

@@ -17,6 +17,8 @@
   --radius: 14px;
   --radius-sm: 9px;
   --shadow: 0 1px 2px rgba(60, 40, 25, 0.07), 0 10px 30px rgba(60, 40, 25, 0.08);
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-display: 'Manrope', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   color-scheme: light;
 }
 
@@ -31,7 +33,7 @@ html, body {
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--font-body);
   line-height: 1.5;
   transition: background 0.2s ease, color 0.2s ease;
 }
@@ -42,6 +44,10 @@ a:hover { text-decoration: underline; }
 button, input, select, textarea {
   font: inherit;
   color: inherit;
+}
+
+h1, h2, h3, .brand, .btn, .stat-card .stat-value {
+  font-family: var(--font-display);
 }
 
 svg { display: block; }
@@ -56,6 +62,16 @@ svg { display: block; }
   background: color-mix(in srgb, var(--surface) 92%, transparent);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--border);
+}
+.topbar::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--primary), var(--warning), var(--success));
+  opacity: 0.7;
 }
 
 .topbar-inner {
@@ -72,12 +88,16 @@ svg { display: block; }
   align-items: center;
   gap: 0.5rem;
   font-weight: 800;
-  font-size: 1.1rem;
+  font-size: 1.15rem;
   letter-spacing: -0.01em;
   color: var(--text);
   margin-right: auto;
 }
 .brand:hover { text-decoration: none; }
+.brand img {
+  border-radius: 8px;
+  box-shadow: 0 3px 8px color-mix(in srgb, var(--primary) 35%, transparent);
+}
 
 .nav-toggle {
   display: flex;
@@ -204,11 +224,15 @@ body.role-admin .admin-only { display: flex; }
   cursor: pointer;
   font-weight: 600;
   font-size: 0.95rem;
-  transition: background 0.15s ease, transform 0.05s ease;
+  transition: background 0.15s ease, transform 0.05s ease, box-shadow 0.15s ease;
 }
-.btn:hover { background: var(--primary-dark); text-decoration: none; }
+.btn:hover {
+  background: var(--primary-dark);
+  text-decoration: none;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--primary) 35%, transparent);
+}
 .btn:active { transform: scale(0.98); }
-.btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.btn:disabled { opacity: 0.6; cursor: not-allowed; box-shadow: none; }
 
 .btn-ghost {
   background: transparent;
@@ -286,12 +310,41 @@ body.role-admin .admin-only { display: flex; }
 .hint { color: var(--muted); font-size: 0.85rem; }
 
 .auth-wrap {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   min-height: 65vh;
   display: flex;
   align-items: center;
   justify-content: center;
+  margin: -1.5rem -1rem 0;
+  padding: 1.5rem 1rem 0;
 }
-.auth-card { width: 100%; max-width: 400px; }
+.auth-wrap::before {
+  content: '';
+  position: absolute;
+  inset: -25%;
+  z-index: -1;
+  background:
+    radial-gradient(560px 380px at 12% 18%, color-mix(in srgb, var(--primary) 20%, transparent), transparent 65%),
+    radial-gradient(480px 380px at 88% 12%, color-mix(in srgb, var(--warning) 18%, transparent), transparent 65%),
+    radial-gradient(620px 460px at 50% 105%, color-mix(in srgb, var(--success) 12%, transparent), transparent 70%);
+  filter: blur(50px);
+  animation: driftBlobs 20s ease-in-out infinite alternate;
+}
+@keyframes driftBlobs {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to { transform: translate3d(-2.5%, 2.5%, 0) scale(1.06); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-wrap::before { animation: none; }
+}
+.auth-card {
+  width: 100%;
+  max-width: 400px;
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  backdrop-filter: blur(8px);
+}
 .auth-card h1 {
   margin-top: 0;
   font-size: 1.4rem;
@@ -299,6 +352,32 @@ body.role-admin .admin-only { display: flex; }
   align-items: center;
   gap: 0.5rem;
 }
+
+.sso-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 1.25rem 0 1rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.sso-divider::before, .sso-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.sso-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.google-btn-mount { display: flex; justify-content: center; }
+.google-btn-mount > div { width: 100% !important; }
+.sso-btn { gap: 0.6rem; }
 
 /* ---------- Stat cards ---------- */
 
@@ -467,6 +546,19 @@ body.role-admin .admin-only { display: flex; }
   flex-wrap: wrap;
 }
 .comment-body { white-space: pre-wrap; }
+
+.activity-event {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  color: var(--muted);
+  font-size: 0.83rem;
+  border-top: 1px solid var(--border);
+}
+.activity-event:first-child { border-top: none; }
+.activity-event .icon { color: var(--primary); flex-shrink: 0; }
+.activity-event-time { margin-left: auto; white-space: nowrap; }
 
 .side-field { margin-bottom: 1rem; }
 .side-field label {
