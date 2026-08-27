@@ -11,20 +11,10 @@ router.use(authenticate);
 const ROLES = ['customer', 'agent', 'admin'];
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-const USER_SELECT = `
-  SELECT
-    u.id, u.name, u.email, u.role, u.created_at, u.job_title, u.group_id, u.manager_id,
-    g.name AS group_name,
-    m.name AS manager_name
-  FROM users u
-  LEFT JOIN groups g ON g.id = u.group_id
-  LEFT JOIN users m ON m.id = u.manager_id
-`;
-
 router.get(
   '/',
   asyncHandler(async (req, res) => {
-    const users = await db.all(`${USER_SELECT} ORDER BY u.name ASC`);
+    const users = await db.all('SELECT id, name, email, role, created_at FROM users ORDER BY name ASC');
     res.json({ users });
   })
 );
@@ -60,7 +50,7 @@ router.post(
       role,
     ]);
 
-    const user = await db.get(`${USER_SELECT} WHERE u.id = ?`, [Number(info.lastInsertRowid)]);
+    const user = await db.get('SELECT id, name, email, role, created_at FROM users WHERE id = ?', [Number(info.lastInsertRowid)]);
     res.status(201).json({ user, tempPassword });
   })
 );
@@ -82,46 +72,7 @@ router.patch(
       return res.status(404).json({ error: 'Utente non trovato' });
     }
 
-    const user = await db.get(`${USER_SELECT} WHERE u.id = ?`, [req.params.id]);
-    res.json({ user });
-  })
-);
-
-router.patch(
-  '/:id/profile',
-  requireRole('admin'),
-  asyncHandler(async (req, res) => {
-    const { group_id, job_title, manager_id } = req.body || {};
-    const updates = [];
-    const params = [];
-
-    if (group_id !== undefined) {
-      updates.push('group_id = ?');
-      params.push(group_id === null ? null : group_id);
-    }
-    if (job_title !== undefined) {
-      updates.push('job_title = ?');
-      params.push(job_title.trim());
-    }
-    if (manager_id !== undefined) {
-      if (manager_id !== null && Number(manager_id) === Number(req.params.id)) {
-        return res.status(400).json({ error: 'Un utente non può essere manager di se stesso' });
-      }
-      updates.push('manager_id = ?');
-      params.push(manager_id === null ? null : manager_id);
-    }
-
-    if (updates.length === 0) {
-      return res.status(400).json({ error: 'Nessuna modifica valida fornita' });
-    }
-
-    params.push(req.params.id);
-    const result = await db.run(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, params);
-    if (Number(result.rowsAffected) === 0) {
-      return res.status(404).json({ error: 'Utente non trovato' });
-    }
-
-    const user = await db.get(`${USER_SELECT} WHERE u.id = ?`, [req.params.id]);
+    const user = await db.get('SELECT id, name, email, role, created_at FROM users WHERE id = ?', [req.params.id]);
     res.json({ user });
   })
 );

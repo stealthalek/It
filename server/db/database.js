@@ -81,30 +81,10 @@ async function setupSchema() {
         message TEXT NOT NULL,
         created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now'))
       )`,
-      `CREATE TABLE IF NOT EXISTS groups (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL UNIQUE,
-        description TEXT NOT NULL DEFAULT '',
-        created_at TEXT NOT NULL DEFAULT (datetime('now'))
-      )`,
-      `CREATE TABLE IF NOT EXISTS devices (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        asset_tag TEXT,
-        type TEXT NOT NULL DEFAULT 'altro' CHECK (type IN ('laptop', 'desktop', 'telefono', 'tablet', 'altro')),
-        os TEXT,
-        serial_number TEXT,
-        status TEXT NOT NULL DEFAULT 'in_uso' CHECK (status IN ('in_uso', 'in_magazzino', 'in_riparazione', 'dismesso')),
-        assigned_to INTEGER REFERENCES users(id) ON DELETE SET NULL,
-        notes TEXT NOT NULL DEFAULT '',
-        created_at TEXT NOT NULL DEFAULT (datetime('now')),
-        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-      )`,
       'CREATE INDEX IF NOT EXISTS idx_tickets_created_by ON tickets(created_by)',
       'CREATE INDEX IF NOT EXISTS idx_tickets_assigned_to ON tickets(assigned_to)',
       'CREATE INDEX IF NOT EXISTS idx_comments_ticket_id ON comments(ticket_id)',
       'CREATE INDEX IF NOT EXISTS idx_events_ticket_id ON ticket_events(ticket_id)',
-      'CREATE INDEX IF NOT EXISTS idx_devices_assigned_to ON devices(assigned_to)',
     ],
     'write'
   );
@@ -116,21 +96,6 @@ async function migrate() {
     await run('ALTER TABLE comments ADD COLUMN is_internal INTEGER NOT NULL DEFAULT 0');
   }
 
-  const userCols = await all('PRAGMA table_info(users)');
-  if (!userCols.some((c) => c.name === 'group_id')) {
-    await run('ALTER TABLE users ADD COLUMN group_id INTEGER REFERENCES groups(id) ON DELETE SET NULL');
-  }
-  if (!userCols.some((c) => c.name === 'job_title')) {
-    await run("ALTER TABLE users ADD COLUMN job_title TEXT NOT NULL DEFAULT ''");
-  }
-  if (!userCols.some((c) => c.name === 'manager_id')) {
-    await run('ALTER TABLE users ADD COLUMN manager_id INTEGER REFERENCES users(id) ON DELETE SET NULL');
-  }
-
-  const ticketCols = await all('PRAGMA table_info(tickets)');
-  if (!ticketCols.some((c) => c.name === 'device_id')) {
-    await run('ALTER TABLE tickets ADD COLUMN device_id INTEGER REFERENCES devices(id) ON DELETE SET NULL');
-  }
 }
 
 async function seedDefaultCategories() {

@@ -39,9 +39,6 @@
     download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
     activity: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
     trash: '<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
-    devices: '<rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>',
-    building: '<path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 9h1"/><path d="M14 9h1"/><path d="M9 13h1"/><path d="M14 13h1"/><path d="M9 17h1"/><path d="M14 17h1"/>',
-    edit: '<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>',
     arrowLeft: '<line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>',
     settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
     plug: '<path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v3a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8z"/>',
@@ -296,8 +293,6 @@
         case 'new': return renderNewTicket();
         case 'ticket': return renderTicketDetail(param);
         case 'admin': return renderAdmin();
-        case 'directory': return renderDirectory();
-        case 'devices': return renderDevices();
         case 'profile': return renderProfile();
         case 'settings': return renderSettings();
         default: return renderNotFound();
@@ -605,7 +600,6 @@
 
     let staffPanel = '';
     let assigneesOptions = '';
-    let deviceOptions = '';
     if (isStaff()) {
       try {
         const { users } = await api('/users');
@@ -613,12 +607,6 @@
         assigneesOptions = `<option value="">Non assegnato</option>` +
           staffUsers.map((u) => `<option value="${u.id}" ${ticket.assigned_to === u.id ? 'selected' : ''}>${escapeHtml(u.name)}</option>`).join('');
       } catch { assigneesOptions = ''; }
-
-      try {
-        const { devices } = await api('/devices');
-        deviceOptions = `<option value="">Nessuno</option>` +
-          devices.map((d) => `<option value="${d.id}" ${ticket.device_id === d.id ? 'selected' : ''}>${escapeHtml(d.name)}</option>`).join('');
-      } catch { deviceOptions = ''; }
 
       staffPanel = `
         <div class="card">
@@ -638,10 +626,6 @@
           <div class="side-field">
             <label for="assignedSel">Assegnato a</label>
             <select id="assignedSel">${assigneesOptions}</select>
-          </div>
-          <div class="side-field">
-            <label for="deviceSel">${icon('devices')} Dispositivo collegato</label>
-            <select id="deviceSel">${deviceOptions}</select>
           </div>
           <button id="saveMgmtBtn" class="btn btn-sm btn-block">Salva modifiche</button>
           ${state.user.role === 'admin' ? `<button id="deleteBtn" class="btn btn-sm btn-outline-danger btn-block" style="margin-top:0.5rem">Elimina ticket</button>` : ''}
@@ -677,7 +661,6 @@
             <p class="ticket-meta">
               Creato da ${escapeHtml(ticket.creator_name)} il ${formatDate(ticket.created_at)}
               ${ticket.assignee_name ? ` · Assegnato a ${escapeHtml(ticket.assignee_name)}` : ''}
-              ${ticket.device_name ? ` · Dispositivo: ${escapeHtml(ticket.device_name)}` : ''}
             </p>
             ${canReopen ? `<button id="reopenBtn" class="btn btn-sm btn-ghost">${icon('refresh')} Riapri ticket</button>` : ''}
           </div>
@@ -759,7 +742,6 @@
     if (saveMgmtBtn) {
       saveMgmtBtn.addEventListener('click', async () => {
         const assignedRaw = document.getElementById('assignedSel').value;
-        const deviceRaw = document.getElementById('deviceSel').value;
         try {
           await api(`/tickets/${ticket.id}`, {
             method: 'PATCH',
@@ -767,7 +749,6 @@
               status: document.getElementById('statusSel').value,
               priority: document.getElementById('prioritySel').value,
               assigned_to: assignedRaw ? Number(assignedRaw) : null,
-              device_id: deviceRaw ? Number(deviceRaw) : null,
             },
           });
           showToast('Ticket aggiornato', 'success');
@@ -849,16 +830,6 @@
           <p class="error-text" id="categoryError"></p>
           <div id="categoriesList" class="spinner-row">Caricamento...</div>
         </div>
-        <div class="card">
-          <h3 class="section-title" style="margin-top:0">${icon('building')} Reparti</h3>
-          <p class="hint">Organizza gli utenti in reparti, visibili nella Directory aziendale.</p>
-          <form id="newGroupForm" style="display:flex;gap:0.5rem;margin:0.75rem 0">
-            <input id="newGroupName" placeholder="Nuovo reparto" style="flex:1;padding:0.55rem 0.7rem;border:1px solid var(--border);border-radius:var(--radius-sm)" />
-            <button class="btn btn-sm" type="submit">Aggiungi</button>
-          </form>
-          <p class="error-text" id="groupError"></p>
-          <div id="groupsList" class="spinner-row">Caricamento...</div>
-        </div>
       </div>` : ''}
       <div id="usersWrap" class="card spinner-row">Caricamento...</div>`;
 
@@ -934,54 +905,6 @@
       });
 
       loadCategories();
-
-      async function loadGroups() {
-        const listEl = document.getElementById('groupsList');
-        listEl.className = 'spinner-row';
-        listEl.textContent = 'Caricamento...';
-        try {
-          const { groups } = await api('/groups');
-          listEl.className = '';
-          listEl.innerHTML = groups.length ? groups.map((g) => `
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:0.5rem 0;border-top:1px solid var(--border)">
-              <span>${escapeHtml(g.name)} <span class="hint">(${g.member_count})</span></span>
-              <button type="button" class="icon-btn deleteGroupBtn" data-id="${g.id}" title="Elimina reparto">${icon('trash')}</button>
-            </div>`).join('') : '<p class="hint">Nessun reparto.</p>';
-
-          listEl.querySelectorAll('.deleteGroupBtn').forEach((btn) => {
-            btn.addEventListener('click', async () => {
-              try {
-                await api(`/groups/${btn.dataset.id}`, { method: 'DELETE' });
-                showToast('Reparto eliminato', 'success');
-                loadGroups();
-              } catch (err) {
-                showToast(err.message, 'error');
-              }
-            });
-          });
-        } catch (err) {
-          listEl.className = '';
-          listEl.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
-        }
-      }
-
-      document.getElementById('newGroupForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const input = document.getElementById('newGroupName');
-        const errEl = document.getElementById('groupError');
-        errEl.textContent = '';
-        if (!input.value.trim()) return;
-        try {
-          await api('/groups', { method: 'POST', body: { name: input.value.trim() } });
-          input.value = '';
-          showToast('Reparto aggiunto', 'success');
-          loadGroups();
-        } catch (err) {
-          errEl.textContent = err.message;
-        }
-      });
-
-      loadGroups();
     }
 
     async function loadUsersTable() {
@@ -1030,280 +953,6 @@
     }
 
     loadUsersTable();
-  }
-
-  async function renderDirectory() {
-    appEl.innerHTML = `
-      <div class="view-header">
-        <div>
-          <h1>${icon('building')} Directory</h1>
-          <p class="hint">Organigramma aziendale: utenti, reparti e responsabili.</p>
-        </div>
-      </div>
-      <div class="filters">
-        <input id="dirSearch" type="search" placeholder="Cerca per nome, reparto o ruolo..." style="flex:1;min-width:220px" />
-      </div>
-      <div id="directoryWrap" class="card spinner-row">Caricamento...</div>`;
-
-    const isAdmin = state.user.role === 'admin';
-    let users = [];
-    let groups = [];
-    try {
-      const [usersData, groupsData] = await Promise.all([api('/users'), api('/groups')]);
-      users = usersData.users;
-      groups = groupsData.groups;
-    } catch (err) {
-      document.getElementById('directoryWrap').innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
-      return;
-    }
-
-    function renderTable(filterText) {
-      const wrap = document.getElementById('directoryWrap');
-      const term = (filterText || '').toLowerCase();
-      const filtered = users.filter((u) =>
-        !term ||
-        u.name.toLowerCase().includes(term) ||
-        (u.group_name || '').toLowerCase().includes(term) ||
-        ROLE_LABELS[u.role].toLowerCase().includes(term)
-      );
-
-      wrap.className = 'card';
-      wrap.innerHTML = `
-        <table class="users-table">
-          <thead><tr><th>Nome</th><th>Reparto</th><th>Ruolo</th><th>Titolo</th><th>Responsabile</th>${isAdmin ? '<th></th>' : ''}</tr></thead>
-          <tbody>
-            ${filtered.map((u) => `
-              <tr>
-                <td>${escapeHtml(u.name)}<div class="hint">${escapeHtml(u.email)}</div></td>
-                <td>${u.group_name ? escapeHtml(u.group_name) : '<span class="hint">—</span>'}</td>
-                <td><span class="role-tag">${ROLE_LABELS[u.role] || u.role}</span></td>
-                <td>${u.job_title ? escapeHtml(u.job_title) : '<span class="hint">—</span>'}</td>
-                <td>${u.manager_name ? escapeHtml(u.manager_name) : '<span class="hint">—</span>'}</td>
-                ${isAdmin ? `<td><button type="button" class="icon-btn editUserBtn" data-id="${u.id}" title="Modifica profilo">${icon('edit')}</button></td>` : ''}
-              </tr>
-              ${isAdmin ? `
-              <tr id="editRow-${u.id}" class="edit-row" style="display:none">
-                <td colspan="6">
-                  <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:flex-end;padding:0.5rem 0">
-                    <div class="field" style="min-width:160px">
-                      <label>Reparto</label>
-                      <select id="groupSel-${u.id}">
-                        <option value="">Nessuno</option>
-                        ${groups.map((g) => `<option value="${g.id}" ${u.group_id === g.id ? 'selected' : ''}>${escapeHtml(g.name)}</option>`).join('')}
-                      </select>
-                    </div>
-                    <div class="field" style="min-width:160px">
-                      <label>Titolo</label>
-                      <input id="titleInput-${u.id}" value="${escapeHtml(u.job_title || '')}" />
-                    </div>
-                    <div class="field" style="min-width:160px">
-                      <label>Responsabile</label>
-                      <select id="managerSel-${u.id}">
-                        <option value="">Nessuno</option>
-                        ${users.filter((m) => m.id !== u.id).map((m) => `<option value="${m.id}" ${u.manager_id === m.id ? 'selected' : ''}>${escapeHtml(m.name)}</option>`).join('')}
-                      </select>
-                    </div>
-                    <button type="button" class="btn btn-sm saveProfileBtn" data-id="${u.id}">Salva</button>
-                  </div>
-                </td>
-              </tr>` : ''}
-            `).join('')}
-          </tbody>
-        </table>`;
-
-      wrap.querySelectorAll('.editUserBtn').forEach((btn) => {
-        btn.addEventListener('click', () => {
-          const row = document.getElementById(`editRow-${btn.dataset.id}`);
-          row.style.display = row.style.display === 'none' ? '' : 'none';
-        });
-      });
-
-      wrap.querySelectorAll('.saveProfileBtn').forEach((btn) => {
-        btn.addEventListener('click', async () => {
-          const id = btn.dataset.id;
-          const groupVal = document.getElementById(`groupSel-${id}`).value;
-          const managerVal = document.getElementById(`managerSel-${id}`).value;
-          const titleVal = document.getElementById(`titleInput-${id}`).value;
-          try {
-            await api(`/users/${id}/profile`, {
-              method: 'PATCH',
-              body: {
-                group_id: groupVal ? Number(groupVal) : null,
-                manager_id: managerVal ? Number(managerVal) : null,
-                job_title: titleVal,
-              },
-            });
-            showToast('Profilo aggiornato', 'success');
-            renderDirectory();
-          } catch (err) {
-            showToast(err.message, 'error');
-          }
-        });
-      });
-    }
-
-    renderTable('');
-    document.getElementById('dirSearch').addEventListener('input', (e) => renderTable(e.target.value));
-  }
-
-  async function renderDevices() {
-    if (!isStaff()) {
-      appEl.innerHTML = `<div class="card"><p class="error-text">Accesso non consentito.</p></div>`;
-      return;
-    }
-
-    let users = [];
-    try {
-      users = (await api('/users')).users;
-    } catch { users = []; }
-
-    appEl.innerHTML = `
-      <div class="view-header">
-        <div>
-          <h1>${icon('devices')} Dispositivi</h1>
-          <p class="hint">Inventario di laptop, desktop, telefoni e tablet aziendali.</p>
-        </div>
-      </div>
-      <div class="card" style="margin-bottom:1.25rem;max-width:640px">
-        <h3 class="section-title" style="margin-top:0">${icon('plus')} Nuovo dispositivo</h3>
-        <form id="newDeviceForm" class="form-grid" style="max-width:none;grid-template-columns:1fr 1fr" >
-          <div class="field"><label>Nome</label><input id="devName" required placeholder="es. Laptop Marketing 03" /></div>
-          <div class="field"><label>Tipo</label>
-            <select id="devType">
-              <option value="laptop">Laptop</option>
-              <option value="desktop">Desktop</option>
-              <option value="telefono">Telefono</option>
-              <option value="tablet">Tablet</option>
-              <option value="altro">Altro</option>
-            </select>
-          </div>
-          <div class="field"><label>Sistema operativo</label><input id="devOs" placeholder="es. Windows 11" /></div>
-          <div class="field"><label>Numero seriale</label><input id="devSerial" /></div>
-          <div class="field"><label>Assegnato a</label>
-            <select id="devAssignee"><option value="">Non assegnato</option>${users.map((u) => `<option value="${u.id}">${escapeHtml(u.name)}</option>`).join('')}</select>
-          </div>
-          <div class="field"><label>Stato</label>
-            <select id="devStatus">
-              <option value="in_uso">In uso</option>
-              <option value="in_magazzino">In magazzino</option>
-              <option value="in_riparazione">In riparazione</option>
-              <option value="dismesso">Dismesso</option>
-            </select>
-          </div>
-          <p class="error-text" id="deviceError" style="grid-column:1/-1"></p>
-          <div style="grid-column:1/-1"><button class="btn btn-sm" type="submit">Aggiungi dispositivo</button></div>
-        </form>
-      </div>
-      <div class="filters">
-        <select id="devFilterStatus">
-          <option value="">Tutti gli stati</option>
-          <option value="in_uso">In uso</option>
-          <option value="in_magazzino">In magazzino</option>
-          <option value="in_riparazione">In riparazione</option>
-          <option value="dismesso">Dismesso</option>
-        </select>
-        <input id="devFilterQuery" type="search" placeholder="Cerca per nome, tag, seriale..." />
-      </div>
-      <div id="devicesList" class="card spinner-row">Caricamento...</div>`;
-
-    const DEVICE_STATUS_LABELS = { in_uso: 'In uso', in_magazzino: 'In magazzino', in_riparazione: 'In riparazione', dismesso: 'Dismesso' };
-    const DEVICE_TYPE_LABELS = { laptop: 'Laptop', desktop: 'Desktop', telefono: 'Telefono', tablet: 'Tablet', altro: 'Altro' };
-
-    async function loadDevices() {
-      const wrap = document.getElementById('devicesList');
-      wrap.className = 'card spinner-row';
-      wrap.textContent = 'Caricamento...';
-      const params = new URLSearchParams();
-      const status = document.getElementById('devFilterStatus').value;
-      const q = document.getElementById('devFilterQuery').value.trim();
-      if (status) params.set('status', status);
-      if (q) params.set('q', q);
-
-      try {
-        const { devices } = await api(`/devices?${params.toString()}`);
-        wrap.className = 'card';
-        wrap.innerHTML = devices.length ? `
-          <table class="users-table">
-            <thead><tr><th>Nome</th><th>Tipo</th><th>SO</th><th>Assegnato a</th><th>Stato</th><th></th></tr></thead>
-            <tbody>
-              ${devices.map((d) => `
-                <tr>
-                  <td>${escapeHtml(d.name)}${d.serial_number ? `<div class="hint">${escapeHtml(d.serial_number)}</div>` : ''}</td>
-                  <td>${DEVICE_TYPE_LABELS[d.type] || d.type}</td>
-                  <td>${d.os ? escapeHtml(d.os) : '<span class="hint">—</span>'}</td>
-                  <td>${d.assignee_name ? escapeHtml(d.assignee_name) : '<span class="hint">Non assegnato</span>'}</td>
-                  <td>
-                    <select data-device-id="${d.id}" class="devStatusSel">
-                      ${Object.entries(DEVICE_STATUS_LABELS).map(([v, l]) => `<option value="${v}" ${d.status === v ? 'selected' : ''}>${l}</option>`).join('')}
-                    </select>
-                  </td>
-                  <td><button type="button" class="icon-btn deleteDeviceBtn" data-id="${d.id}" title="Elimina dispositivo">${icon('trash')}</button></td>
-                </tr>`).join('')}
-            </tbody>
-          </table>` : '<div class="empty-state">' + icon('devices') + '<span>Nessun dispositivo trovato.</span></div>';
-
-        wrap.querySelectorAll('.devStatusSel').forEach((sel) => {
-          sel.addEventListener('change', async () => {
-            try {
-              await api(`/devices/${sel.dataset.deviceId}`, { method: 'PATCH', body: { status: sel.value } });
-              showToast('Stato aggiornato', 'success');
-            } catch (err) {
-              showToast(err.message, 'error');
-              loadDevices();
-            }
-          });
-        });
-        wrap.querySelectorAll('.deleteDeviceBtn').forEach((btn) => {
-          btn.addEventListener('click', async () => {
-            if (!confirm('Eliminare questo dispositivo?')) return;
-            try {
-              await api(`/devices/${btn.dataset.id}`, { method: 'DELETE' });
-              showToast('Dispositivo eliminato', 'success');
-              loadDevices();
-            } catch (err) {
-              showToast(err.message, 'error');
-            }
-          });
-        });
-      } catch (err) {
-        wrap.className = '';
-        wrap.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
-      }
-    }
-
-    document.getElementById('devFilterStatus').addEventListener('change', loadDevices);
-    let devDebounce;
-    document.getElementById('devFilterQuery').addEventListener('input', () => {
-      clearTimeout(devDebounce);
-      devDebounce = setTimeout(loadDevices, 300);
-    });
-
-    document.getElementById('newDeviceForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const errEl = document.getElementById('deviceError');
-      errEl.textContent = '';
-      const assignee = document.getElementById('devAssignee').value;
-      try {
-        await api('/devices', {
-          method: 'POST',
-          body: {
-            name: document.getElementById('devName').value.trim(),
-            type: document.getElementById('devType').value,
-            os: document.getElementById('devOs').value.trim(),
-            serial_number: document.getElementById('devSerial').value.trim(),
-            status: document.getElementById('devStatus').value,
-            assigned_to: assignee ? Number(assignee) : null,
-          },
-        });
-        e.target.reset();
-        showToast('Dispositivo aggiunto', 'success');
-        loadDevices();
-      } catch (err) {
-        errEl.textContent = err.message;
-      }
-    });
-
-    loadDevices();
   }
 
   function renderProfile() {

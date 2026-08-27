@@ -1,6 +1,6 @@
-# It — Portale IT aziendale
+# It — Piattaforma di Ticketing
 
-Portale IT aziendale full-stack e realmente funzionante, con tre moduli sulla stessa base utenti/ruoli: **Ticketing** (gestione richieste di assistenza), **Directory** (organigramma utenti e reparti, in stile Active Directory) e **Dispositivi** (inventario asset aziendali, in stile Intune). Non è una reimplementazione dei protocolli reali di quei prodotti (niente LDAP/Kerberos, niente enrollment/push di policy MDM su dispositivi reali): è la parte gestionale — anagrafica utenti/reparti e inventario asset — utile a un piccolo team IT, integrata con il ticketing. L'interfaccia è **responsive** (mobile-first) e installabile come app (PWA), utilizzabile da PC, tablet e smartphone.
+Piattaforma di ticketing full-stack e realmente funzionante: gestione di richieste di assistenza con autenticazione, ruoli, stati, priorità, categorie e una timeline attività completa per ogni ticket. L'interfaccia è **responsive** (mobile-first) e installabile come app (PWA), utilizzabile da PC, tablet e smartphone.
 
 ## Stack tecnico
 
@@ -11,28 +11,17 @@ Portale IT aziendale full-stack e realmente funzionante, con tre moduli sulla st
 
 ## Funzionalità
 
-**Ticketing**
+- Registrazione e login (JWT), più **accesso SSO con Google e Microsoft** (opzionale, vedi sotto)
+- Tre ruoli: `customer` (cliente), `agent` (agente), `admin`
 - Creazione, consultazione, modifica, riapertura e chiusura dei ticket
 - Stati (`aperto`, `in lavorazione`, `risolto`, `chiuso`) e priorità (`bassa`…`urgente`)
 - Categorie personalizzabili dall'amministratore, selezionabili dal cliente in fase di apertura
-- **Timeline attività** su ogni ticket: commenti e cambi di stato/priorità/assegnazione/dispositivo in un unico flusso cronologico (in stile ITSM)
+- **Timeline attività** su ogni ticket: commenti e cambi di stato/priorità/assegnazione in un unico flusso cronologico (in stile ITSM)
 - Assegnazione dei ticket agli agenti, filtri per stato/priorità/assegnatario, ricerca testuale
 - Dashboard con contatori in tempo reale (aperti, in lavorazione, risolti, urgenti)
 - **Note interne**, visibili solo allo staff
-
-**Directory**
-- Organigramma aziendale: reparti, titolo, responsabile per ogni utente
-- Ricerca per nome, reparto o ruolo
-- Gestione reparti dal pannello di amministrazione
-
-**Dispositivi**
-- Inventario laptop/desktop/telefoni/tablet con tipo, sistema operativo, numero seriale, stato e assegnatario
-- Collegamento di un dispositivo a un ticket direttamente dal pannello di gestione dell'agente
-
-**Accesso e amministrazione**
-- Registrazione e login (JWT), più **accesso SSO con Google e Microsoft** (opzionale, vedi sotto)
-- Tre ruoli: `customer` (cliente), `agent` (agente), `admin`
-- Pannello di amministrazione grafico: ruoli utente, creazione account staff con password temporanea, categorie ticket, reparti
+- Il cliente può riaprire un ticket risolto/chiuso se il problema persiste
+- Pannello di amministrazione grafico: ruoli utente, creazione account staff con password temporanea, categorie ticket
 - Profilo personale con cambio password
 - Interfaccia responsive e curata graficamente, installabile come app (PWA) con **aggiornamento automatico** quando viene pubblicata una nuova versione
 
@@ -155,10 +144,8 @@ server/
   sso.js               # verifica token Google/Microsoft
   routes/auth.js       # registrazione, login, SSO, /me
   routes/tickets.js    # CRUD ticket, commenti, timeline attività
-  routes/users.js      # elenco utenti, ruoli, profilo (reparto/titolo/responsabile)
+  routes/users.js      # elenco utenti, gestione ruoli (admin)
   routes/categories.js # elenco e gestione categorie ticket
-  routes/groups.js     # elenco e gestione reparti (Directory)
-  routes/devices.js    # inventario dispositivi
 public/
   index.html         # shell dell'app (percorsi relativi: funziona anche su sottopercorso)
   css/style.css       # stile responsive, tema chiaro/scuro
@@ -195,14 +182,6 @@ Tutte le richieste (tranne `register`/`login`) richiedono l'header `Authorizatio
 | GET | `/api/categories` | Elenco categorie ticket |
 | POST | `/api/categories` | Crea una categoria (solo admin) |
 | DELETE | `/api/categories/:id` | Elimina una categoria non in uso (solo admin) |
-| PATCH | `/api/users/:id/profile` | Aggiorna reparto/titolo/responsabile di un utente (solo admin) |
-| GET | `/api/groups` | Elenco reparti con numero di membri |
-| POST | `/api/groups` | Crea un reparto (solo admin) |
-| DELETE | `/api/groups/:id` | Elimina un reparto senza membri (solo admin) |
-| GET | `/api/devices` | Elenco dispositivi (filtri: `status`, `type`, `assigned`, `q`); i clienti vedono solo i propri |
-| POST | `/api/devices` | Crea un dispositivo (staff) |
-| PATCH | `/api/devices/:id` | Aggiorna un dispositivo (staff) |
-| DELETE | `/api/devices/:id` | Elimina un dispositivo (solo admin) |
 
 ## Sicurezza
 
