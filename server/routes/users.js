@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const db = require('../db/database');
 const { authenticate, requireRole } = require('../middleware/auth');
+const asyncHandler = require('../middleware/asyncHandler');
 
 const router = express.Router();
 router.use(authenticate);
@@ -10,58 +11,119 @@ router.use(authenticate);
 const ROLES = ['customer', 'agent', 'admin'];
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-router.get('/', requireRole('agent', 'admin'), (req, res) => {
-  const users = db
-    .prepare('SELECT id, name, email, role, created_at FROM users ORDER BY name ASC')
-    .all();
-  res.json({ users });
-});
+const USER_SELECT = `
+  SELECT
+    u.id, u.name, u.email, u.role, u.created_at, u.job_title, u.group_id, u.manager_id,
+    g.name AS group_name,
+    m.name AS manager_name
+  FROM users u
+  LEFT JOIN groups g ON g.id = u.group_id
+  LEFT JOIN users m ON m.id = u.manager_id
+`;
 
-router.post('/', requireRole('admin'), (req, res) => {
-  const { name, email, role } = req.body || {};
+router.get(
+  '/',
+  asyncHandler(async (req, res) => {
+    const users = await db.all(`${USER_SELECT} ORDER BY u.name ASC`);
+    res.json({ users });
+  })
+);
 
-  if (!name || !name.trim()) {
-    return res.status(400).json({ error: 'Il nome è obbligatorio' });
-  }
-  if (!email || !EMAIL_RE.test(email)) {
-    return res.status(400).json({ error: 'Email non valida' });
-  }
-  if (!['agent', 'admin'].includes(role)) {
-    return res.status(400).json({ error: 'Ruolo non valido: usa agent o admin' });
-  }
+router.post(
+  '/',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const { name, email, role } = req.body || {};
 
-  const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email.toLowerCase());
-  if (existing) {
-    return res.status(409).json({ error: 'Email già registrata' });
-  }
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Il nome è obbligatorio' });
+    }
+    if (!email || !EMAIL_RE.test(email)) {
+      return res.status(400).json({ error: 'Email non valida' });
+    }
+    if (!['agent', 'admin'].includes(role)) {
+      return res.status(400).json({ error: 'Ruolo non valido: usa agent o admin' });
+    }
 
-  const tempPassword = crypto.randomBytes(6).toString('base64url');
-  const hash = bcrypt.hashSync(tempPassword, 10);
+    const existing = await db.get('SELECT id FROM users WHERE email = ?', [email.toLowerCase()]);
+    if (existing) {
+      return res.status(409).json({ error: 'Email già registrata' });
+    }
 
-  const info = db
-    .prepare('INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)')
-    .run(name.trim(), email.toLowerCase(), hash, role);
+    const tempPassword = crypto.randomBytes(6).toString('base64url');
+    const hash = bcrypt.hashSync(tempPassword, 10);
 
-  const user = db.prepare('SELECT id, name, email, role, created_at FROM users WHERE id = ?').get(info.lastInsertRowid);
-  res.status(201).json({ user, tempPassword });
-});
+    const info = await db.run('INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)', [
+      name.trim(),
+      email.toLowerCase(),
+      hash,
+      role,
+    ]);
 
-router.patch('/:id/role', requireRole('admin'), (req, res) => {
-  const { role } = req.body || {};
-  if (!ROLES.includes(role)) {
-    return res.status(400).json({ error: 'Ruolo non valido' });
-  }
-  if (Number(req.params.id) === req.user.id) {
-    return res.status(400).json({ error: 'Non puoi modificare il tuo stesso ruolo' });
-  }
+    const user = await db.get(`${USER_SELECT} WHERE u.id = ?`, [Number(info.lastInsertRowid)]);
+    res.status(201).json({ user, tempPassword });
+  })
+);
 
-  const result = db.prepare('UPDATE users SET role = ? WHERE id = ?').run(role, req.params.id);
-  if (result.changes === 0) {
-    return res.status(404).json({ error: 'Utente non trovato' });
-  }
+router.patch(
+  '/:id/role',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const { role } = req.body || {};
+    if (!ROLES.includes(role)) {
+      return res.status(400).json({ error: 'Ruolo non valido' });
+    }
+    if (Number(req.params.id) === req.user.id) {
+      return res.status(400).json({ error: 'Non puoi modificare il tuo stesso ruolo' });
+    }
 
-  const user = db.prepare('SELECT id, name, email, role, created_at FROM users WHERE id = ?').get(req.params.id);
-  res.json({ user });
-});
+    const result = await db.run('UPDATE users SET role = ? WHERE id = ?', [role, req.params.id]);
+    if (Number(result.rowsAffected) === 0) {
+      return res.status(404).json({ error: 'Utente non trovato' });
+    }
+
+    const user = await db.get(`${USER_SELECT} WHERE u.id = ?`, [req.params.id]);
+    res.json({ user });
+  })
+);
+
+router.patch(
+  '/:id/profile',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const { group_id, job_title, manager_id } = req.body || {};
+    const updates = [];
+    const params = [];
+
+    if (group_id !== undefined) {
+      updates.push('group_id = ?');
+      params.push(group_id === null ? null : group_id);
+    }
+    if (job_title !== undefined) {
+      updates.push('job_title = ?');
+      params.push(job_title.trim());
+    }
+    if (manager_id !== undefined) {
+      if (manager_id !== null && Number(manager_id) === Number(req.params.id)) {
+        return res.status(400).json({ error: 'Un utente non può essere manager di se stesso' });
+      }
+      updates.push('manager_id = ?');
+      params.push(manager_id === null ? null : manager_id);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'Nessuna modifica valida fornita' });
+    }
+
+    params.push(req.params.id);
+    const result = await db.run(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, params);
+    if (Number(result.rowsAffected) === 0) {
+      return res.status(404).json({ error: 'Utente non trovato' });
+    }
+
+    const user = await db.get(`${USER_SELECT} WHERE u.id = ?`, [req.params.id]);
+    res.json({ user });
+  })
+);
 
 module.exports = router;

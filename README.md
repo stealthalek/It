@@ -1,27 +1,38 @@
-# It — Piattaforma di Ticketing
+# It — Portale IT aziendale
 
-Piattaforma di ticketing full-stack e realmente funzionante: gestione di richieste di assistenza con autenticazione, ruoli, stati, priorità e conversazioni sui ticket. L'interfaccia è **responsive** (mobile-first) e installabile come app (PWA), quindi utilizzabile da PC, tablet e smartphone tramite browser, sulla stessa rete o pubblicata online.
+Portale IT aziendale full-stack e realmente funzionante, con tre moduli sulla stessa base utenti/ruoli: **Ticketing** (gestione richieste di assistenza), **Directory** (organigramma utenti e reparti, in stile Active Directory) e **Dispositivi** (inventario asset aziendali, in stile Intune). Non è una reimplementazione dei protocolli reali di quei prodotti (niente LDAP/Kerberos, niente enrollment/push di policy MDM su dispositivi reali): è la parte gestionale — anagrafica utenti/reparti e inventario asset — utile a un piccolo team IT, integrata con il ticketing. L'interfaccia è **responsive** (mobile-first) e installabile come app (PWA), utilizzabile da PC, tablet e smartphone.
 
 ## Stack tecnico
 
 - **Backend:** Node.js + Express, REST API con autenticazione JWT
-- **Database:** SQLite (`better-sqlite3`), file locale in `data/ticketing.db` — zero configurazione
+- **Database:** SQLite/libSQL (`@libsql/client`) — file locale zero-configurazione in sviluppo, oppure [Turso](https://turso.tech) per una copia remota persistente in produzione (vedi sotto)
 - **Frontend:** SPA in JavaScript vanilla, nessun build step, CSS responsive
-- **PWA:** manifest + service worker per installazione e cache degli asset statici
+- **PWA:** manifest + service worker per installazione, cache degli asset statici e aggiornamento automatico
 
 ## Funzionalità
 
-- Registrazione e login (JWT), più **accesso SSO con Google e Microsoft** (opzionale, vedi sotto)
-- Tre ruoli: `customer` (cliente), `agent` (agente), `admin`
+**Ticketing**
 - Creazione, consultazione, modifica, riapertura e chiusura dei ticket
 - Stati (`aperto`, `in lavorazione`, `risolto`, `chiuso`) e priorità (`bassa`…`urgente`)
 - Categorie personalizzabili dall'amministratore, selezionabili dal cliente in fase di apertura
-- **Timeline attività** su ogni ticket: commenti e cambi di stato/priorità/assegnazione mostrati in un unico flusso cronologico (in stile ITSM)
+- **Timeline attività** su ogni ticket: commenti e cambi di stato/priorità/assegnazione/dispositivo in un unico flusso cronologico (in stile ITSM)
 - Assegnazione dei ticket agli agenti, filtri per stato/priorità/assegnatario, ricerca testuale
 - Dashboard con contatori in tempo reale (aperti, in lavorazione, risolti, urgenti)
-- **Note interne** sui ticket, visibili solo allo staff
-- Il cliente può riaprire un ticket risolto/chiuso se il problema persiste
-- Pannello di amministrazione grafico: gestione ruoli utente, creazione account staff con password temporanea, gestione categorie ticket
+- **Note interne**, visibili solo allo staff
+
+**Directory**
+- Organigramma aziendale: reparti, titolo, responsabile per ogni utente
+- Ricerca per nome, reparto o ruolo
+- Gestione reparti dal pannello di amministrazione
+
+**Dispositivi**
+- Inventario laptop/desktop/telefoni/tablet con tipo, sistema operativo, numero seriale, stato e assegnatario
+- Collegamento di un dispositivo a un ticket direttamente dal pannello di gestione dell'agente
+
+**Accesso e amministrazione**
+- Registrazione e login (JWT), più **accesso SSO con Google e Microsoft** (opzionale, vedi sotto)
+- Tre ruoli: `customer` (cliente), `agent` (agente), `admin`
+- Pannello di amministrazione grafico: ruoli utente, creazione account staff con password temporanea, categorie ticket, reparti
 - Profilo personale con cambio password
 - Interfaccia responsive e curata graficamente, installabile come app (PWA) con **aggiornamento automatico** quando viene pubblicata una nuova versione
 
@@ -69,7 +80,21 @@ GitHub Pages ospita solo file statici e non può eseguire il backend Node/SQLite
 3. Imposta la variabile `DEFAULT_ADMIN_PASSWORD` nel pannello Render prima del primo deploy (altrimenti resta il default `Admin123!`, da cambiare subito dopo il primo accesso).
 4. A deploy completato Render fornisce un URL tipo `https://it-ticketing-api.onrender.com`.
 
-> **Nota sul piano gratuito:** le istanze web gratuite di Render vanno in stop dopo inattività (si riattivano alla richiesta successiva, con qualche secondo di attesa) e il filesystem — quindi il database SQLite — **non è persistente tra un deploy e l'altro** (i dati sopravvivono a stop/riavvio ma vengono ripristinati da zero a ogni nuovo deploy). Per un uso realmente in produzione con dati permanenti, aggiungi un disco persistente a pagamento su Render (bastano pochi dollari al mese) oppure migra a un database gestito.
+> **Importante — persistenza dei dati:** le istanze web gratuite di Render hanno un filesystem effimero: **senza un database esterno, ogni nuovo deploy cancella tutti gli utenti e i ticket**. Segui subito la sezione successiva per collegare un database Turso gratuito e persistente, altrimenti i dati vengono ripristinati da zero a ogni pubblicazione di una modifica.
+
+### 2bis. Rendi i dati persistenti con Turso (gratuito)
+
+L'app usa [libSQL](https://turso.tech), compatibile con SQLite: senza configurazione usa un file locale (comodo in sviluppo), ma in produzione può appoggiarsi a un database [Turso](https://turso.tech) gratuito che sopravvive ad ogni deploy.
+
+1. Crea un account gratuito su [turso.tech](https://turso.tech).
+2. Crea un nuovo database (dal sito o con la CLI `turso db create it-ticketing`).
+3. Recupera l'URL di connessione (`turso db show it-ticketing --url`, inizia con `libsql://`) e crea un token di accesso (`turso db tokens create it-ticketing`).
+4. Su Render, apri il servizio → **Environment** e imposta:
+   - `TURSO_DATABASE_URL` con l'URL del database
+   - `TURSO_AUTH_TOKEN` con il token generato
+5. Render riavvia automaticamente il servizio: da questo momento il database vive su Turso e **non viene più perso nei deploy successivi**.
+
+Se le due variabili non sono impostate, il backend continua a funzionare con un file SQLite locale (utile per sviluppo/Docker), semplicemente non persistente tra un deploy Render e l'altro.
 
 ### 3. Collega il frontend al backend
 
@@ -116,19 +141,24 @@ Aprendo il sito da un browser mobile è possibile installarlo come app (pulsante
 | `GOOGLE_CLIENT_ID` | Client ID OAuth Google, abilita l'accesso "Sign in with Google" | non impostato (SSO Google disattivato) |
 | `MICROSOFT_CLIENT_ID` | Application ID Microsoft Entra, abilita l'accesso con Microsoft | non impostato (SSO Microsoft disattivato) |
 | `MICROSOFT_TENANT_ID` | Limita l'accesso Microsoft a un singolo tenant aziendale | `common` (qualsiasi account Microsoft) |
+| `TURSO_DATABASE_URL` | URL del database Turso (`libsql://...`), rende i dati persistenti tra i deploy | non impostato (usa file SQLite locale) |
+| `TURSO_AUTH_TOKEN` | Token di accesso al database Turso | non impostato |
 
 ## Struttura del progetto
 
 ```
 server/
-  index.js          # entry point Express, binding su 0.0.0.0
-  db/database.js     # schema SQLite + seed admin/categorie
+  index.js          # entry point Express, bootstrap async, binding su 0.0.0.0
+  db/database.js     # client libSQL/Turso, schema, migrazioni, seed
   middleware/auth.js  # autenticazione JWT e controllo ruoli
+  middleware/asyncHandler.js # inoltra gli errori async delle route a Express
   sso.js               # verifica token Google/Microsoft
   routes/auth.js       # registrazione, login, SSO, /me
   routes/tickets.js    # CRUD ticket, commenti, timeline attività
-  routes/users.js      # elenco utenti, gestione ruoli (admin)
+  routes/users.js      # elenco utenti, ruoli, profilo (reparto/titolo/responsabile)
   routes/categories.js # elenco e gestione categorie ticket
+  routes/groups.js     # elenco e gestione reparti (Directory)
+  routes/devices.js    # inventario dispositivi
 public/
   index.html         # shell dell'app (percorsi relativi: funziona anche su sottopercorso)
   css/style.css       # stile responsive, tema chiaro/scuro
@@ -165,6 +195,14 @@ Tutte le richieste (tranne `register`/`login`) richiedono l'header `Authorizatio
 | GET | `/api/categories` | Elenco categorie ticket |
 | POST | `/api/categories` | Crea una categoria (solo admin) |
 | DELETE | `/api/categories/:id` | Elimina una categoria non in uso (solo admin) |
+| PATCH | `/api/users/:id/profile` | Aggiorna reparto/titolo/responsabile di un utente (solo admin) |
+| GET | `/api/groups` | Elenco reparti con numero di membri |
+| POST | `/api/groups` | Crea un reparto (solo admin) |
+| DELETE | `/api/groups/:id` | Elimina un reparto senza membri (solo admin) |
+| GET | `/api/devices` | Elenco dispositivi (filtri: `status`, `type`, `assigned`, `q`); i clienti vedono solo i propri |
+| POST | `/api/devices` | Crea un dispositivo (staff) |
+| PATCH | `/api/devices/:id` | Aggiorna un dispositivo (staff) |
+| DELETE | `/api/devices/:id` | Elimina un dispositivo (solo admin) |
 
 ## Sicurezza
 

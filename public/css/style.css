@@ -80,7 +80,7 @@ svg { display: block; }
   padding: 0.75rem 1rem;
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.6rem;
 }
 
 .brand {
@@ -137,7 +137,8 @@ svg { display: block; }
 .main-nav {
   display: none;
   align-items: center;
-  gap: 0.35rem;
+  flex-wrap: wrap;
+  gap: 0.15rem;
 }
 .main-nav.open {
   display: flex;
@@ -154,11 +155,12 @@ svg { display: block; }
   box-shadow: var(--shadow);
 }
 .main-nav a {
-  padding: 0.55rem 0.7rem;
+  padding: 0.55rem 0.65rem;
   border-radius: var(--radius-sm);
   color: var(--text);
   font-weight: 600;
-  font-size: 0.92rem;
+  font-size: 0.88rem;
+  white-space: nowrap;
   display: flex;
   align-items: center;
   gap: 0.45rem;
