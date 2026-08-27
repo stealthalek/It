@@ -17,12 +17,10 @@ const TICKET_SELECT = `
     t.*,
     creator.name AS creator_name,
     creator.email AS creator_email,
-    assignee.name AS assignee_name,
-    device.name AS device_name
+    assignee.name AS assignee_name
   FROM tickets t
   JOIN users creator ON creator.id = t.created_by
   LEFT JOIN users assignee ON assignee.id = t.assigned_to
-  LEFT JOIN devices device ON device.id = t.device_id
 `;
 
 function isStaff(user) {
@@ -119,7 +117,7 @@ router.get(
 router.post(
   '/',
   asyncHandler(async (req, res) => {
-    const { subject, description, priority, category, device_id } = req.body || {};
+    const { subject, description, priority, category } = req.body || {};
 
     if (!subject || !subject.trim()) {
       return res.status(400).json({ error: 'L\'oggetto è obbligatorio' });
@@ -130,15 +128,9 @@ router.post(
     const finalPriority = PRIORITIES.includes(priority) ? priority : 'medium';
     const finalCategory = await resolveCategory(category && category.trim());
 
-    let finalDeviceId = null;
-    if (device_id) {
-      const device = await db.get('SELECT id FROM devices WHERE id = ?', [device_id]);
-      if (device) finalDeviceId = device.id;
-    }
-
     const info = await db.run(
-      'INSERT INTO tickets (subject, description, priority, category, created_by, device_id) VALUES (?, ?, ?, ?, ?, ?)',
-      [subject.trim(), description.trim(), finalPriority, finalCategory, req.user.id, finalDeviceId]
+      'INSERT INTO tickets (subject, description, priority, category, created_by) VALUES (?, ?, ?, ?, ?)',
+      [subject.trim(), description.trim(), finalPriority, finalCategory, req.user.id]
     );
 
     const ticketId = Number(info.lastInsertRowid);
@@ -197,24 +189,6 @@ router.patch(
         if (resolvedCategory !== ticket.category) {
           updates.push('category = ?');
           params.push(resolvedCategory);
-        }
-      }
-      if (body.device_id !== undefined) {
-        if (body.device_id === null) {
-          if (ticket.device_id !== null) {
-            updates.push('device_id = NULL');
-            events.push('Dispositivo scollegato dal ticket');
-          }
-        } else {
-          const device = await db.get('SELECT id, name FROM devices WHERE id = ?', [body.device_id]);
-          if (!device) {
-            return res.status(400).json({ error: 'Dispositivo non valido' });
-          }
-          if (device.id !== ticket.device_id) {
-            updates.push('device_id = ?');
-            params.push(device.id);
-            events.push(`Collegato al dispositivo ${device.name}`);
-          }
         }
       }
       if (body.assigned_to !== undefined) {

@@ -8,8 +8,6 @@ const authRoutes = require('./routes/auth');
 const ticketRoutes = require('./routes/tickets');
 const userRoutes = require('./routes/users');
 const categoryRoutes = require('./routes/categories');
-const groupRoutes = require('./routes/groups');
-const deviceRoutes = require('./routes/devices');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -21,8 +19,6 @@ app.use('/api/auth', authRoutes);
 app.use('/api/tickets', ticketRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/categories', categoryRoutes);
-app.use('/api/groups', groupRoutes);
-app.use('/api/devices', deviceRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() });
