@@ -36,6 +36,9 @@
     eyeOff: '<path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a21.8 21.8 0 0 1 5.06-6.06M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a21.77 21.77 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>',
     userCircle: '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="10" r="3"/><path d="M7 20.66V19a4 4 0 0 1 4-4h2a4 4 0 0 1 4 4v1.66"/>',
     copy: '<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+    download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
+    activity: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+    trash: '<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
     arrowLeft: '<line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>',
     settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
     plug: '<path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v3a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8z"/>',
@@ -43,6 +46,15 @@
 
   function icon(name, cls = '') {
     return `<svg class="icon ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON_PATHS[name] || ''}</svg>`;
+  }
+
+  function msLogo() {
+    return `<svg class="icon" viewBox="0 0 21 21">
+      <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
+      <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
+      <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
+      <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
+    </svg>`;
   }
 
   function escapeHtml(str) {
@@ -65,8 +77,13 @@
     showToast._t = setTimeout(() => { toastEl.className = 'toast'; }, 3200);
   }
 
+  const HOSTED_DEFAULT_API_BASE = 'https://it-ticketing-api-2g68.onrender.com';
+
   function getApiBase() {
-    return (localStorage.getItem('ticketing_api_base') || '').replace(/\/+$/, '');
+    const stored = localStorage.getItem('ticketing_api_base');
+    if (stored) return stored.replace(/\/+$/, '');
+    if (location.hostname.endsWith('github.io')) return HOSTED_DEFAULT_API_BASE;
+    return '';
   }
 
   function setApiBase(url) {
@@ -115,6 +132,96 @@
     } else {
       userBadge.style.display = 'none';
       logoutBtn.style.display = 'none';
+    }
+  }
+
+  let ssoConfigPromise = null;
+  function fetchSsoConfig() {
+    if (!ssoConfigPromise) {
+      ssoConfigPromise = api('/auth/sso-config').catch(() => ({ google: null, microsoft: null }));
+    }
+    return ssoConfigPromise;
+  }
+
+  const loadedScripts = new Map();
+  function loadScriptOnce(src) {
+    if (!loadedScripts.has(src)) {
+      loadedScripts.set(src, new Promise((resolve, reject) => {
+        const el = document.createElement('script');
+        el.src = src;
+        el.onload = resolve;
+        el.onerror = reject;
+        document.head.appendChild(el);
+      }));
+    }
+    return loadedScripts.get(src);
+  }
+
+  async function handleSsoSuccess(data) {
+    setSession(data.token, data.user);
+    showToast(`Bentornato, ${data.user.name}`, 'success');
+    location.hash = '#/dashboard';
+    route();
+  }
+
+  async function renderSsoButtons(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    const config = await fetchSsoConfig();
+    if (!config.google && !config.microsoft) return;
+
+    container.innerHTML = `
+      <div class="sso-divider"><span>oppure</span></div>
+      <div class="sso-buttons">
+        ${config.google ? '<div id="googleBtnMount" class="google-btn-mount"></div>' : ''}
+        ${config.microsoft ? `<button type="button" id="microsoftBtn" class="btn btn-ghost btn-block sso-btn">${msLogo()} Accedi con Microsoft</button>` : ''}
+      </div>`;
+
+    if (config.google) {
+      try {
+        await loadScriptOnce('https://accounts.google.com/gsi/client');
+        window.google.accounts.id.initialize({
+          client_id: config.google.clientId,
+          callback: async (response) => {
+            try {
+              const data = await api('/auth/google', { method: 'POST', body: { credential: response.credential } });
+              handleSsoSuccess(data);
+            } catch (err) {
+              showToast(err.message, 'error');
+            }
+          },
+        });
+        window.google.accounts.id.renderButton(document.getElementById('googleBtnMount'), {
+          theme: 'outline', size: 'large', shape: 'pill', width: 320, text: 'continue_with',
+        });
+      } catch {
+        document.getElementById('googleBtnMount').remove();
+      }
+    }
+
+    if (config.microsoft) {
+      try {
+        await loadScriptOnce('https://alcdn.msauth.net/browser/3.7.1/js/msal-browser.min.js');
+        const msalInstance = new window.msal.PublicClientApplication({
+          auth: {
+            clientId: config.microsoft.clientId,
+            authority: `https://login.microsoftonline.com/${config.microsoft.tenant || 'common'}`,
+          },
+        });
+        if (msalInstance.initialize) await msalInstance.initialize();
+        document.getElementById('microsoftBtn').addEventListener('click', async () => {
+          try {
+            const result = await msalInstance.loginPopup({ scopes: ['openid', 'profile', 'email'] });
+            const data = await api('/auth/microsoft', { method: 'POST', body: { idToken: result.idToken } });
+            handleSsoSuccess(data);
+          } catch (err) {
+            showToast(err.message || 'Accesso con Microsoft non riuscito', 'error');
+          }
+        });
+      } catch {
+        const btn = document.getElementById('microsoftBtn');
+        if (btn) btn.remove();
+      }
     }
   }
 
@@ -218,11 +325,13 @@
             <p class="error-text" id="loginError"></p>
             <button class="btn btn-block" type="submit">Accedi</button>
           </form>
+          <div id="ssoContainer"></div>
           <p class="hint">Non hai un account? <a href="#/register">Registrati</a></p>
         </div>
       </div>`;
 
     attachPasswordToggle('password', 'pwToggle');
+    renderSsoButtons('ssoContainer');
 
     document.getElementById('loginForm').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -274,12 +383,14 @@
             <p class="error-text" id="registerError"></p>
             <button class="btn btn-block" type="submit">Registrati</button>
           </form>
+          <div id="ssoContainer"></div>
           <p class="hint">Hai già un account? <a href="#/login">Accedi</a></p>
         </div>
       </div>`;
 
     attachPasswordToggle('password', 'pwToggle');
     attachPasswordToggle('password2', 'pwToggle2');
+    renderSsoButtons('ssoContainer');
 
     document.getElementById('registerForm').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -409,21 +520,34 @@
       </a>`).join('');
   }
 
-  function renderNewTicket() {
+  async function renderNewTicket() {
+    let categories = [];
+    try {
+      const data = await api('/categories');
+      categories = data.categories;
+    } catch { categories = []; }
+
     appEl.innerHTML = `
-      <div class="view-header"><h1>${icon('plus')} Nuovo ticket</h1></div>
+      <div class="view-header">
+        <div>
+          <h1>${icon('plus')} Nuovo ticket</h1>
+          <p class="hint">Raccontaci il problema: bastano pochi campi, il resto lo segue il nostro team.</p>
+        </div>
+      </div>
       <div class="card" style="max-width:560px">
         <form id="newTicketForm" class="form-grid">
           <div class="field">
-            <label for="subject">Oggetto</label>
-            <input id="subject" type="text" required maxlength="200" />
-          </div>
-          <div class="field">
             <label for="category">Categoria</label>
-            <input id="category" type="text" placeholder="es. hardware, software, rete" />
+            <select id="category">
+              ${categories.map((c) => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join('')}
+            </select>
           </div>
           <div class="field">
-            <label for="priority">Priorità</label>
+            <label for="subject">Oggetto</label>
+            <input id="subject" type="text" required maxlength="200" placeholder="Un breve titolo per il problema" />
+          </div>
+          <div class="field">
+            <label for="priority">Quanto è urgente?</label>
             <select id="priority">
               ${Object.entries(PRIORITY_LABELS).map(([v, l]) => `<option value="${v}" ${v === 'medium' ? 'selected' : ''}>${l}</option>`).join('')}
             </select>
@@ -434,7 +558,7 @@
           </div>
           <p class="error-text" id="newTicketError"></p>
           <div>
-            <button class="btn" type="submit">Crea ticket</button>
+            <button class="btn" type="submit">Invia richiesta</button>
           </div>
         </form>
       </div>`;
@@ -445,13 +569,13 @@
       errEl.textContent = '';
       const body = {
         subject: document.getElementById('subject').value.trim(),
-        category: document.getElementById('category').value.trim(),
+        category: document.getElementById('category').value,
         priority: document.getElementById('priority').value,
         description: document.getElementById('description').value.trim(),
       };
       try {
         const { ticket } = await api('/tickets', { method: 'POST', body });
-        showToast('Ticket creato con successo', 'success');
+        showToast('Richiesta inviata con successo', 'success');
         location.hash = `#/ticket/${ticket.id}`;
       } catch (err) {
         errEl.textContent = err.message;
@@ -469,7 +593,7 @@
       return;
     }
 
-    const { ticket, comments } = data;
+    const { ticket, activity } = data;
     const isOwner = ticket.created_by === state.user.id;
     const canEditFields = isOwner && !isStaff() && ticket.status === 'open';
     const canReopen = isOwner && !isStaff() && ['resolved', 'closed'].includes(ticket.status);
@@ -542,9 +666,9 @@
           </div>
 
           <div class="card">
-            <h3 class="section-title" style="margin-top:0">Conversazione</h3>
-            <div id="commentsList">
-              ${comments.length ? comments.map(renderComment).join('') : '<p class="hint">Nessun commento ancora.</p>'}
+            <h3 class="section-title" style="margin-top:0">Attività</h3>
+            <div id="activityList">
+              ${activity.length ? activity.map(renderActivityItem).join('') : '<p class="hint">Nessuna attività ancora.</p>'}
             </div>
             <form id="commentForm" class="form-grid" style="max-width:none;margin-top:1rem">
               <div class="field">
@@ -569,10 +693,10 @@
       const internalEl = document.getElementById('internalCheck');
       if (!msgEl.value.trim()) return;
       try {
-        const { comments: updated } = await api(`/tickets/${ticket.id}/comments`, {
+        const { activity: updated } = await api(`/tickets/${ticket.id}/comments`, {
           method: 'POST', body: { message: msgEl.value.trim(), is_internal: internalEl ? internalEl.checked : false },
         });
-        document.getElementById('commentsList').innerHTML = updated.map(renderComment).join('');
+        document.getElementById('activityList').innerHTML = updated.map(renderActivityItem).join('');
         msgEl.value = '';
         if (internalEl) internalEl.checked = false;
         showToast('Commento aggiunto', 'success');
@@ -650,14 +774,22 @@
     }
   }
 
-  function renderComment(c) {
+  function renderActivityItem(item) {
+    if (item.kind === 'event') {
+      return `
+        <div class="activity-event">
+          ${icon('activity')}
+          <span>${escapeHtml(item.message)}${item.actor_name ? ` — ${escapeHtml(item.actor_name)}` : ''}</span>
+          <span class="activity-event-time">${formatDate(item.created_at)}</span>
+        </div>`;
+    }
     return `
-      <div class="comment ${c.is_internal ? 'is-internal' : ''}">
+      <div class="comment ${item.is_internal ? 'is-internal' : ''}">
         <div class="comment-head">
-          <span>${escapeHtml(c.author_name)} (${ROLE_LABELS[c.author_role] || c.author_role})${c.is_internal ? ' <span class="badge badge-internal">Nota interna</span>' : ''}</span>
-          <span>${formatDate(c.created_at)}</span>
+          <span>${escapeHtml(item.author_name)} (${ROLE_LABELS[item.author_role] || item.author_role})${item.is_internal ? ' <span class="badge badge-internal">Nota interna</span>' : ''}</span>
+          <span>${formatDate(item.created_at)}</span>
         </div>
-        <div class="comment-body">${escapeHtml(c.message)}</div>
+        <div class="comment-body">${escapeHtml(item.message)}</div>
       </div>`;
   }
 
@@ -668,24 +800,36 @@
     }
     const isAdmin = state.user.role === 'admin';
     appEl.innerHTML = `
-      <div class="view-header"><h1>${icon('users')} Utenti</h1></div>
+      <div class="view-header"><h1>${icon('shield')} Amministrazione</h1></div>
       ${isAdmin ? `
-      <div class="card" style="margin-bottom:1.25rem;max-width:560px">
-        <h3 class="section-title" style="margin-top:0">${icon('plus')} Crea account staff</h3>
-        <form id="createStaffForm" class="form-grid" style="max-width:none">
-          <div class="field"><label for="newName">Nome</label><input id="newName" required /></div>
-          <div class="field"><label for="newEmail">Email</label><input id="newEmail" type="email" required /></div>
-          <div class="field">
-            <label for="newRole">Ruolo</label>
-            <select id="newRole">
-              <option value="agent">Agente</option>
-              <option value="admin">Amministratore</option>
-            </select>
-          </div>
-          <p class="error-text" id="createStaffError"></p>
-          <div><button class="btn btn-sm" type="submit">Crea account</button></div>
-        </form>
-        <div id="tempPasswordBox"></div>
+      <div class="two-col" style="margin-bottom:1.25rem">
+        <div class="card">
+          <h3 class="section-title" style="margin-top:0">${icon('plus')} Crea account staff</h3>
+          <form id="createStaffForm" class="form-grid" style="max-width:none">
+            <div class="field"><label for="newName">Nome</label><input id="newName" required /></div>
+            <div class="field"><label for="newEmail">Email</label><input id="newEmail" type="email" required /></div>
+            <div class="field">
+              <label for="newRole">Ruolo</label>
+              <select id="newRole">
+                <option value="agent">Agente</option>
+                <option value="admin">Amministratore</option>
+              </select>
+            </div>
+            <p class="error-text" id="createStaffError"></p>
+            <div><button class="btn btn-sm" type="submit">Crea account</button></div>
+          </form>
+          <div id="tempPasswordBox"></div>
+        </div>
+        <div class="card">
+          <h3 class="section-title" style="margin-top:0">${icon('ticket')} Categorie ticket</h3>
+          <p class="hint">Personalizza le categorie disponibili nel modulo di apertura ticket.</p>
+          <form id="newCategoryForm" style="display:flex;gap:0.5rem;margin:0.75rem 0">
+            <input id="newCategoryName" placeholder="Nuova categoria" style="flex:1;padding:0.55rem 0.7rem;border:1px solid var(--border);border-radius:var(--radius-sm)" />
+            <button class="btn btn-sm" type="submit">Aggiungi</button>
+          </form>
+          <p class="error-text" id="categoryError"></p>
+          <div id="categoriesList" class="spinner-row">Caricamento...</div>
+        </div>
       </div>` : ''}
       <div id="usersWrap" class="card spinner-row">Caricamento...</div>`;
 
@@ -713,6 +857,54 @@
           errEl.textContent = err.message;
         }
       });
+
+      async function loadCategories() {
+        const listEl = document.getElementById('categoriesList');
+        listEl.className = 'spinner-row';
+        listEl.textContent = 'Caricamento...';
+        try {
+          const { categories } = await api('/categories');
+          listEl.className = '';
+          listEl.innerHTML = categories.length ? categories.map((c) => `
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:0.5rem 0;border-top:1px solid var(--border)">
+              <span>${escapeHtml(c.name)}</span>
+              <button type="button" class="icon-btn deleteCategoryBtn" data-id="${c.id}" title="Elimina categoria">${icon('trash')}</button>
+            </div>`).join('') : '<p class="hint">Nessuna categoria.</p>';
+
+          listEl.querySelectorAll('.deleteCategoryBtn').forEach((btn) => {
+            btn.addEventListener('click', async () => {
+              try {
+                await api(`/categories/${btn.dataset.id}`, { method: 'DELETE' });
+                showToast('Categoria eliminata', 'success');
+                loadCategories();
+              } catch (err) {
+                showToast(err.message, 'error');
+              }
+            });
+          });
+        } catch (err) {
+          listEl.className = '';
+          listEl.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
+        }
+      }
+
+      document.getElementById('newCategoryForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const input = document.getElementById('newCategoryName');
+        const errEl = document.getElementById('categoryError');
+        errEl.textContent = '';
+        if (!input.value.trim()) return;
+        try {
+          await api('/categories', { method: 'POST', body: { name: input.value.trim() } });
+          input.value = '';
+          showToast('Categoria aggiunta', 'success');
+          loadCategories();
+        } catch (err) {
+          errEl.textContent = err.message;
+        }
+      });
+
+      loadCategories();
     }
 
     async function loadUsersTable() {
@@ -821,10 +1013,10 @@
       <div class="view-header"><h1>${icon('plug')} Impostazioni connessione</h1></div>
       <div class="card" style="max-width:560px">
         <p class="hint">
-          Questa pagina statica deve sapere a quale server API parlare. Se il sito e il backend
-          sono sullo stesso dominio (avvio locale, Docker) lascia il campo vuoto. Se il frontend è
-          pubblicato separatamente (es. GitHub Pages) e il backend gira altrove (es. Render),
-          incolla qui l'indirizzo completo del server.
+          Questa pagina statica deve sapere a quale server API parlare. Sul sito pubblico è già
+          impostato un indirizzo predefinito che funziona automaticamente su ogni dispositivo,
+          senza bisogno di configurare nulla. Cambia questo campo solo se vuoi collegarti a un
+          backend diverso (es. un tuo ambiente locale, Docker, o un'altra istanza).
         </p>
         <form id="settingsForm" class="form-grid" style="max-width:none">
           <div class="field">
@@ -881,9 +1073,57 @@
 
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('service-worker.js').catch(() => {});
+      navigator.serviceWorker.register('service-worker.js').then((registration) => {
+        registration.update();
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') registration.update();
+        });
+      }).catch(() => {});
+    });
+
+    let hasReloadedForUpdate = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (hasReloadedForUpdate) return;
+      hasReloadedForUpdate = true;
+      window.location.reload();
     });
   }
+
+  const installBtn = document.getElementById('installBtn');
+  let deferredInstallPrompt = null;
+  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+  installBtn.innerHTML = icon('download');
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    installBtn.style.display = '';
+  });
+
+  window.addEventListener('appinstalled', () => {
+    deferredInstallPrompt = null;
+    installBtn.style.display = 'none';
+    showToast('App installata con successo', 'success');
+  });
+
+  if (isIos && !isStandalone) {
+    installBtn.style.display = '';
+  }
+
+  installBtn.addEventListener('click', async () => {
+    if (deferredInstallPrompt) {
+      deferredInstallPrompt.prompt();
+      const choice = await deferredInstallPrompt.userChoice;
+      deferredInstallPrompt = null;
+      if (choice.outcome === 'accepted') installBtn.style.display = 'none';
+      return;
+    }
+    if (isIos) {
+      showToast('Per installare: tocca Condividi, poi "Aggiungi alla schermata Home"', '');
+    }
+  });
 
   updateChrome();
   route();

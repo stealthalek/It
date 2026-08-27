@@ -43,12 +43,27 @@ db.exec(`
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     message TEXT NOT NULL,
     is_internal INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS categories (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS ticket_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+    actor_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    message TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now'))
   );
 
   CREATE INDEX IF NOT EXISTS idx_tickets_created_by ON tickets(created_by);
   CREATE INDEX IF NOT EXISTS idx_tickets_assigned_to ON tickets(assigned_to);
   CREATE INDEX IF NOT EXISTS idx_comments_ticket_id ON comments(ticket_id);
+  CREATE INDEX IF NOT EXISTS idx_events_ticket_id ON ticket_events(ticket_id);
 `);
 
 function migrate() {
@@ -59,6 +74,16 @@ function migrate() {
 }
 
 migrate();
+
+function seedDefaultCategories() {
+  const count = db.prepare('SELECT COUNT(*) AS n FROM categories').get().n;
+  if (count > 0) return;
+  const defaults = ['Hardware', 'Software', 'Rete', 'Account e accessi', 'Altro'];
+  const insert = db.prepare('INSERT INTO categories (name) VALUES (?)');
+  defaults.forEach((name) => insert.run(name));
+}
+
+seedDefaultCategories();
 
 function seedDefaultAdmin() {
   const count = db.prepare('SELECT COUNT(*) AS n FROM users').get().n;

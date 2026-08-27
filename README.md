@@ -11,16 +11,19 @@ Piattaforma di ticketing full-stack e realmente funzionante: gestione di richies
 
 ## Funzionalità
 
-- Registrazione e login (JWT), tre ruoli: `customer` (cliente), `agent` (agente), `admin`
+- Registrazione e login (JWT), più **accesso SSO con Google e Microsoft** (opzionale, vedi sotto)
+- Tre ruoli: `customer` (cliente), `agent` (agente), `admin`
 - Creazione, consultazione, modifica, riapertura e chiusura dei ticket
 - Stati (`aperto`, `in lavorazione`, `risolto`, `chiuso`) e priorità (`bassa`…`urgente`)
+- Categorie personalizzabili dall'amministratore, selezionabili dal cliente in fase di apertura
+- **Timeline attività** su ogni ticket: commenti e cambi di stato/priorità/assegnazione mostrati in un unico flusso cronologico (in stile ITSM)
 - Assegnazione dei ticket agli agenti, filtri per stato/priorità/assegnatario, ricerca testuale
 - Dashboard con contatori in tempo reale (aperti, in lavorazione, risolti, urgenti)
-- Conversazione a commenti su ogni ticket, con **note interne** visibili solo allo staff
+- **Note interne** sui ticket, visibili solo allo staff
 - Il cliente può riaprire un ticket risolto/chiuso se il problema persiste
-- Pannello amministrativo per la gestione dei ruoli utente e per creare direttamente account staff (agenti/admin) con password temporanea
+- Pannello di amministrazione grafico: gestione ruoli utente, creazione account staff con password temporanea, gestione categorie ticket
 - Profilo personale con cambio password
-- Interfaccia responsive con tema chiaro/scuro automatico: utilizzabile da smartphone, tablet e desktop
+- Interfaccia responsive e curata graficamente, installabile come app (PWA) con **aggiornamento automatico** quando viene pubblicata una nuova versione
 
 ## Avvio rapido (locale)
 
@@ -76,9 +79,31 @@ GitHub Pages ospita solo file statici e non può eseguire il backend Node/SQLite
 
 Chi apre il sito da un altro dispositivo dovrà anch'esso impostare una volta sola lo stesso indirizzo backend nelle Impostazioni (il valore è salvato nel browser locale, non condiviso automaticamente tra dispositivi diversi).
 
+## Accesso SSO con Google e Microsoft
+
+L'accesso con account Google o Microsoft (personali o aziendali) è già implementato ma disattivato finché non fornisci le credenziali dell'applicazione OAuth: se non configurato, i relativi pulsanti semplicemente non compaiono nella pagina di login, senza alcun errore.
+
+### Google
+
+1. Vai su [Google Cloud Console](https://console.cloud.google.com/apis/credentials), crea un progetto (o usane uno esistente).
+2. **Crea credenziali → ID client OAuth**, tipo applicazione **Applicazione web**.
+3. In "Origini JavaScript autorizzate" aggiungi l'indirizzo del tuo frontend (es. `https://stealthalek.github.io`).
+4. Copia il **Client ID** generato.
+5. Impostalo come variabile d'ambiente `GOOGLE_CLIENT_ID` sul backend (es. nel pannello Render → Environment).
+
+### Microsoft
+
+1. Vai su [Microsoft Entra ID (Azure Portal) → App registrations → New registration](https://portal.azure.com).
+2. Come tipo di account scegli se limitare l'accesso alla tua sola organizzazione o consentirlo a qualsiasi account Microsoft (personale o aziendale).
+3. In "Redirect URI" scegli tipo **SPA** e inserisci l'indirizzo del tuo frontend (es. `https://stealthalek.github.io/It/`).
+4. Copia l'**Application (client) ID**.
+5. Impostalo come variabile d'ambiente `MICROSOFT_CLIENT_ID` sul backend; se vuoi restringere l'accesso al solo tuo tenant aziendale imposta anche `MICROSOFT_TENANT_ID` con l'ID del tenant (altrimenti lascialo non impostato per accettare qualsiasi account Microsoft).
+
+Dopo aver impostato le variabili e riavviato/ridistribuito il backend, i pulsanti "Accedi con Google" e "Accedi con Microsoft" compaiono automaticamente nella pagina di login: il primo accesso crea in automatico un account cliente collegato a quell'email.
+
 ## Installazione come app (PWA)
 
-Aprendo il sito da un browser mobile (Chrome/Safari), è possibile "Aggiungi a schermata Home" per installarlo come app; gli asset statici vengono messi in cache dal service worker, mentre i dati dei ticket sono sempre recuperati in tempo reale dal server.
+Aprendo il sito da un browser mobile è possibile installarlo come app (pulsante di installazione in alto, o "Aggiungi a schermata Home" su iOS/Safari dove il browser non espone un prompt automatico). Gli asset statici vengono messi in cache dal service worker per l'uso offline, mentre i dati dei ticket sono sempre recuperati in tempo reale dal server. Ad ogni apertura dell'app (o quando torna in primo piano), viene controllata automaticamente la presenza di una nuova versione: se disponibile, viene scaricata e l'app si aggiorna da sola.
 
 ## Variabili d'ambiente
 
@@ -88,17 +113,22 @@ Aprendo il sito da un browser mobile (Chrome/Safari), è possibile "Aggiungi a s
 | `JWT_SECRET` | Segreto per la firma dei token JWT — **da cambiare in produzione** | `dev-secret-change-me` |
 | `DEFAULT_ADMIN_EMAIL` | Email dell'admin creato al primo avvio | `admin@ticketing.local` |
 | `DEFAULT_ADMIN_PASSWORD` | Password dell'admin creato al primo avvio | `Admin123!` |
+| `GOOGLE_CLIENT_ID` | Client ID OAuth Google, abilita l'accesso "Sign in with Google" | non impostato (SSO Google disattivato) |
+| `MICROSOFT_CLIENT_ID` | Application ID Microsoft Entra, abilita l'accesso con Microsoft | non impostato (SSO Microsoft disattivato) |
+| `MICROSOFT_TENANT_ID` | Limita l'accesso Microsoft a un singolo tenant aziendale | `common` (qualsiasi account Microsoft) |
 
 ## Struttura del progetto
 
 ```
 server/
   index.js          # entry point Express, binding su 0.0.0.0
-  db/database.js     # schema SQLite + seed admin
+  db/database.js     # schema SQLite + seed admin/categorie
   middleware/auth.js  # autenticazione JWT e controllo ruoli
-  routes/auth.js       # registrazione, login, /me
-  routes/tickets.js    # CRUD ticket + commenti
+  sso.js               # verifica token Google/Microsoft
+  routes/auth.js       # registrazione, login, SSO, /me
+  routes/tickets.js    # CRUD ticket, commenti, timeline attività
   routes/users.js      # elenco utenti, gestione ruoli (admin)
+  routes/categories.js # elenco e gestione categorie ticket
 public/
   index.html         # shell dell'app (percorsi relativi: funziona anche su sottopercorso)
   css/style.css       # stile responsive, tema chiaro/scuro
@@ -118,17 +148,23 @@ Tutte le richieste (tranne `register`/`login`) richiedono l'header `Authorizatio
 |---|---|---|
 | POST | `/api/auth/register` | Crea un account cliente |
 | POST | `/api/auth/login` | Login, restituisce token JWT |
+| GET | `/api/auth/sso-config` | Configurazione SSO pubblica (quali provider sono attivi) |
+| POST | `/api/auth/google` | Login/registrazione tramite credenziale Google |
+| POST | `/api/auth/microsoft` | Login/registrazione tramite token Microsoft |
 | GET | `/api/auth/me` | Utente autenticato corrente |
 | POST | `/api/auth/change-password` | Cambia la propria password |
 | GET | `/api/tickets` | Elenco ticket (filtri: `status`, `priority`, `q`, `assigned`) |
 | POST | `/api/tickets` | Crea un ticket |
-| GET | `/api/tickets/:id` | Dettaglio ticket + commenti (le note interne sono escluse per i clienti) |
+| GET | `/api/tickets/:id` | Dettaglio ticket + timeline attività (le note interne sono escluse per i clienti) |
 | PATCH | `/api/tickets/:id` | Aggiorna ticket: stato/priorità/assegnazione per lo staff; oggetto/descrizione per il proprietario se ancora aperto; riapertura (`status: "open"`) per il proprietario se risolto/chiuso |
 | DELETE | `/api/tickets/:id` | Elimina ticket (solo admin) |
 | POST | `/api/tickets/:id/comments` | Aggiunge un commento (`is_internal: true` per una nota visibile solo allo staff) |
 | GET | `/api/users` | Elenco utenti (solo staff) |
 | POST | `/api/users` | Crea un account agente/admin con password temporanea generata (solo admin) |
 | PATCH | `/api/users/:id/role` | Cambia il ruolo di un utente (solo admin) |
+| GET | `/api/categories` | Elenco categorie ticket |
+| POST | `/api/categories` | Crea una categoria (solo admin) |
+| DELETE | `/api/categories/:id` | Elimina una categoria non in uso (solo admin) |
 
 ## Sicurezza
 
