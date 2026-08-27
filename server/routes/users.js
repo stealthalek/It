@@ -10,7 +10,6 @@ router.use(authenticate);
 const ROLES = ['customer', 'agent', 'admin'];
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// GET /api/users - staff only, used for assignment dropdowns and admin panel
 router.get('/', requireRole('agent', 'admin'), (req, res) => {
   const users = db
     .prepare('SELECT id, name, email, role, created_at FROM users ORDER BY name ASC')
@@ -18,7 +17,6 @@ router.get('/', requireRole('agent', 'admin'), (req, res) => {
   res.json({ users });
 });
 
-// POST /api/users - admin only, create a staff account (agent/admin) with a generated temporary password
 router.post('/', requireRole('admin'), (req, res) => {
   const { name, email, role } = req.body || {};
 
@@ -48,7 +46,6 @@ router.post('/', requireRole('admin'), (req, res) => {
   res.status(201).json({ user, tempPassword });
 });
 
-// PATCH /api/users/:id/role - admin only
 router.patch('/:id/role', requireRole('admin'), (req, res) => {
   const { role } = req.body || {};
   if (!ROLES.includes(role)) {

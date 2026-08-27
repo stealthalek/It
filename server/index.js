@@ -24,7 +24,6 @@ app.get('/api/health', (req, res) => {
 const publicDir = path.join(__dirname, '..', 'public');
 app.use(express.static(publicDir));
 
-// SPA fallback: any non-API GET route serves the app shell.
 app.get(/^\/(?!api\/).*/, (req, res) => {
   res.sendFile(path.join(publicDir, 'index.html'));
 });

@@ -22,7 +22,6 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Never cache API calls: ticket data must always be fresh.
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   if (event.request.method !== 'GET' || url.pathname.startsWith('/api/')) {

@@ -40,7 +40,6 @@ function getTicketOr404(req, res) {
   return ticket;
 }
 
-// GET /api/tickets - list, with filters
 router.get('/', (req, res) => {
   const { status, priority, q, assigned } = req.query;
   const clauses = [];
@@ -77,7 +76,6 @@ router.get('/', (req, res) => {
   res.json({ tickets });
 });
 
-// POST /api/tickets - create
 router.post('/', (req, res) => {
   const { subject, description, priority, category } = req.body || {};
 
@@ -111,7 +109,6 @@ function listComments(ticketId, includeInternal) {
     .all(ticketId);
 }
 
-// GET /api/tickets/:id - detail with comments
 router.get('/:id', (req, res) => {
   const ticket = getTicketOr404(req, res);
   if (!ticket) return;
@@ -120,7 +117,6 @@ router.get('/:id', (req, res) => {
   res.json({ ticket, comments });
 });
 
-// PATCH /api/tickets/:id - update
 router.patch('/:id', (req, res) => {
   const ticket = getTicketOr404(req, res);
   if (!ticket) return;
@@ -201,7 +197,6 @@ router.patch('/:id', (req, res) => {
   res.json({ ticket: updated });
 });
 
-// DELETE /api/tickets/:id - admin only
 router.delete('/:id', (req, res) => {
   if (req.user.role !== 'admin') {
     return res.status(403).json({ error: 'Solo un amministratore può eliminare un ticket' });
@@ -213,7 +208,6 @@ router.delete('/:id', (req, res) => {
   res.status(204).end();
 });
 
-// POST /api/tickets/:id/comments - add comment
 router.post('/:id/comments', (req, res) => {
   const ticket = getTicketOr404(req, res);
   if (!ticket) return;
