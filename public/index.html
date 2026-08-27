@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Ticketing · Assistenza</title>
+<meta name="description" content="Piattaforma di ticketing per la gestione di richieste di assistenza, utilizzabile da desktop, tablet e smartphone." />
+<meta name="theme-color" content="#2f6fed" />
+<link rel="manifest" href="/manifest.json" />
+<link rel="icon" href="/img/icon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="/img/icon.svg" />
+<link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a href="#/dashboard" class="brand">
+      <img src="/img/icon.svg" alt="" width="28" height="28" />
+      <span>Ticketing</span>
+    </a>
+    <button id="navToggle" class="nav-toggle" aria-label="Apri menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+    <nav id="mainNav" class="main-nav">
+      <a href="#/dashboard" data-nav="dashboard">Ticket</a>
+      <a href="#/new" data-nav="new">Nuovo ticket</a>
+      <a href="#/admin" data-nav="admin" class="staff-only">Utenti</a>
+      <span id="userBadge" class="user-badge"></span>
+      <button id="logoutBtn" class="btn btn-ghost">Esci</button>
+    </nav>
+  </div>
+</header>
+
+<main id="app" class="app-main"></main>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script src="/js/app.js" defer></script>
+</body>
+</html>
