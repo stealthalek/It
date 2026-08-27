@@ -37,6 +37,8 @@
     userCircle: '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="10" r="3"/><path d="M7 20.66V19a4 4 0 0 1 4-4h2a4 4 0 0 1 4 4v1.66"/>',
     copy: '<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
     arrowLeft: '<line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>',
+    settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+    plug: '<path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v3a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8z"/>',
   };
 
   function icon(name, cls = '') {
@@ -63,11 +65,20 @@
     showToast._t = setTimeout(() => { toastEl.className = 'toast'; }, 3200);
   }
 
+  function getApiBase() {
+    return (localStorage.getItem('ticketing_api_base') || '').replace(/\/+$/, '');
+  }
+
+  function setApiBase(url) {
+    if (url) localStorage.setItem('ticketing_api_base', url.replace(/\/+$/, ''));
+    else localStorage.removeItem('ticketing_api_base');
+  }
+
   async function api(path, { method = 'GET', body } = {}) {
     const headers = { 'Content-Type': 'application/json' };
     if (state.token) headers.Authorization = `Bearer ${state.token}`;
 
-    const res = await fetch(`/api${path}`, {
+    const res = await fetch(`${getApiBase()}/api${path}`, {
       method,
       headers,
       body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -133,9 +144,14 @@
     location.hash = '#/login';
   });
 
+  const settingsBtn = document.getElementById('settingsBtn');
+  settingsBtn.innerHTML = icon('settings');
+  settingsBtn.addEventListener('click', () => { location.hash = '#/settings'; });
+
   // ---------------- Router ----------------
 
   const PUBLIC_ROUTES = new Set(['login', 'register']);
+  const OPEN_ROUTES = new Set(['login', 'register', 'settings']);
 
   async function route() {
     const hash = location.hash.replace(/^#\//, '') || 'dashboard';
@@ -151,7 +167,7 @@
       }
     }
 
-    if (!PUBLIC_ROUTES.has(page) && !state.user) {
+    if (!OPEN_ROUTES.has(page) && !state.user) {
       location.hash = '#/login';
       return;
     }
@@ -173,6 +189,7 @@
         case 'ticket': return renderTicketDetail(param);
         case 'admin': return renderAdmin();
         case 'profile': return renderProfile();
+        case 'settings': return renderSettings();
         default: return renderNotFound();
       }
     } catch (err) {
@@ -812,6 +829,68 @@
     });
   }
 
+  // ---------------- Views: settings (backend connection) ----------------
+
+  function renderSettings() {
+    const current = getApiBase();
+    appEl.innerHTML = `
+      <div class="view-header"><h1>${icon('plug')} Impostazioni connessione</h1></div>
+      <div class="card" style="max-width:560px">
+        <p class="hint">
+          Questa pagina statica deve sapere a quale server API parlare. Se il sito e il backend
+          sono sullo stesso dominio (avvio locale, Docker) lascia il campo vuoto. Se il frontend è
+          pubblicato separatamente (es. GitHub Pages) e il backend gira altrove (es. Render),
+          incolla qui l'indirizzo completo del server.
+        </p>
+        <form id="settingsForm" class="form-grid" style="max-width:none">
+          <div class="field">
+            <label for="apiBaseInput">Indirizzo server API</label>
+            <input id="apiBaseInput" type="url" placeholder="https://tuo-backend.onrender.com" value="${escapeHtml(current)}" />
+            <span class="hint">Esempio: https://it-ticketing-api.onrender.com (senza slash finale, senza /api)</span>
+          </div>
+          <p id="settingsMsg" class="hint"></p>
+          <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+            <button class="btn btn-sm" type="submit">Salva</button>
+            <button class="btn btn-sm btn-ghost" type="button" id="testConnBtn">Verifica connessione</button>
+            <button class="btn btn-sm btn-ghost" type="button" id="clearBaseBtn">Usa stesso dominio</button>
+          </div>
+        </form>
+      </div>`;
+
+    const input = document.getElementById('apiBaseInput');
+    const msgEl = document.getElementById('settingsMsg');
+
+    async function testConnection(base) {
+      msgEl.className = 'hint';
+      msgEl.textContent = 'Verifica in corso...';
+      try {
+        const res = await fetch(`${base}/api/health`);
+        if (!res.ok) throw new Error(`Risposta HTTP ${res.status}`);
+        const data = await res.json();
+        msgEl.className = 'success-text';
+        msgEl.textContent = `Connesso correttamente (server: ${data.time}).`;
+      } catch (err) {
+        msgEl.className = 'error-text';
+        msgEl.textContent = `Impossibile raggiungere il server: ${err.message}`;
+      }
+    }
+
+    document.getElementById('testConnBtn').addEventListener('click', () => {
+      testConnection(input.value.trim().replace(/\/+$/, ''));
+    });
+
+    document.getElementById('clearBaseBtn').addEventListener('click', () => {
+      input.value = '';
+    });
+
+    document.getElementById('settingsForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      setApiBase(input.value.trim());
+      showToast('Indirizzo server salvato', 'success');
+      await testConnection(getApiBase());
+    });
+  }
+
   function renderNotFound() {
     appEl.innerHTML = `<div class="card"><p>Pagina non trovata. <a href="#/dashboard">Torna alla dashboard</a></p></div>`;
   }
@@ -820,7 +899,7 @@
 
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/service-worker.js').catch(() => { /* offline support is best-effort */ });
+      navigator.serviceWorker.register('service-worker.js').catch(() => { /* offline support is best-effort */ });
     });
   }
 

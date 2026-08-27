@@ -49,6 +49,33 @@ L'app sarà disponibile su `http://<IP-del-server>:3000` da qualunque dispositiv
 
 Per pubblicarla su Internet ed accedervi da qualsiasi luogo, esegui il deploy dell'immagine Docker (o del progetto Node) su un qualsiasi host/VPS/PaaS che supporti container o Node.js, esponendo la porta 3000 (o quella indicata da `PORT`).
 
+## Pubblicazione online: frontend su GitHub Pages + backend su Render
+
+GitHub Pages ospita solo file statici e non può eseguire il backend Node/SQLite: per avere un link pubblico tipo `https://stealthalek.github.io/It/` con dati reali condivisi tra chi apre i ticket e chi li gestisce, il frontend (statico) va su GitHub Pages e il backend (API + database) va ospitato separatamente. Il frontend è già predisposto: nessun URL è hardcoded, l'indirizzo del backend si configura da un pannello **Impostazioni** (icona ingranaggio in alto) e viene salvato nel browser.
+
+### 1. Pubblica il frontend su GitHub Pages
+
+1. Nel repository su GitHub vai su **Settings → Pages**.
+2. In "Build and deployment" imposta **Source: GitHub Actions**.
+3. Il workflow incluso (`.github/workflows/deploy-pages.yml`) pubblica automaticamente il contenuto di `public/` a ogni push sul branch principale. Dopo il primo run, il sito è live su `https://<utente>.github.io/<nome-repo>/` (es. `https://stealthalek.github.io/It/`).
+
+### 2. Pubblica il backend su Render (piano gratuito)
+
+1. Crea un account su [render.com](https://render.com) (gratuito) e collega il tuo account GitHub.
+2. Su Render scegli **New → Blueprint**, seleziona questo repository: viene letto automaticamente `render.yaml` incluso nel progetto, che compila l'immagine dal `Dockerfile` esistente.
+3. Imposta la variabile `DEFAULT_ADMIN_PASSWORD` nel pannello Render prima del primo deploy (altrimenti resta il default `Admin123!`, da cambiare subito dopo il primo accesso).
+4. A deploy completato Render fornisce un URL tipo `https://it-ticketing-api.onrender.com`.
+
+> **Nota sul piano gratuito:** le istanze web gratuite di Render vanno in stop dopo inattività (si riattivano alla richiesta successiva, con qualche secondo di attesa) e il filesystem — quindi il database SQLite — **non è persistente tra un deploy e l'altro** (i dati sopravvivono a stop/riavvio ma vengono ripristinati da zero a ogni nuovo deploy). Per un uso realmente in produzione con dati permanenti, aggiungi un disco persistente a pagamento su Render (bastano pochi dollari al mese) oppure migra a un database gestito.
+
+### 3. Collega il frontend al backend
+
+1. Apri il sito GitHub Pages, clicca sull'icona ingranaggio in alto (Impostazioni connessione).
+2. Incolla l'URL del backend Render (es. `https://it-ticketing-api.onrender.com`, senza slash finale) e premi **Salva**: il pulsante "Verifica connessione" conferma che tutto funziona.
+3. Da questo momento login, registrazione e gestione ticket dal sito GitHub Pages parlano con il backend remoto, da qualunque dispositivo e rete.
+
+Chi apre il sito da un altro dispositivo dovrà anch'esso impostare una volta sola lo stesso indirizzo backend nelle Impostazioni (il valore è salvato nel browser locale, non condiviso automaticamente tra dispositivi diversi).
+
 ## Installazione come app (PWA)
 
 Aprendo il sito da un browser mobile (Chrome/Safari), è possibile "Aggiungi a schermata Home" per installarlo come app; gli asset statici vengono messi in cache dal service worker, mentre i dati dei ticket sono sempre recuperati in tempo reale dal server.
@@ -73,11 +100,14 @@ server/
   routes/tickets.js    # CRUD ticket + commenti
   routes/users.js      # elenco utenti, gestione ruoli (admin)
 public/
-  index.html         # shell dell'app
-  css/style.css       # stile responsive
-  js/app.js           # SPA (routing via hash, chiamate API)
+  index.html         # shell dell'app (percorsi relativi: funziona anche su sottopercorso)
+  css/style.css       # stile responsive, tema chiaro/scuro
+  js/app.js           # SPA (routing via hash, chiamate API, base URL configurabile)
   manifest.json        # manifest PWA
   service-worker.js    # cache offline degli asset statici
+render.yaml           # blueprint di deploy del backend su Render
+.github/workflows/
+  deploy-pages.yml     # pubblica public/ su GitHub Pages a ogni push
 ```
 
 ## API principali

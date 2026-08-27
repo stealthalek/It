@@ -122,6 +122,20 @@ svg { display: block; }
   border-radius: 2px;
 }
 
+.topbar-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+}
+.topbar-icon-btn:hover { color: var(--text); background: var(--surface-alt); }
+
 .main-nav {
   display: none;
   align-items: center;

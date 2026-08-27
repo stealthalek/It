@@ -1,11 +1,11 @@
-const CACHE_NAME = 'ticketing-static-v1';
+const CACHE_NAME = 'ticketing-static-v2';
 const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-  '/css/style.css',
-  '/js/app.js',
-  '/manifest.json',
-  '/img/icon.svg',
+  './',
+  './index.html',
+  './css/style.css',
+  './js/app.js',
+  './manifest.json',
+  './img/icon.svg',
 ];
 
 self.addEventListener('install', (event) => {

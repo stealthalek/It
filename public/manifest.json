@@ -2,11 +2,12 @@
   "name": "Piattaforma di Ticketing",
   "short_name": "Ticketing",
   "description": "Gestione richieste di assistenza, utilizzabile da qualsiasi dispositivo.",
-  "start_url": "/",
+  "start_url": ".",
+  "scope": ".",
   "display": "standalone",
   "background_color": "#f4f6fb",
   "theme_color": "#2f6fed",
   "icons": [
-    { "src": "/img/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+    { "src": "img/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
   ]
 }
