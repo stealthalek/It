@@ -12,12 +12,15 @@ Piattaforma di ticketing full-stack e realmente funzionante: gestione di richies
 ## Funzionalità
 
 - Registrazione e login (JWT), tre ruoli: `customer` (cliente), `agent` (agente), `admin`
-- Creazione, consultazione, modifica e chiusura dei ticket
+- Creazione, consultazione, modifica, riapertura e chiusura dei ticket
 - Stati (`aperto`, `in lavorazione`, `risolto`, `chiuso`) e priorità (`bassa`…`urgente`)
 - Assegnazione dei ticket agli agenti, filtri per stato/priorità/assegnatario, ricerca testuale
-- Conversazione a commenti su ogni ticket
-- Pannello amministrativo per la gestione dei ruoli utente
-- Interfaccia responsive: utilizzabile da smartphone, tablet e desktop
+- Dashboard con contatori in tempo reale (aperti, in lavorazione, risolti, urgenti)
+- Conversazione a commenti su ogni ticket, con **note interne** visibili solo allo staff
+- Il cliente può riaprire un ticket risolto/chiuso se il problema persiste
+- Pannello amministrativo per la gestione dei ruoli utente e per creare direttamente account staff (agenti/admin) con password temporanea
+- Profilo personale con cambio password
+- Interfaccia responsive con tema chiaro/scuro automatico: utilizzabile da smartphone, tablet e desktop
 
 ## Avvio rapido (locale)
 
@@ -86,13 +89,15 @@ Tutte le richieste (tranne `register`/`login`) richiedono l'header `Authorizatio
 | POST | `/api/auth/register` | Crea un account cliente |
 | POST | `/api/auth/login` | Login, restituisce token JWT |
 | GET | `/api/auth/me` | Utente autenticato corrente |
+| POST | `/api/auth/change-password` | Cambia la propria password |
 | GET | `/api/tickets` | Elenco ticket (filtri: `status`, `priority`, `q`, `assigned`) |
 | POST | `/api/tickets` | Crea un ticket |
-| GET | `/api/tickets/:id` | Dettaglio ticket + commenti |
-| PATCH | `/api/tickets/:id` | Aggiorna ticket (stato/priorità/assegnazione per staff, oggetto/descrizione per il proprietario se ancora aperto) |
+| GET | `/api/tickets/:id` | Dettaglio ticket + commenti (le note interne sono escluse per i clienti) |
+| PATCH | `/api/tickets/:id` | Aggiorna ticket: stato/priorità/assegnazione per lo staff; oggetto/descrizione per il proprietario se ancora aperto; riapertura (`status: "open"`) per il proprietario se risolto/chiuso |
 | DELETE | `/api/tickets/:id` | Elimina ticket (solo admin) |
-| POST | `/api/tickets/:id/comments` | Aggiunge un commento |
+| POST | `/api/tickets/:id/comments` | Aggiunge un commento (`is_internal: true` per una nota visibile solo allo staff) |
 | GET | `/api/users` | Elenco utenti (solo staff) |
+| POST | `/api/users` | Crea un account agente/admin con password temporanea generata (solo admin) |
 | PATCH | `/api/users/:id/role` | Cambia il ruolo di un utente (solo admin) |
 
 ## Sicurezza

@@ -1,4 +1,6 @@
 const express = require('express');
+const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const db = require('../db/database');
 const { authenticate, requireRole } = require('../middleware/auth');
 
@@ -6,6 +8,7 @@ const router = express.Router();
 router.use(authenticate);
 
 const ROLES = ['customer', 'agent', 'admin'];
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // GET /api/users - staff only, used for assignment dropdowns and admin panel
 router.get('/', requireRole('agent', 'admin'), (req, res) => {
@@ -13,6 +16,36 @@ router.get('/', requireRole('agent', 'admin'), (req, res) => {
     .prepare('SELECT id, name, email, role, created_at FROM users ORDER BY name ASC')
     .all();
   res.json({ users });
+});
+
+// POST /api/users - admin only, create a staff account (agent/admin) with a generated temporary password
+router.post('/', requireRole('admin'), (req, res) => {
+  const { name, email, role } = req.body || {};
+
+  if (!name || !name.trim()) {
+    return res.status(400).json({ error: 'Il nome è obbligatorio' });
+  }
+  if (!email || !EMAIL_RE.test(email)) {
+    return res.status(400).json({ error: 'Email non valida' });
+  }
+  if (!['agent', 'admin'].includes(role)) {
+    return res.status(400).json({ error: 'Ruolo non valido: usa agent o admin' });
+  }
+
+  const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email.toLowerCase());
+  if (existing) {
+    return res.status(409).json({ error: 'Email già registrata' });
+  }
+
+  const tempPassword = crypto.randomBytes(6).toString('base64url');
+  const hash = bcrypt.hashSync(tempPassword, 10);
+
+  const info = db
+    .prepare('INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)')
+    .run(name.trim(), email.toLowerCase(), hash, role);
+
+  const user = db.prepare('SELECT id, name, email, role, created_at FROM users WHERE id = ?').get(info.lastInsertRowid);
+  res.status(201).json({ user, tempPassword });
 });
 
 // PATCH /api/users/:id/role - admin only

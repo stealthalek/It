@@ -100,19 +100,23 @@ router.post('/', (req, res) => {
   res.status(201).json({ ticket });
 });
 
+function listComments(ticketId, includeInternal) {
+  const internalClause = includeInternal ? '' : 'AND c.is_internal = 0';
+  return db
+    .prepare(
+      `SELECT c.id, c.message, c.is_internal, c.created_at, u.name AS author_name, u.role AS author_role
+       FROM comments c JOIN users u ON u.id = c.user_id
+       WHERE c.ticket_id = ? ${internalClause} ORDER BY c.created_at ASC`
+    )
+    .all(ticketId);
+}
+
 // GET /api/tickets/:id - detail with comments
 router.get('/:id', (req, res) => {
   const ticket = getTicketOr404(req, res);
   if (!ticket) return;
 
-  const comments = db
-    .prepare(
-      `SELECT c.id, c.message, c.created_at, u.name AS author_name, u.role AS author_role
-       FROM comments c JOIN users u ON u.id = c.user_id
-       WHERE c.ticket_id = ? ORDER BY c.created_at ASC`
-    )
-    .all(ticket.id);
-
+  const comments = listComments(ticket.id, isStaff(req.user));
   res.json({ ticket, comments });
 });
 
@@ -162,16 +166,26 @@ router.patch('/:id', (req, res) => {
 
   const isOwner = ticket.created_by === req.user.id;
   if (isOwner && !isStaff(req.user)) {
-    if (ticket.status !== 'open') {
-      return res.status(403).json({ error: 'Non è più possibile modificare un ticket già preso in carico' });
+    const wantsReopen = body.status === 'open' && ['resolved', 'closed'].includes(ticket.status);
+    if (wantsReopen) {
+      updates.push('status = @status');
+      params.status = 'open';
+    } else if (body.status !== undefined) {
+      return res.status(403).json({ error: 'Non puoi impostare questo stato' });
     }
-    if (body.subject !== undefined && body.subject.trim()) {
-      updates.push('subject = @subject');
-      params.subject = body.subject.trim();
-    }
-    if (body.description !== undefined && body.description.trim()) {
-      updates.push('description = @description');
-      params.description = body.description.trim();
+
+    if (body.subject !== undefined || body.description !== undefined) {
+      if (ticket.status !== 'open') {
+        return res.status(403).json({ error: 'Non è più possibile modificare un ticket già preso in carico' });
+      }
+      if (body.subject !== undefined && body.subject.trim()) {
+        updates.push('subject = @subject');
+        params.subject = body.subject.trim();
+      }
+      if (body.description !== undefined && body.description.trim()) {
+        updates.push('description = @description');
+        params.description = body.description.trim();
+      }
     }
   }
 
@@ -204,26 +218,21 @@ router.post('/:id/comments', (req, res) => {
   const ticket = getTicketOr404(req, res);
   if (!ticket) return;
 
-  const { message } = req.body || {};
+  const { message, is_internal } = req.body || {};
   if (!message || !message.trim()) {
     return res.status(400).json({ error: 'Il messaggio non può essere vuoto' });
   }
+  const internal = isStaff(req.user) && is_internal ? 1 : 0;
 
-  db.prepare('INSERT INTO comments (ticket_id, user_id, message) VALUES (?, ?, ?)').run(
+  db.prepare('INSERT INTO comments (ticket_id, user_id, message, is_internal) VALUES (?, ?, ?, ?)').run(
     ticket.id,
     req.user.id,
-    message.trim()
+    message.trim(),
+    internal
   );
   db.prepare("UPDATE tickets SET updated_at = datetime('now') WHERE id = ?").run(ticket.id);
 
-  const comments = db
-    .prepare(
-      `SELECT c.id, c.message, c.created_at, u.name AS author_name, u.role AS author_role
-       FROM comments c JOIN users u ON u.id = c.user_id
-       WHERE c.ticket_id = ? ORDER BY c.created_at ASC`
-    )
-    .all(ticket.id);
-
+  const comments = listComments(ticket.id, isStaff(req.user));
   res.status(201).json({ comments });
 });
 

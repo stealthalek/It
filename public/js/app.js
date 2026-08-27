@@ -22,6 +22,27 @@
   const PRIORITY_LABELS = { low: 'Bassa', medium: 'Media', high: 'Alta', urgent: 'Urgente' };
   const ROLE_LABELS = { customer: 'Cliente', agent: 'Agente', admin: 'Amministratore' };
 
+  const ICON_PATHS = {
+    plus: '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
+    ticket: '<path d="M3 8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4V8z"/>',
+    users: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+    lock: '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+    logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>',
+    check: '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
+    refresh: '<polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4-4.64 4.36A9 9 0 0 1 3.51 15"/>',
+    inbox: '<polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
+    shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+    eye: '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>',
+    eyeOff: '<path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a21.8 21.8 0 0 1 5.06-6.06M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a21.77 21.77 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>',
+    userCircle: '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="10" r="3"/><path d="M7 20.66V19a4 4 0 0 1 4-4h2a4 4 0 0 1 4 4v1.66"/>',
+    copy: '<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+    arrowLeft: '<line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>',
+  };
+
+  function icon(name, cls = '') {
+    return `<svg class="icon ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON_PATHS[name] || ''}</svg>`;
+  }
+
   function escapeHtml(str) {
     return String(str ?? '').replace(/[&<>"']/g, (c) => ({
       '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
@@ -77,7 +98,7 @@
     document.body.classList.remove('role-customer', 'role-agent', 'role-admin');
     if (state.user) {
       document.body.classList.add(`role-${state.user.role}`);
-      userBadge.textContent = `${state.user.name} · ${ROLE_LABELS[state.user.role] || state.user.role}`;
+      userBadge.innerHTML = `${icon('userCircle')} ${escapeHtml(state.user.name)} · ${ROLE_LABELS[state.user.role] || state.user.role}`;
       userBadge.style.display = '';
       logoutBtn.style.display = '';
     } else {
@@ -86,14 +107,27 @@
     }
   }
 
+  function attachPasswordToggle(inputId, toggleId) {
+    const input = document.getElementById(inputId);
+    const toggle = document.getElementById(toggleId);
+    if (!input || !toggle) return;
+    toggle.innerHTML = icon('eye');
+    toggle.addEventListener('click', () => {
+      const isPassword = input.type === 'password';
+      input.type = isPassword ? 'text' : 'password';
+      toggle.innerHTML = isPassword ? icon('eyeOff') : icon('eye');
+    });
+  }
+
   navToggle.addEventListener('click', () => {
     const open = mainNav.classList.toggle('open');
     navToggle.setAttribute('aria-expanded', String(open));
   });
   mainNav.addEventListener('click', (e) => {
-    if (e.target.tagName === 'A') mainNav.classList.remove('open');
+    if (e.target.closest('a')) mainNav.classList.remove('open');
   });
 
+  logoutBtn.innerHTML = `${icon('logout')} Esci`;
   logoutBtn.addEventListener('click', () => {
     setSession(null, null);
     location.hash = '#/login';
@@ -138,6 +172,7 @@
         case 'new': return renderNewTicket();
         case 'ticket': return renderTicketDetail(param);
         case 'admin': return renderAdmin();
+        case 'profile': return renderProfile();
         default: return renderNotFound();
       }
     } catch (err) {
@@ -153,7 +188,7 @@
     appEl.innerHTML = `
       <div class="auth-wrap">
         <div class="card auth-card">
-          <h1>Accedi</h1>
+          <h1>${icon('lock')} Accedi</h1>
           <p class="hint">Entra nella piattaforma di ticketing.</p>
           <form id="loginForm" class="form-grid">
             <div class="field">
@@ -162,14 +197,19 @@
             </div>
             <div class="field">
               <label for="password">Password</label>
-              <input id="password" type="password" required autocomplete="current-password" />
+              <div class="password-field">
+                <input id="password" type="password" required autocomplete="current-password" />
+                <button type="button" id="pwToggle" class="icon-btn password-toggle" aria-label="Mostra password"></button>
+              </div>
             </div>
             <p class="error-text" id="loginError"></p>
-            <button class="btn" type="submit">Accedi</button>
+            <button class="btn btn-block" type="submit">Accedi</button>
           </form>
           <p class="hint">Non hai un account? <a href="#/register">Registrati</a></p>
         </div>
       </div>`;
+
+    attachPasswordToggle('password', 'pwToggle');
 
     document.getElementById('loginForm').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -193,7 +233,7 @@
     appEl.innerHTML = `
       <div class="auth-wrap">
         <div class="card auth-card">
-          <h1>Crea un account</h1>
+          <h1>${icon('userCircle')} Crea un account</h1>
           <form id="registerForm" class="form-grid">
             <div class="field">
               <label for="name">Nome</label>
@@ -205,23 +245,41 @@
             </div>
             <div class="field">
               <label for="password">Password</label>
-              <input id="password" type="password" required minlength="6" autocomplete="new-password" />
+              <div class="password-field">
+                <input id="password" type="password" required minlength="6" autocomplete="new-password" />
+                <button type="button" id="pwToggle" class="icon-btn password-toggle" aria-label="Mostra password"></button>
+              </div>
               <span class="hint">Almeno 6 caratteri</span>
             </div>
+            <div class="field">
+              <label for="password2">Conferma password</label>
+              <div class="password-field">
+                <input id="password2" type="password" required minlength="6" autocomplete="new-password" />
+                <button type="button" id="pwToggle2" class="icon-btn password-toggle" aria-label="Mostra password"></button>
+              </div>
+            </div>
             <p class="error-text" id="registerError"></p>
-            <button class="btn" type="submit">Registrati</button>
+            <button class="btn btn-block" type="submit">Registrati</button>
           </form>
           <p class="hint">Hai già un account? <a href="#/login">Accedi</a></p>
         </div>
       </div>`;
+
+    attachPasswordToggle('password', 'pwToggle');
+    attachPasswordToggle('password2', 'pwToggle2');
 
     document.getElementById('registerForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const name = document.getElementById('name').value.trim();
       const email = document.getElementById('email').value.trim();
       const password = document.getElementById('password').value;
+      const password2 = document.getElementById('password2').value;
       const errEl = document.getElementById('registerError');
       errEl.textContent = '';
+      if (password !== password2) {
+        errEl.textContent = 'Le password non coincidono';
+        return;
+      }
       try {
         const { token, user } = await api('/auth/register', { method: 'POST', body: { name, email, password } });
         setSession(token, user);
@@ -243,9 +301,13 @@
   async function renderDashboard() {
     appEl.innerHTML = `
       <div class="view-header">
-        <h1>${isStaff() ? 'Tutti i ticket' : 'I miei ticket'}</h1>
-        <a class="btn" href="#/new">+ Nuovo ticket</a>
+        <div>
+          <h1>${isStaff() ? 'Tutti i ticket' : 'I miei ticket'}</h1>
+          <p class="hint">${isStaff() ? 'Gestisci e rispondi alle richieste di assistenza.' : 'Consulta lo stato delle tue richieste.'}</p>
+        </div>
+        <a class="btn" href="#/new">${icon('plus')} Nuovo ticket</a>
       </div>
+      <div id="statsRow" class="stat-row"></div>
       <div class="filters">
         <select id="fStatus">
           <option value="">Tutti gli stati</option>
@@ -263,13 +325,29 @@
         </select>` : ''}
         <input id="fQuery" type="search" placeholder="Cerca..." />
       </div>
-      <div id="ticketList" class="spinner-row">Caricamento...</div>`;
+      <div id="ticketList" class="skeleton-grid">
+        ${Array(4).fill('<div class="skeleton-card"></div>').join('')}
+      </div>`;
 
     const listEl = document.getElementById('ticketList');
+    const statsEl = document.getElementById('statsRow');
     const fStatus = document.getElementById('fStatus');
     const fPriority = document.getElementById('fPriority');
     const fAssigned = document.getElementById('fAssigned');
     const fQuery = document.getElementById('fQuery');
+
+    function renderStats(tickets) {
+      const counts = { open: 0, in_progress: 0, resolved: 0, closed: 0, urgent: 0 };
+      tickets.forEach((t) => {
+        counts[t.status] = (counts[t.status] || 0) + 1;
+        if (t.priority === 'urgent' && t.status !== 'closed' && t.status !== 'resolved') counts.urgent += 1;
+      });
+      statsEl.innerHTML = `
+        <div class="stat-card accent-open"><div class="stat-value">${counts.open}</div><div class="stat-label">Aperti</div></div>
+        <div class="stat-card accent-in_progress"><div class="stat-value">${counts.in_progress}</div><div class="stat-label">In lavorazione</div></div>
+        <div class="stat-card accent-resolved"><div class="stat-value">${counts.resolved}</div><div class="stat-label">Risolti</div></div>
+        <div class="stat-card accent-urgent"><div class="stat-value">${counts.urgent}</div><div class="stat-label">Urgenti aperti</div></div>`;
+    }
 
     let debounceTimer;
     async function load() {
@@ -279,10 +357,9 @@
       if (fAssigned && fAssigned.value) params.set('assigned', fAssigned.value);
       if (fQuery.value.trim()) params.set('q', fQuery.value.trim());
 
-      listEl.className = 'spinner-row';
-      listEl.textContent = 'Caricamento...';
       try {
         const { tickets } = await api(`/tickets?${params.toString()}`);
+        renderStats(tickets);
         renderTicketList(listEl, tickets);
       } catch (err) {
         listEl.className = '';
@@ -302,12 +379,12 @@
   function renderTicketList(container, tickets) {
     if (!tickets.length) {
       container.className = '';
-      container.innerHTML = `<div class="empty-state">Nessun ticket trovato.</div>`;
+      container.innerHTML = `<div class="empty-state">${icon('inbox')}<span>Nessun ticket trovato.</span></div>`;
       return;
     }
     container.className = 'ticket-grid';
     container.innerHTML = tickets.map((t) => `
-      <a class="ticket-card" href="#/ticket/${t.id}">
+      <a class="ticket-card prio-${t.priority}" href="#/ticket/${t.id}">
         <div class="badges">
           <span class="badge badge-${t.status}">${STATUS_LABELS[t.status]}</span>
           <span class="badge badge-${t.priority}">${PRIORITY_LABELS[t.priority]}</span>
@@ -325,7 +402,7 @@
 
   function renderNewTicket() {
     appEl.innerHTML = `
-      <div class="view-header"><h1>Nuovo ticket</h1></div>
+      <div class="view-header"><h1>${icon('plus')} Nuovo ticket</h1></div>
       <div class="card" style="max-width:560px">
         <form id="newTicketForm" class="form-grid">
           <div class="field">
@@ -386,7 +463,9 @@
     }
 
     const { ticket, comments } = data;
-    const canEditFields = ticket.created_by === state.user.id && !isStaff() && ticket.status === 'open';
+    const isOwner = ticket.created_by === state.user.id;
+    const canEditFields = isOwner && !isStaff() && ticket.status === 'open';
+    const canReopen = isOwner && !isStaff() && ['resolved', 'closed'].includes(ticket.status);
 
     let staffPanel = '';
     let assigneesOptions = '';
@@ -400,7 +479,7 @@
 
       staffPanel = `
         <div class="card">
-          <h3 style="margin-top:0">Gestione</h3>
+          <h3 class="section-title" style="margin-top:0">${icon('shield')} Gestione</h3>
           <div class="side-field">
             <label for="statusSel">Stato</label>
             <select id="statusSel">
@@ -417,15 +496,15 @@
             <label for="assignedSel">Assegnato a</label>
             <select id="assignedSel">${assigneesOptions}</select>
           </div>
-          <button id="saveMgmtBtn" class="btn btn-sm">Salva modifiche</button>
-          ${state.user.role === 'admin' ? `<button id="deleteBtn" class="btn btn-sm btn-danger" style="margin-top:0.5rem">Elimina ticket</button>` : ''}
+          <button id="saveMgmtBtn" class="btn btn-sm btn-block">Salva modifiche</button>
+          ${state.user.role === 'admin' ? `<button id="deleteBtn" class="btn btn-sm btn-outline-danger btn-block" style="margin-top:0.5rem">Elimina ticket</button>` : ''}
         </div>`;
     }
 
     appEl.innerHTML = `
       <div class="view-header">
         <h1>#${ticket.id} ${escapeHtml(ticket.subject)}</h1>
-        <a class="btn btn-ghost" href="#/dashboard">← Torna alla lista</a>
+        <a class="btn btn-ghost" href="#/dashboard">${icon('arrowLeft')} Torna alla lista</a>
       </div>
       <div class="ticket-detail-grid">
         <div>
@@ -452,10 +531,11 @@
               Creato da ${escapeHtml(ticket.creator_name)} il ${formatDate(ticket.created_at)}
               ${ticket.assignee_name ? ` · Assegnato a ${escapeHtml(ticket.assignee_name)}` : ''}
             </p>
+            ${canReopen ? `<button id="reopenBtn" class="btn btn-sm btn-ghost">${icon('refresh')} Riapri ticket</button>` : ''}
           </div>
 
           <div class="card">
-            <h3 style="margin-top:0">Conversazione</h3>
+            <h3 class="section-title" style="margin-top:0">Conversazione</h3>
             <div id="commentsList">
               ${comments.length ? comments.map(renderComment).join('') : '<p class="hint">Nessun commento ancora.</p>'}
             </div>
@@ -464,6 +544,11 @@
                 <label for="commentMsg">Aggiungi un commento</label>
                 <textarea id="commentMsg" required placeholder="Scrivi una risposta..."></textarea>
               </div>
+              ${isStaff() ? `
+              <label class="checkbox-field">
+                <input type="checkbox" id="internalCheck" />
+                Nota interna (visibile solo allo staff)
+              </label>` : ''}
               <div><button class="btn btn-sm" type="submit">Invia</button></div>
             </form>
           </div>
@@ -474,13 +559,15 @@
     document.getElementById('commentForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const msgEl = document.getElementById('commentMsg');
+      const internalEl = document.getElementById('internalCheck');
       if (!msgEl.value.trim()) return;
       try {
         const { comments: updated } = await api(`/tickets/${ticket.id}/comments`, {
-          method: 'POST', body: { message: msgEl.value.trim() },
+          method: 'POST', body: { message: msgEl.value.trim(), is_internal: internalEl ? internalEl.checked : false },
         });
         document.getElementById('commentsList').innerHTML = updated.map(renderComment).join('');
         msgEl.value = '';
+        if (internalEl) internalEl.checked = false;
         showToast('Commento aggiunto', 'success');
       } catch (err) {
         showToast(err.message, 'error');
@@ -500,6 +587,19 @@
             },
           });
           showToast('Ticket aggiornato', 'success');
+          renderTicketDetail(id);
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      });
+    }
+
+    const reopenBtn = document.getElementById('reopenBtn');
+    if (reopenBtn) {
+      reopenBtn.addEventListener('click', async () => {
+        try {
+          await api(`/tickets/${ticket.id}`, { method: 'PATCH', body: { status: 'open' } });
+          showToast('Ticket riaperto', 'success');
           renderTicketDetail(id);
         } catch (err) {
           showToast(err.message, 'error');
@@ -545,9 +645,9 @@
 
   function renderComment(c) {
     return `
-      <div class="comment">
+      <div class="comment ${c.is_internal ? 'is-internal' : ''}">
         <div class="comment-head">
-          <span>${escapeHtml(c.author_name)} (${ROLE_LABELS[c.author_role] || c.author_role})</span>
+          <span>${escapeHtml(c.author_name)} (${ROLE_LABELS[c.author_role] || c.author_role})${c.is_internal ? ' <span class="badge badge-internal">Nota interna</span>' : ''}</span>
           <span>${formatDate(c.created_at)}</span>
         </div>
         <div class="comment-body">${escapeHtml(c.message)}</div>
@@ -561,47 +661,155 @@
       appEl.innerHTML = `<div class="card"><p class="error-text">Accesso non consentito.</p></div>`;
       return;
     }
-    appEl.innerHTML = `<div class="view-header"><h1>Utenti</h1></div><div id="usersWrap" class="spinner-row">Caricamento...</div>`;
-    const wrap = document.getElementById('usersWrap');
-    try {
-      const { users } = await api('/users');
-      wrap.className = 'card';
-      wrap.innerHTML = `
-        <table class="users-table">
-          <thead><tr><th>Nome</th><th>Email</th><th>Ruolo</th><th>Registrato</th>${state.user.role === 'admin' ? '<th></th>' : ''}</tr></thead>
-          <tbody>
-            ${users.map((u) => `
-              <tr>
-                <td>${escapeHtml(u.name)}</td>
-                <td>${escapeHtml(u.email)}</td>
-                <td>${ROLE_LABELS[u.role] || u.role}</td>
-                <td>${formatDate(u.created_at)}</td>
-                ${state.user.role === 'admin' ? `
-                  <td>
-                    ${u.id === state.user.id ? '' : `
-                    <select data-user-id="${u.id}" class="roleSel">
-                      ${Object.entries(ROLE_LABELS).map(([v, l]) => `<option value="${v}" ${u.role === v ? 'selected' : ''}>${l}</option>`).join('')}
-                    </select>`}
-                  </td>` : ''}
-              </tr>`).join('')}
-          </tbody>
-        </table>`;
+    const isAdmin = state.user.role === 'admin';
+    appEl.innerHTML = `
+      <div class="view-header"><h1>${icon('users')} Utenti</h1></div>
+      ${isAdmin ? `
+      <div class="card" style="margin-bottom:1.25rem;max-width:560px">
+        <h3 class="section-title" style="margin-top:0">${icon('plus')} Crea account staff</h3>
+        <form id="createStaffForm" class="form-grid" style="max-width:none">
+          <div class="field"><label for="newName">Nome</label><input id="newName" required /></div>
+          <div class="field"><label for="newEmail">Email</label><input id="newEmail" type="email" required /></div>
+          <div class="field">
+            <label for="newRole">Ruolo</label>
+            <select id="newRole">
+              <option value="agent">Agente</option>
+              <option value="admin">Amministratore</option>
+            </select>
+          </div>
+          <p class="error-text" id="createStaffError"></p>
+          <div><button class="btn btn-sm" type="submit">Crea account</button></div>
+        </form>
+        <div id="tempPasswordBox"></div>
+      </div>` : ''}
+      <div id="usersWrap" class="card spinner-row">Caricamento...</div>`;
 
-      wrap.querySelectorAll('.roleSel').forEach((sel) => {
-        sel.addEventListener('change', async () => {
-          try {
-            await api(`/users/${sel.dataset.userId}/role`, { method: 'PATCH', body: { role: sel.value } });
-            showToast('Ruolo aggiornato', 'success');
-          } catch (err) {
-            showToast(err.message, 'error');
-            renderAdmin();
-          }
-        });
+    if (isAdmin) {
+      document.getElementById('createStaffForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const errEl = document.getElementById('createStaffError');
+        errEl.textContent = '';
+        const body = {
+          name: document.getElementById('newName').value.trim(),
+          email: document.getElementById('newEmail').value.trim(),
+          role: document.getElementById('newRole').value,
+        };
+        try {
+          const { user, tempPassword } = await api('/users', { method: 'POST', body });
+          document.getElementById('tempPasswordBox').innerHTML = `
+            <div class="divider"></div>
+            <p class="success-text">Account creato per ${escapeHtml(user.name)}.</p>
+            <p class="hint">Password temporanea (comunicala in modo sicuro, non sarà più visibile):</p>
+            <p class="card" style="font-family:monospace;font-size:1rem;padding:0.6rem 0.9rem;display:inline-block">${escapeHtml(tempPassword)}</p>`;
+          e.target.reset();
+          showToast('Account staff creato', 'success');
+          loadUsersTable();
+        } catch (err) {
+          errEl.textContent = err.message;
+        }
       });
-    } catch (err) {
-      wrap.className = '';
-      wrap.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
     }
+
+    async function loadUsersTable() {
+      const wrap = document.getElementById('usersWrap');
+      wrap.className = 'card spinner-row';
+      wrap.textContent = 'Caricamento...';
+      try {
+        const { users } = await api('/users');
+        wrap.className = 'card';
+        wrap.innerHTML = `
+          <table class="users-table">
+            <thead><tr><th>Nome</th><th>Email</th><th>Ruolo</th><th>Registrato</th>${isAdmin ? '<th></th>' : ''}</tr></thead>
+            <tbody>
+              ${users.map((u) => `
+                <tr>
+                  <td>${escapeHtml(u.name)}</td>
+                  <td>${escapeHtml(u.email)}</td>
+                  <td><span class="role-tag">${ROLE_LABELS[u.role] || u.role}</span></td>
+                  <td>${formatDate(u.created_at)}</td>
+                  ${isAdmin ? `
+                    <td>
+                      ${u.id === state.user.id ? '' : `
+                      <select data-user-id="${u.id}" class="roleSel">
+                        ${Object.entries(ROLE_LABELS).map(([v, l]) => `<option value="${v}" ${u.role === v ? 'selected' : ''}>${l}</option>`).join('')}
+                      </select>`}
+                    </td>` : ''}
+                </tr>`).join('')}
+            </tbody>
+          </table>`;
+
+        wrap.querySelectorAll('.roleSel').forEach((sel) => {
+          sel.addEventListener('change', async () => {
+            try {
+              await api(`/users/${sel.dataset.userId}/role`, { method: 'PATCH', body: { role: sel.value } });
+              showToast('Ruolo aggiornato', 'success');
+            } catch (err) {
+              showToast(err.message, 'error');
+              loadUsersTable();
+            }
+          });
+        });
+      } catch (err) {
+        wrap.className = '';
+        wrap.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
+      }
+    }
+
+    loadUsersTable();
+  }
+
+  // ---------------- Views: profile ----------------
+
+  function renderProfile() {
+    appEl.innerHTML = `
+      <div class="view-header"><h1>${icon('userCircle')} Profilo</h1></div>
+      <div class="two-col">
+        <div class="card">
+          <h3 class="section-title" style="margin-top:0">Il tuo account</h3>
+          <p><strong>${escapeHtml(state.user.name)}</strong></p>
+          <p class="hint">${escapeHtml(state.user.email)}</p>
+          <p><span class="role-tag">${ROLE_LABELS[state.user.role] || state.user.role}</span></p>
+        </div>
+        <div class="card">
+          <h3 class="section-title" style="margin-top:0">${icon('lock')} Cambia password</h3>
+          <form id="pwForm" class="form-grid" style="max-width:none">
+            <div class="field">
+              <label for="currentPassword">Password attuale</label>
+              <input id="currentPassword" type="password" required autocomplete="current-password" />
+            </div>
+            <div class="field">
+              <label for="newPassword">Nuova password</label>
+              <input id="newPassword" type="password" required minlength="6" autocomplete="new-password" />
+            </div>
+            <div class="field">
+              <label for="newPassword2">Conferma nuova password</label>
+              <input id="newPassword2" type="password" required minlength="6" autocomplete="new-password" />
+            </div>
+            <p class="error-text" id="pwError"></p>
+            <div><button class="btn btn-sm" type="submit">Aggiorna password</button></div>
+          </form>
+        </div>
+      </div>`;
+
+    document.getElementById('pwForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errEl = document.getElementById('pwError');
+      errEl.textContent = '';
+      const currentPassword = document.getElementById('currentPassword').value;
+      const newPassword = document.getElementById('newPassword').value;
+      const newPassword2 = document.getElementById('newPassword2').value;
+      if (newPassword !== newPassword2) {
+        errEl.textContent = 'Le nuove password non coincidono';
+        return;
+      }
+      try {
+        await api('/auth/change-password', { method: 'POST', body: { currentPassword, newPassword } });
+        showToast('Password aggiornata', 'success');
+        e.target.reset();
+      } catch (err) {
+        errEl.textContent = err.message;
+      }
+    });
   }
 
   function renderNotFound() {

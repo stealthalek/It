@@ -42,6 +42,7 @@ db.exec(`
     ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     message TEXT NOT NULL,
+    is_internal INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
@@ -49,6 +50,15 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_tickets_assigned_to ON tickets(assigned_to);
   CREATE INDEX IF NOT EXISTS idx_comments_ticket_id ON comments(ticket_id);
 `);
+
+function migrate() {
+  const commentCols = db.prepare('PRAGMA table_info(comments)').all().map((c) => c.name);
+  if (!commentCols.includes('is_internal')) {
+    db.exec('ALTER TABLE comments ADD COLUMN is_internal INTEGER NOT NULL DEFAULT 0');
+  }
+}
+
+migrate();
 
 function seedDefaultAdmin() {
   const count = db.prepare('SELECT COUNT(*) AS n FROM users').get().n;

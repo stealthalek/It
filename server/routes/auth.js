@@ -63,4 +63,23 @@ router.get('/me', authenticate, (req, res) => {
   res.json({ user: req.user });
 });
 
+router.post('/change-password', authenticate, (req, res) => {
+  const { currentPassword, newPassword } = req.body || {};
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ error: 'Password attuale e nuova password sono obbligatorie' });
+  }
+  if (newPassword.length < 6) {
+    return res.status(400).json({ error: 'La nuova password deve avere almeno 6 caratteri' });
+  }
+
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
+  if (!bcrypt.compareSync(currentPassword, user.password)) {
+    return res.status(401).json({ error: 'Password attuale non corretta' });
+  }
+
+  const hash = bcrypt.hashSync(newPassword, 10);
+  db.prepare('UPDATE users SET password = ? WHERE id = ?').run(hash, user.id);
+  res.json({ ok: true });
+});
+
 module.exports = router;
