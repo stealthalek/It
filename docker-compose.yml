@@ -1,0 +1,16 @@
+services:
+  ticketing:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - JWT_SECRET=${JWT_SECRET:-change-this-secret-in-production}
+      - DEFAULT_ADMIN_EMAIL=${DEFAULT_ADMIN_EMAIL:-admin@ticketing.local}
+      - DEFAULT_ADMIN_PASSWORD=${DEFAULT_ADMIN_PASSWORD:-Admin123!}
+    volumes:
+      - ticketing-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  ticketing-data:
