@@ -3,7 +3,7 @@ const db = require('../db/database');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
 
-function authenticate(req, res, next) {
+async function authenticate(req, res, next) {
   const header = req.headers.authorization || '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : null;
 
@@ -11,16 +11,22 @@ function authenticate(req, res, next) {
     return res.status(401).json({ error: 'Autenticazione richiesta' });
   }
 
+  let payload;
   try {
-    const payload = jwt.verify(token, JWT_SECRET);
-    const user = db.prepare('SELECT id, name, email, role FROM users WHERE id = ?').get(payload.sub);
+    payload = jwt.verify(token, JWT_SECRET);
+  } catch (err) {
+    return res.status(401).json({ error: 'Token non valido o scaduto' });
+  }
+
+  try {
+    const user = await db.get('SELECT id, name, email, role FROM users WHERE id = ?', [payload.sub]);
     if (!user) {
       return res.status(401).json({ error: 'Utente non valido' });
     }
     req.user = user;
     next();
   } catch (err) {
-    return res.status(401).json({ error: 'Token non valido o scaduto' });
+    next(err);
   }
 }
 
