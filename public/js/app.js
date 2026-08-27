@@ -148,8 +148,6 @@
   settingsBtn.innerHTML = icon('settings');
   settingsBtn.addEventListener('click', () => { location.hash = '#/settings'; });
 
-  // ---------------- Router ----------------
-
   const PUBLIC_ROUTES = new Set(['login', 'register']);
   const OPEN_ROUTES = new Set(['login', 'register', 'settings']);
 
@@ -198,8 +196,6 @@
   }
 
   window.addEventListener('hashchange', route);
-
-  // ---------------- Views: auth ----------------
 
   function renderLogin() {
     appEl.innerHTML = `
@@ -309,8 +305,6 @@
     });
   }
 
-  // ---------------- Views: dashboard ----------------
-
   function isStaff() {
     return state.user && (state.user.role === 'agent' || state.user.role === 'admin');
   }
@@ -415,8 +409,6 @@
       </a>`).join('');
   }
 
-  // ---------------- Views: new ticket ----------------
-
   function renderNewTicket() {
     appEl.innerHTML = `
       <div class="view-header"><h1>${icon('plus')} Nuovo ticket</h1></div>
@@ -467,8 +459,6 @@
     });
   }
 
-  // ---------------- Views: ticket detail ----------------
-
   async function renderTicketDetail(id) {
     appEl.innerHTML = `<div class="spinner-row">Caricamento...</div>`;
     let data;
@@ -492,7 +482,7 @@
         const staffUsers = users.filter((u) => u.role === 'agent' || u.role === 'admin');
         assigneesOptions = `<option value="">Non assegnato</option>` +
           staffUsers.map((u) => `<option value="${u.id}" ${ticket.assigned_to === u.id ? 'selected' : ''}>${escapeHtml(u.name)}</option>`).join('');
-      } catch { /* ignore, dropdown just stays empty */ }
+      } catch { assigneesOptions = ''; }
 
       staffPanel = `
         <div class="card">
@@ -671,8 +661,6 @@
       </div>`;
   }
 
-  // ---------------- Views: admin ----------------
-
   async function renderAdmin() {
     if (!isStaff()) {
       appEl.innerHTML = `<div class="card"><p class="error-text">Accesso non consentito.</p></div>`;
@@ -775,8 +763,6 @@
     loadUsersTable();
   }
 
-  // ---------------- Views: profile ----------------
-
   function renderProfile() {
     appEl.innerHTML = `
       <div class="view-header"><h1>${icon('userCircle')} Profilo</h1></div>
@@ -828,8 +814,6 @@
       }
     });
   }
-
-  // ---------------- Views: settings (backend connection) ----------------
 
   function renderSettings() {
     const current = getApiBase();
@@ -895,11 +879,9 @@
     appEl.innerHTML = `<div class="card"><p>Pagina non trovata. <a href="#/dashboard">Torna alla dashboard</a></p></div>`;
   }
 
-  // ---------------- Boot ----------------
-
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('service-worker.js').catch(() => { /* offline support is best-effort */ });
+      navigator.serviceWorker.register('service-worker.js').catch(() => {});
     });
   }
 
