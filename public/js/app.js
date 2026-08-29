@@ -58,6 +58,7 @@
     return {
       open: t('status_open'),
       in_progress: t('status_in_progress'),
+      waiting_customer: t('status_waiting_customer'),
       resolved: t('status_resolved'),
       closed: t('status_closed'),
     };
@@ -178,7 +179,7 @@
       dashboard_hint_staff: 'Gestisci e rispondi alle richieste di assistenza.',
       dashboard_hint_customer: 'Consulta lo stato delle tue richieste.',
       new_ticket_btn: 'Nuovo ticket',
-      status_open: 'Aperto', status_in_progress: 'In lavorazione', status_resolved: 'Risolto', status_closed: 'Chiuso',
+      status_open: 'Aperto', status_in_progress: 'In lavorazione', status_waiting_customer: 'In attesa del richiedente', status_resolved: 'Risolto', status_closed: 'Chiuso',
       priority_low: 'Bassa', priority_medium: 'Media', priority_high: 'Alta', priority_urgent: 'Urgente',
       type_incident: 'Incident', type_task: 'Task',
       sla_on_track: 'SLA in linea', sla_at_risk: 'SLA a rischio', sla_breached: 'SLA superata',
@@ -188,7 +189,7 @@
       filter_all_types: 'Tutti i tipi', filter_all_statuses: 'Tutti gli stati', filter_all_priorities: 'Tutte le priorità',
       filter_all_assignees: 'Tutti gli assegnatari', filter_assigned_me: 'Assegnati a me', filter_unassigned: 'Non assegnati',
       search_placeholder_staff: 'Cerca per testo, numero ticket o richiedente...', search_placeholder_customer: 'Cerca per testo o numero ticket...',
-      stat_open: 'Aperti', stat_in_progress: 'In lavorazione', stat_resolved: 'Risolti', stat_urgent: 'Urgenti aperti',
+      stat_open: 'Aperti', stat_in_progress: 'In lavorazione', stat_waiting_customer: 'In attesa', stat_resolved: 'Risolti', stat_urgent: 'Urgenti aperti',
       stat_incidents: 'Incident', stat_tasks: 'Task',
       personal_counter_staff: 'Assegnati a te, ancora aperti', personal_counter_customer: 'Tuoi ticket in corso',
       chart_title: 'Grafico', chart_distribution: 'Distribuzione', chart_total: 'Totale',
@@ -306,6 +307,9 @@
       new_temp_password_hint: 'Nuova password temporanea (comunicala in modo sicuro, non sarà più visibile):',
       toast_password_reset: 'Password reimpostata', settings_title: 'Impostazioni',
       motion_fluid_label: 'Animazioni fluide', toast_accent_updated: 'Colore aggiornato', toast_motion_updated: 'Preferenza animazioni aggiornata',
+      desktop_notif_label: 'Notifiche desktop', desktop_notif_hint: 'Ricevi un avviso pop-up del sistema operativo per nuovi ticket e commenti, anche a scheda non attiva.',
+      toast_desktop_notif_enabled: 'Notifiche desktop attivate', toast_desktop_notif_disabled: 'Notifiche desktop disattivate',
+      toast_desktop_notif_denied: 'Permesso negato dal browser: abilita le notifiche per questo sito nelle impostazioni del browser',
     },
     en: {
       nav_dashboard: 'Tickets', nav_new: 'New ticket', nav_search: 'Search', nav_backlog: 'Backlog',
@@ -318,7 +322,7 @@
       dashboard_hint_staff: 'Manage and respond to support requests.',
       dashboard_hint_customer: 'Check the status of your requests.',
       new_ticket_btn: 'New ticket',
-      status_open: 'Open', status_in_progress: 'In progress', status_resolved: 'Resolved', status_closed: 'Closed',
+      status_open: 'Open', status_in_progress: 'In progress', status_waiting_customer: 'Awaiting requester', status_resolved: 'Resolved', status_closed: 'Closed',
       priority_low: 'Low', priority_medium: 'Medium', priority_high: 'High', priority_urgent: 'Urgent',
       type_incident: 'Incident', type_task: 'Task',
       sla_on_track: 'SLA on track', sla_at_risk: 'SLA at risk', sla_breached: 'SLA breached',
@@ -328,7 +332,7 @@
       filter_all_types: 'All types', filter_all_statuses: 'All statuses', filter_all_priorities: 'All priorities',
       filter_all_assignees: 'All assignees', filter_assigned_me: 'Assigned to me', filter_unassigned: 'Unassigned',
       search_placeholder_staff: 'Search by text, ticket number or requester...', search_placeholder_customer: 'Search by text or ticket number...',
-      stat_open: 'Open', stat_in_progress: 'In progress', stat_resolved: 'Resolved', stat_urgent: 'Open urgent',
+      stat_open: 'Open', stat_in_progress: 'In progress', stat_waiting_customer: 'Awaiting reply', stat_resolved: 'Resolved', stat_urgent: 'Open urgent',
       stat_incidents: 'Incidents', stat_tasks: 'Tasks',
       personal_counter_staff: 'Assigned to you, still open', personal_counter_customer: 'Your ongoing tickets',
       chart_title: 'Chart', chart_distribution: 'Distribution', chart_total: 'Total',
@@ -446,6 +450,9 @@
       new_temp_password_hint: 'New temporary password (share it securely, it will not be shown again):',
       toast_password_reset: 'Password reset', settings_title: 'Settings',
       motion_fluid_label: 'Smooth animations', toast_accent_updated: 'Color updated', toast_motion_updated: 'Animation preference updated',
+      desktop_notif_label: 'Desktop notifications', desktop_notif_hint: 'Get an OS-level pop-up alert for new tickets and comments, even when the tab is not active.',
+      toast_desktop_notif_enabled: 'Desktop notifications enabled', toast_desktop_notif_disabled: 'Desktop notifications disabled',
+      toast_desktop_notif_denied: 'Permission denied by the browser: enable notifications for this site in your browser settings',
     },
   };
   const LANG_LABELS = { it: 'Italiano', en: 'English' };
@@ -591,6 +598,45 @@
   function setMotion(pref) {
     localStorage.setItem('ticketing_motion', pref);
     applyMotion(pref);
+  }
+
+  function desktopNotifSupported() {
+    return typeof Notification !== 'undefined';
+  }
+  function desktopNotifEnabled() {
+    return desktopNotifSupported() && localStorage.getItem('ticketing_desktop_notif') === 'on' && Notification.permission === 'granted';
+  }
+  async function setDesktopNotifPref(on) {
+    if (!desktopNotifSupported()) return false;
+    if (!on) {
+      localStorage.setItem('ticketing_desktop_notif', 'off');
+      return false;
+    }
+    const permission = Notification.permission === 'default' ? await Notification.requestPermission() : Notification.permission;
+    if (permission === 'granted') {
+      localStorage.setItem('ticketing_desktop_notif', 'on');
+      return true;
+    }
+    localStorage.setItem('ticketing_desktop_notif', 'off');
+    return false;
+  }
+  function showDesktopNotification(notification) {
+    if (!desktopNotifEnabled()) return;
+    try {
+      const popup = new Notification(getOrgNameCached() || 'Ticketing', {
+        body: notification.message,
+        icon: localStorage.getItem('ticketing_org_logo') || 'img/icon.svg',
+        tag: `ticket-${notification.ticket_id}`,
+      });
+      popup.onclick = () => {
+        window.focus();
+        if (notification.ticket_id) location.hash = `#/ticket/${notification.ticket_id}`;
+        popup.close();
+      };
+    } catch {}
+  }
+  function getOrgNameCached() {
+    return localStorage.getItem('ticketing_org_name') || '';
   }
 
   function applyOrgName(name) {
@@ -871,6 +917,7 @@
         updateNotifBadge();
         renderNotifDropdown();
         showToast(notification.message, '');
+        showDesktopNotification(notification);
       });
       notifSocket = socket;
     } catch {}
@@ -1291,7 +1338,7 @@
     }
 
     function renderStats(tickets) {
-      const counts = { open: 0, in_progress: 0, resolved: 0, closed: 0, urgent: 0, incident: 0, task: 0 };
+      const counts = { open: 0, in_progress: 0, waiting_customer: 0, resolved: 0, closed: 0, urgent: 0, incident: 0, task: 0 };
       tickets.forEach((tk) => {
         counts[tk.status] = (counts[tk.status] || 0) + 1;
         counts[tk.type] = (counts[tk.type] || 0) + 1;
@@ -1300,6 +1347,7 @@
       statsEl.innerHTML = `
         <button type="button" class="stat-card accent-open" data-status="open"><div class="stat-value">${counts.open}</div><div class="stat-label">${t('stat_open')}</div></button>
         <button type="button" class="stat-card accent-in_progress" data-status="in_progress"><div class="stat-value">${counts.in_progress}</div><div class="stat-label">${t('stat_in_progress')}</div></button>
+        <button type="button" class="stat-card accent-waiting_customer" data-status="waiting_customer"><div class="stat-value">${counts.waiting_customer}</div><div class="stat-label">${t('stat_waiting_customer')}</div></button>
         <button type="button" class="stat-card accent-resolved" data-status="resolved"><div class="stat-value">${counts.resolved}</div><div class="stat-label">${t('stat_resolved')}</div></button>
         <button type="button" class="stat-card accent-urgent" data-priority="urgent"><div class="stat-value">${counts.urgent}</div><div class="stat-label">${t('stat_urgent')}</div></button>
         <button type="button" class="stat-card accent-incident" data-type="incident"><div class="stat-value">${counts.incident}</div><div class="stat-label">${t('stat_incidents')}</div></button>
@@ -1344,8 +1392,8 @@
 
     function computeBreakdown(tickets, dim) {
       if (dim === 'status') {
-        const order = ['open', 'in_progress', 'resolved', 'closed'];
-        const colors = { open: 'var(--success)', in_progress: 'var(--warning)', resolved: 'var(--type-task)', closed: 'var(--muted)' };
+        const order = ['open', 'in_progress', 'waiting_customer', 'resolved', 'closed'];
+        const colors = { open: 'var(--success)', in_progress: 'var(--warning)', waiting_customer: 'var(--waiting)', resolved: 'var(--type-task)', closed: 'var(--muted)' };
         return order.map((k) => ({ key: k, label: statusLabels()[k], value: tickets.filter((t) => t.status === k).length, color: colors[k] }));
       }
       if (dim === 'sla') {
@@ -3315,6 +3363,12 @@
             <input type="checkbox" id="motionToggle" ${getMotionPref() === 'full' ? 'checked' : ''} />
             ${t('motion_fluid_label')}
           </label>
+          ${desktopNotifSupported() ? `
+          <label class="checkbox-field" style="margin-top:0.6rem">
+            <input type="checkbox" id="desktopNotifToggle" ${desktopNotifEnabled() ? 'checked' : ''} />
+            ${t('desktop_notif_label')}
+          </label>
+          <p class="hint" id="desktopNotifHint">${t('desktop_notif_hint')}</p>` : ''}
         </div>
         ${isAdmin ? `
         <div class="card">
@@ -3375,6 +3429,20 @@
       setMotion(e.target.checked ? 'full' : 'reduced');
       showToast(t('toast_motion_updated'), 'success');
     });
+
+    const desktopNotifToggle = document.getElementById('desktopNotifToggle');
+    if (desktopNotifToggle) {
+      desktopNotifToggle.addEventListener('change', async (e) => {
+        const wanted = e.target.checked;
+        const granted = await setDesktopNotifPref(wanted);
+        e.target.checked = granted;
+        if (wanted && !granted) {
+          showToast(t('toast_desktop_notif_denied'), 'error');
+        } else {
+          showToast(granted ? t('toast_desktop_notif_enabled') : t('toast_desktop_notif_disabled'), 'success');
+        }
+      });
+    }
 
     if (isAdmin) {
       const orgLogoPreview = document.getElementById('orgLogoPreview');

@@ -18,6 +18,8 @@
   --type-incident-soft: #f6e2e0;
   --type-task: #1868a8;
   --type-task-soft: #e1ecf5;
+  --waiting: #6b5a8f;
+  --waiting-soft: #ece7f4;
   --radius: 14px;
   --radius-sm: 9px;
   --shadow: 0 1px 2px rgba(60, 40, 25, 0.07), 0 10px 30px rgba(60, 40, 25, 0.08);
@@ -640,6 +642,7 @@ body:not(.role-customer):not(.role-agent):not(.role-admin) .nav-toggle { display
 .stat-card .stat-label { color: var(--muted); font-size: 0.82rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
 .stat-card.accent-open .stat-value { color: var(--primary); }
 .stat-card.accent-in_progress .stat-value { color: var(--warning); }
+.stat-card.accent-waiting_customer .stat-value { color: var(--waiting); }
 .stat-card.accent-resolved .stat-value { color: var(--success); }
 .stat-card.accent-urgent .stat-value { color: var(--danger); }
 .stat-card.accent-incident .stat-value { color: var(--type-incident); }
@@ -990,6 +993,7 @@ body:not(.role-customer):not(.role-agent):not(.role-admin) .nav-toggle { display
 }
 .badge-open { background: var(--primary-soft); color: var(--primary-dark); }
 .badge-in_progress { background: var(--warning-soft); color: #8a5e1c; }
+.badge-waiting_customer { background: var(--waiting-soft); color: var(--waiting); }
 .badge-resolved { background: var(--success-soft); color: #33552f; }
 .badge-closed { background: var(--surface-alt); color: var(--muted); border: 1px solid var(--border); }
 
