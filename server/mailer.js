@@ -126,15 +126,22 @@ async function notifyTicketResolved(ticket) {
   });
 }
 
+function fillTemplate(template, vars) {
+  return template.replace(/\{\{(\w+)\}\}/g, (match, key) => (key in vars ? vars[key] : match));
+}
+
 async function sendInvite(user, tempPassword) {
   if (!user.email) return;
   const org = await getOrgName();
   const s = strings(user.locale);
-  await sendMail({
-    to: user.email,
-    subject: s.inviteSubject(org),
-    text: s.inviteText(user.name, user.email, tempPassword, org),
-  });
+  const locale = STRINGS[user.locale] ? user.locale : 'it';
+  const custom = await db.get(
+    `SELECT invite_subject_${locale} AS subject, invite_body_${locale} AS body FROM app_settings WHERE id = 1`
+  );
+  const vars = { name: user.name, email: user.email, password: tempPassword, org };
+  const subject = custom?.subject ? fillTemplate(custom.subject, vars) : s.inviteSubject(org);
+  const text = custom?.body ? fillTemplate(custom.body, vars) : s.inviteText(user.name, user.email, tempPassword, org);
+  await sendMail({ to: user.email, subject, text });
 }
 
 async function sendPasswordReset(user, tempPassword) {

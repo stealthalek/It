@@ -28,6 +28,8 @@ const TICKET_SELECT = `
     grpParent.name AS group_parent_name,
     grp.sla_response_hours AS sla_response_hours,
     grp.sla_resolve_hours AS sla_resolve_hours,
+    grp.work_start_hour AS work_start_hour,
+    grp.work_end_hour AS work_end_hour,
     asset.name AS asset_name
   FROM tickets t
   JOIN users creator ON creator.id = t.created_by
@@ -37,16 +39,41 @@ const TICKET_SELECT = `
   LEFT JOIN assets asset ON asset.id = t.asset_id
 `;
 
+function businessMillisBetween(startMs, endMs, startHour, endHour) {
+  if (endMs <= startMs || endHour <= startHour) return 0;
+  const MS_PER_DAY = 24 * 3600 * 1000;
+  let total = 0;
+  let dayStart = new Date(startMs);
+  dayStart.setUTCHours(0, 0, 0, 0);
+  let cursor = dayStart.getTime();
+  while (cursor < endMs) {
+    const dayOfWeek = new Date(cursor).getUTCDay();
+    if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+      const windowStart = cursor + startHour * 3600 * 1000;
+      const windowEnd = cursor + endHour * 3600 * 1000;
+      const overlapStart = Math.max(windowStart, startMs);
+      const overlapEnd = Math.min(windowEnd, endMs);
+      if (overlapEnd > overlapStart) total += overlapEnd - overlapStart;
+    }
+    cursor += MS_PER_DAY;
+  }
+  return total;
+}
+
 function computeSlaStatus(ticket) {
   if (!ticket.sla_resolve_hours || !ticket.created_at) return null;
+  const workStart = ticket.work_start_hour ?? 9;
+  const workEnd = ticket.work_end_hour ?? 18;
   const created = new Date(ticket.created_at.replace(' ', 'T') + 'Z').getTime();
   const resolveMs = ticket.sla_resolve_hours * 3600 * 1000;
   if (ticket.status === 'resolved' || ticket.status === 'closed') {
     if (!ticket.resolved_at) return null;
     const resolved = new Date(ticket.resolved_at.replace(' ', 'T') + 'Z').getTime();
-    return resolved - created > resolveMs ? 'breached' : 'on_track';
+    const elapsed = businessMillisBetween(created, resolved, workStart, workEnd);
+    return elapsed > resolveMs ? 'breached' : 'on_track';
   }
-  const ratio = (Date.now() - created) / resolveMs;
+  const elapsed = businessMillisBetween(created, Date.now(), workStart, workEnd);
+  const ratio = elapsed / resolveMs;
   if (ratio >= 1) return 'breached';
   if (ratio >= 0.75) return 'at_risk';
   return 'on_track';
