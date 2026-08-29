@@ -264,6 +264,17 @@
       field_subject: 'Oggetto', field_email_body: 'Testo email', btn_save_template: 'Salva modello', toast_template_updated: 'Modello email aggiornato',
       not_found_text: 'Pagina non trovata.', back_to_dashboard: 'Torna alla dashboard', placeholder_default: '(predefinito)',
       impersonate_search_label: 'Cerca una persona da vedere in sola lettura',
+      notifications_title: 'Notifiche', mark_all_read: 'Segna tutte come lette', no_notifications: 'Nessuna notifica.',
+      confirm_password_label: 'Conferma password', no_data_available: 'Nessun dato disponibile.', send_request_btn: 'Invia richiesta',
+      show_password_label: 'Mostra password', password_min_hint: 'Almeno 8 caratteri, con lettere e numeri',
+      passwords_mismatch: 'Le password non coincidono', toast_welcome_back: 'Bentornato', toast_account_created: 'Account creato, benvenuto',
+      new_ticket_title: 'Nuovo ticket', new_ticket_hint: 'Raccontaci il problema: bastano pochi campi, il resto lo segue il nostro team.',
+      field_request_type: 'Tipo di richiesta', type_incident_suffix: '— qualcosa non funziona', type_task_suffix: '— richiesta pianificabile',
+      field_category: 'Categoria', field_subject_placeholder: 'Un breve titolo per il problema', field_urgency: 'Quanto è urgente?',
+      field_description_placeholder: 'Descrivi il problema in dettaglio', toast_request_sent: 'Richiesta inviata con successo',
+      toast_asset_created: 'Asset creato', toast_app_installed: 'App installata con successo',
+      ios_install_hint: 'Per installare: tocca Condividi, poi "Aggiungi alla schermata Home"',
+      microsoft_login_failed: 'Accesso con Microsoft non riuscito',
       account_details_title: 'Dettagli account', registered_on_label: 'Registrato il', field_role: 'Ruolo', field_locale: 'Lingua',
       reset_password_btn: 'Reimposta password', ticket_activity_title: 'Attività ticket',
       opened_by_person: 'Aperti da questa persona', assigned_to_person: 'Assegnati a questa persona',
@@ -374,6 +385,17 @@
       field_subject: 'Subject', field_email_body: 'Email text', btn_save_template: 'Save template', toast_template_updated: 'Template updated',
       not_found_text: 'Page not found.', back_to_dashboard: 'Back to dashboard', placeholder_default: '(default)',
       impersonate_search_label: 'Search for a person to view read-only',
+      notifications_title: 'Notifications', mark_all_read: 'Mark all as read', no_notifications: 'No notifications.',
+      confirm_password_label: 'Confirm password', no_data_available: 'No data available.', send_request_btn: 'Send request',
+      show_password_label: 'Show password', password_min_hint: 'At least 8 characters, with letters and numbers',
+      passwords_mismatch: 'Passwords do not match', toast_welcome_back: 'Welcome back', toast_account_created: 'Account created, welcome',
+      new_ticket_title: 'New ticket', new_ticket_hint: 'Tell us about the problem: just a few fields, our team takes care of the rest.',
+      field_request_type: 'Request type', type_incident_suffix: '— something isn\'t working', type_task_suffix: '— schedulable request',
+      field_category: 'Category', field_subject_placeholder: 'A short title for the issue', field_urgency: 'How urgent is it?',
+      field_description_placeholder: 'Describe the problem in detail', toast_request_sent: 'Request sent successfully',
+      toast_asset_created: 'Asset created', toast_app_installed: 'App installed successfully',
+      ios_install_hint: 'To install: tap Share, then "Add to Home Screen"',
+      microsoft_login_failed: 'Microsoft sign-in failed',
       account_details_title: 'Account details', registered_on_label: 'Registered on', field_role: 'Role', field_locale: 'Language',
       reset_password_btn: 'Reset password', ticket_activity_title: 'Ticket activity',
       opened_by_person: 'Opened by this person', assigned_to_person: 'Assigned to this person',
@@ -648,7 +670,7 @@
             const data = await api('/auth/microsoft', { method: 'POST', body: { idToken: result.idToken } });
             handleSsoSuccess(data);
           } catch (err) {
-            showToast(err.message || 'Accesso con Microsoft non riuscito', 'error');
+            showToast(err.message || t('microsoft_login_failed'), 'error');
           }
         });
       } catch {
@@ -710,15 +732,15 @@
   function renderNotifDropdown() {
     notifDropdown.innerHTML = `
       <div class="notif-header">
-        <span>Notifiche</span>
-        ${notifItems.some((n) => !n.is_read) ? `<button type="button" id="notifMarkAllBtn" class="btn-link">Segna tutte come lette</button>` : ''}
+        <span>${t('notifications_title')}</span>
+        ${notifItems.some((n) => !n.is_read) ? `<button type="button" id="notifMarkAllBtn" class="btn-link">${t('mark_all_read')}</button>` : ''}
       </div>
       <div class="notif-list">
         ${notifItems.length ? notifItems.map((n) => `
           <button type="button" class="notif-item ${n.is_read ? '' : 'unread'}" data-id="${n.id}" data-ticket-id="${n.ticket_id || ''}">
             <span>${escapeHtml(n.message)}</span>
             <span class="notif-time">${formatDate(n.created_at)}</span>
-          </button>`).join('') : '<p class="hint" style="padding:0.75rem">Nessuna notifica.</p>'}
+          </button>`).join('') : `<p class="hint" style="padding:0.75rem">${t('no_notifications')}</p>`}
       </div>`;
 
     const markAllBtn = document.getElementById('notifMarkAllBtn');
@@ -863,7 +885,7 @@
               <label for="password">${t('login_password')}</label>
               <div class="password-field">
                 <input id="password" type="password" required autocomplete="current-password" />
-                <button type="button" id="pwToggle" class="icon-btn password-toggle" aria-label="Mostra password"></button>
+                <button type="button" id="pwToggle" class="icon-btn password-toggle" aria-label="${t('show_password_label')}"></button>
               </div>
             </div>
             <p class="error-text" id="loginError"></p>
@@ -885,7 +907,7 @@
       try {
         const { token, user } = await api('/auth/login', { method: 'POST', body: { email, password } });
         setSession(token, user);
-        showToast(`Bentornato, ${user.name}`, 'success');
+        showToast(`${t('toast_welcome_back')}, ${user.name}`, 'success');
         location.hash = '#/dashboard';
         route();
       } catch (err) {
@@ -901,26 +923,26 @@
           <h1>${icon('userCircle')} ${t('register_title')}</h1>
           <form id="registerForm" class="form-grid">
             <div class="field">
-              <label for="name">Nome</label>
+              <label for="name">${t('field_name')}</label>
               <input id="name" type="text" required autocomplete="name" />
             </div>
             <div class="field">
-              <label for="email">Email</label>
+              <label for="email">${t('login_email')}</label>
               <input id="email" type="email" required autocomplete="email" />
             </div>
             <div class="field">
-              <label for="password">Password</label>
+              <label for="password">${t('login_password')}</label>
               <div class="password-field">
                 <input id="password" type="password" required minlength="8" autocomplete="new-password" />
-                <button type="button" id="pwToggle" class="icon-btn password-toggle" aria-label="Mostra password"></button>
+                <button type="button" id="pwToggle" class="icon-btn password-toggle" aria-label="${t('show_password_label')}"></button>
               </div>
-              <span class="hint">Almeno 8 caratteri, con lettere e numeri</span>
+              <span class="hint">${t('password_min_hint')}</span>
             </div>
             <div class="field">
-              <label for="password2">Conferma password</label>
+              <label for="password2">${t('confirm_password_label')}</label>
               <div class="password-field">
                 <input id="password2" type="password" required minlength="8" autocomplete="new-password" />
-                <button type="button" id="pwToggle2" class="icon-btn password-toggle" aria-label="Mostra password"></button>
+                <button type="button" id="pwToggle2" class="icon-btn password-toggle" aria-label="${t('show_password_label')}"></button>
               </div>
             </div>
             <p class="error-text" id="registerError"></p>
@@ -943,13 +965,13 @@
       const errEl = document.getElementById('registerError');
       errEl.textContent = '';
       if (password !== password2) {
-        errEl.textContent = 'Le password non coincidono';
+        errEl.textContent = t('passwords_mismatch');
         return;
       }
       try {
         const { token, user } = await api('/auth/register', { method: 'POST', body: { name, email, password } });
         setSession(token, user);
-        showToast(`Account creato, benvenuto ${user.name}`, 'success');
+        showToast(`${t('toast_account_created')} ${user.name}`, 'success');
         location.hash = '#/dashboard';
         route();
       } catch (err) {
@@ -985,7 +1007,7 @@
 
   function donutChart(rows, total, opts = {}) {
     const activeRows = rows.filter((r) => r.value > 0).map((r) => ({ ...r, color: resolveCssColor(getCustomChartColor(opts.dim, r.key) || r.color) }));
-    if (!total || !activeRows.length) return '<p class="hint">Nessun dato disponibile.</p>';
+    if (!total || !activeRows.length) return `<p class="hint">${t('no_data_available')}</p>`;
     let cumulative = 0;
     const stops = activeRows.map((r) => {
       const startPct = (cumulative / total) * 100;
@@ -1472,21 +1494,21 @@
     appEl.innerHTML = `
       <div class="view-header">
         <div>
-          <h1>${icon('plus')} Nuovo ticket</h1>
-          <p class="hint">Raccontaci il problema: bastano pochi campi, il resto lo segue il nostro team.</p>
+          <h1>${icon('plus')} ${t('new_ticket_title')}</h1>
+          <p class="hint">${t('new_ticket_hint')}</p>
         </div>
       </div>
       <div class="card" style="max-width:560px">
         <form id="newTicketForm" class="form-grid">
           <div class="field">
-            <label for="type">Tipo di richiesta</label>
+            <label for="type">${t('field_request_type')}</label>
             <select id="type">
-              <option value="incident">${typeLabels().incident} — qualcosa non funziona</option>
-              <option value="task">${typeLabels().task} — richiesta pianificabile</option>
+              <option value="incident">${typeLabels().incident} ${t('type_incident_suffix')}</option>
+              <option value="task">${typeLabels().task} ${t('type_task_suffix')}</option>
             </select>
           </div>
           <div class="field">
-            <label>Categoria</label>
+            <label>${t('field_category')}</label>
             <div id="categoryPicker" class="category-picker">
               ${categories.map((c, i) => `
                 <button type="button" class="category-choice ${i === 0 ? 'active' : ''}" data-category="${escapeHtml(c.name)}">
@@ -1496,22 +1518,22 @@
             </div>
           </div>
           <div class="field">
-            <label for="subject">Oggetto</label>
-            <input id="subject" type="text" required maxlength="200" placeholder="Un breve titolo per il problema" />
+            <label for="subject">${t('field_subject')}</label>
+            <input id="subject" type="text" required maxlength="200" placeholder="${t('field_subject_placeholder')}" />
           </div>
           <div class="field">
-            <label for="priority">Quanto è urgente?</label>
+            <label for="priority">${t('field_urgency')}</label>
             <select id="priority">
               ${Object.entries(priorityLabels()).map(([v, l]) => `<option value="${v}" ${v === 'medium' ? 'selected' : ''}>${l}</option>`).join('')}
             </select>
           </div>
           <div class="field">
-            <label for="description">Descrizione</label>
-            <textarea id="description" required placeholder="Descrivi il problema in dettaglio"></textarea>
+            <label for="description">${t('field_description')}</label>
+            <textarea id="description" required placeholder="${t('field_description_placeholder')}"></textarea>
           </div>
           <p class="error-text" id="newTicketError"></p>
           <div>
-            <button class="btn" type="submit">Invia richiesta</button>
+            <button class="btn" type="submit">${t('send_request_btn')}</button>
           </div>
         </form>
       </div>`;
@@ -1537,7 +1559,7 @@
       };
       try {
         const { ticket } = await api('/tickets', { method: 'POST', body });
-        showToast('Richiesta inviata con successo', 'success');
+        showToast(t('toast_request_sent'), 'success');
         location.hash = `#/ticket/${ticket.id}`;
       } catch (err) {
         errEl.textContent = err.message;
@@ -1546,7 +1568,7 @@
   }
 
   async function renderTicketDetail(id) {
-    appEl.innerHTML = `<div class="spinner-row">Caricamento...</div>`;
+    appEl.innerHTML = `<div class="spinner-row">${t('loading')}</div>`;
     let data;
     try {
       data = await api(`/tickets/${id}`);
@@ -2571,7 +2593,7 @@
           },
         });
         document.getElementById('newAssetForm').reset();
-        showToast('Asset creato', 'success');
+        showToast(t('toast_asset_created'), 'success');
         loadAssets();
       } catch (err) {
         showToast(err.message, 'error');
@@ -2916,6 +2938,7 @@
       setLang(e.target.value);
       applyChromeTranslations();
       updateChrome();
+      renderNotifDropdown();
       showToast(t('lang_updated'), 'success');
       route();
     });
@@ -3027,7 +3050,7 @@
   window.addEventListener('appinstalled', () => {
     deferredInstallPrompt = null;
     installBtn.style.display = 'none';
-    showToast('App installata con successo', 'success');
+    showToast(t('toast_app_installed'), 'success');
   });
 
   if (isIos && !isStandalone) {
@@ -3043,7 +3066,7 @@
       return;
     }
     if (isIos) {
-      showToast('Per installare: tocca Condividi, poi "Aggiungi alla schermata Home"', '');
+      showToast(t('ios_install_hint'), '');
     }
   });
 
