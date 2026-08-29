@@ -19,8 +19,10 @@ Piattaforma di ticketing full-stack e realmente funzionante: gestione di richies
 - Categorie personalizzabili dall'amministratore, selezionabili dal cliente in fase di apertura
 - **Timeline attività** su ogni ticket: commenti e cambi di stato/priorità/assegnazione in un unico flusso cronologico (in stile ITSM)
 - **Tipo Incident / Task** per ogni ticket, con badge dedicato e filtro in dashboard
-- Assegnazione dei ticket agli agenti, filtri per stato/priorità/tipo/assegnatario, ricerca testuale
-- Dashboard con contatori in tempo reale (aperti, in lavorazione, risolti, urgenti), un **contatore personale** (carico assegnato per lo staff, ticket in corso per i clienti) e **grafici** (distribuzione per stato, incident vs task)
+- **Team di assegnazione**: l'amministratore può assegnare ogni agente a un team; nel pannello di gestione del ticket l'elenco degli assegnatari è raggruppato per team, così i membri dello stesso team si vedono e si assegnano i ticket a vicenda con un colpo d'occhio
+- Assegnazione dei ticket agli agenti, filtri per stato/priorità/tipo/assegnatario, ricerca testuale che trova anche un ticket per numero esatto (es. cercando `42` salta dritto al ticket #42)
+- Dashboard con contatori in tempo reale (aperti, in lavorazione, risolti, urgenti), un **contatore personale** (carico assegnato per lo staff, ticket in corso per i clienti) e un **grafico personalizzabile** (cambia al volo la vista: stato, priorità, tipo, categoria o assegnatario)
+- **Storico completo**: nessun ticket sparisce dalla dashboard quando viene risolto o chiuso, resta sempre consultabile e filtrabile per stato
 - **Chat e attività in tempo reale**: commenti e cambi di stato appaiono istantaneamente su tutti i dispositivi collegati al ticket, senza ricaricare la pagina (Socket.IO)
 - **Indicatore di presenza**: quando un tecnico apre un ticket il cliente lo vede in tempo reale, e viceversa
 - **Notifica email** al cliente quando il suo ticket viene contrassegnato come risolto (richiede la configurazione SMTP opzionale, vedi sotto)
@@ -206,6 +208,7 @@ Tutte le richieste (tranne `register`/`login`) richiedono l'header `Authorizatio
 | GET | `/api/users` | Elenco utenti (solo staff) |
 | POST | `/api/users` | Crea un account agente/admin con password temporanea generata (solo admin) |
 | PATCH | `/api/users/:id/role` | Cambia il ruolo di un utente (solo admin) |
+| PATCH | `/api/users/:id/team` | Assegna o cambia il team di un utente staff (solo admin) |
 | GET | `/api/categories` | Elenco categorie ticket |
 | POST | `/api/categories` | Crea una categoria (solo admin) |
 | DELETE | `/api/categories/:id` | Elimina una categoria non in uso (solo admin) |
@@ -215,4 +218,10 @@ Tutte le richieste (tranne `register`/`login`) richiedono l'header `Authorizatio
 - Password hashate con bcrypt
 - Autenticazione basata su JWT con scadenza a 7 giorni
 - Controllo dei permessi per ruolo su ogni endpoint sensibile
-- Impostare sempre un `JWT_SECRET` robusto e una password admin personalizzata prima di esporre l'app pubblicamente
+- Header HTTP di sicurezza applicati automaticamente (Helmet): protezione da clickjacking, sniffing del MIME type, HSTS
+- **Limite dei tentativi (rate limiting)**: login, registrazione, accesso SSO e cambio password sono limitati a 20 tentativi ogni 15 minuti per indirizzo IP, per rendere impraticabile un attacco a forza bruta sulle credenziali; l'intera API è comunque limitata a 300 richieste ogni 15 minuti per IP
+- Impostare sempre un `JWT_SECRET` robusto e una password admin personalizzata prima di esporre l'app pubblicamente (su Render il `JWT_SECRET` viene già generato automaticamente in modo sicuro)
+
+## Perché non Google Sheets
+
+Per la ricerca dei ticket per numero e lo storico è stata scelta la ricerca integrata nel database (vedi sopra) invece di un foglio Google Sheets: è già in tempo reale, non richiede di collegare un account Google esterno né di gestire permessi/API aggiuntive, e resta coerente con la scelta già fatta di ridurre al minimo gli account e i servizi da configurare. Se in futuro serve comunque un'esportazione consultabile fuori dall'app, i dati restano comunque interrogabili direttamente dal database (Turso).

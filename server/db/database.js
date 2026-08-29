@@ -47,6 +47,7 @@ async function setupSchema() {
         email TEXT NOT NULL UNIQUE,
         password TEXT NOT NULL,
         role TEXT NOT NULL DEFAULT 'customer' CHECK (role IN ('customer', 'agent', 'admin')),
+        team TEXT,
         created_at TEXT NOT NULL DEFAULT (datetime('now'))
       )`,
       `CREATE TABLE IF NOT EXISTS tickets (
@@ -100,6 +101,11 @@ async function migrate() {
   const ticketCols = await all('PRAGMA table_info(tickets)');
   if (!ticketCols.some((c) => c.name === 'type')) {
     await run("ALTER TABLE tickets ADD COLUMN type TEXT NOT NULL DEFAULT 'incident'");
+  }
+
+  const userCols = await all('PRAGMA table_info(users)');
+  if (!userCols.some((c) => c.name === 'team')) {
+    await run('ALTER TABLE users ADD COLUMN team TEXT');
   }
 }
 

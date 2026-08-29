@@ -14,7 +14,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 router.get(
   '/',
   asyncHandler(async (req, res) => {
-    const users = await db.all('SELECT id, name, email, role, created_at FROM users ORDER BY name ASC');
+    const users = await db.all('SELECT id, name, email, role, team, created_at FROM users ORDER BY name ASC');
     res.json({ users });
   })
 );
@@ -23,7 +23,7 @@ router.post(
   '/',
   requireRole('admin'),
   asyncHandler(async (req, res) => {
-    const { name, email, role } = req.body || {};
+    const { name, email, role, team } = req.body || {};
 
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Il nome è obbligatorio' });
@@ -42,15 +42,17 @@ router.post(
 
     const tempPassword = crypto.randomBytes(6).toString('base64url');
     const hash = bcrypt.hashSync(tempPassword, 10);
+    const finalTeam = team && team.trim() ? team.trim() : null;
 
-    const info = await db.run('INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)', [
+    const info = await db.run('INSERT INTO users (name, email, password, role, team) VALUES (?, ?, ?, ?, ?)', [
       name.trim(),
       email.toLowerCase(),
       hash,
       role,
+      finalTeam,
     ]);
 
-    const user = await db.get('SELECT id, name, email, role, created_at FROM users WHERE id = ?', [Number(info.lastInsertRowid)]);
+    const user = await db.get('SELECT id, name, email, role, team, created_at FROM users WHERE id = ?', [Number(info.lastInsertRowid)]);
     res.status(201).json({ user, tempPassword });
   })
 );
@@ -72,7 +74,24 @@ router.patch(
       return res.status(404).json({ error: 'Utente non trovato' });
     }
 
-    const user = await db.get('SELECT id, name, email, role, created_at FROM users WHERE id = ?', [req.params.id]);
+    const user = await db.get('SELECT id, name, email, role, team, created_at FROM users WHERE id = ?', [req.params.id]);
+    res.json({ user });
+  })
+);
+
+router.patch(
+  '/:id/team',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const { team } = req.body || {};
+    const finalTeam = team && team.trim() ? team.trim() : null;
+
+    const result = await db.run('UPDATE users SET team = ? WHERE id = ?', [finalTeam, req.params.id]);
+    if (Number(result.rowsAffected) === 0) {
+      return res.status(404).json({ error: 'Utente non trovato' });
+    }
+
+    const user = await db.get('SELECT id, name, email, role, team, created_at FROM users WHERE id = ?', [req.params.id]);
     res.json({ user });
   })
 );

@@ -57,8 +57,6 @@ h1, h2, h3, .brand, .btn, .stat-card .stat-value {
 svg { display: block; }
 .icon { width: 1em; height: 1em; flex-shrink: 0; }
 
-/* ---------- Top bar ---------- */
-
 .topbar {
   position: sticky;
   top: 0;
@@ -196,8 +194,6 @@ body.role-admin .admin-only { display: flex; }
   }
 }
 
-/* ---------- Layout ---------- */
-
 .app-main {
   max-width: 1140px;
   margin: 0 auto;
@@ -214,8 +210,6 @@ body.role-admin .admin-only { display: flex; }
 }
 .view-header h1 { margin: 0; font-size: 1.5rem; letter-spacing: -0.015em; }
 .view-header p.hint { margin: 0.2rem 0 0; }
-
-/* ---------- Buttons ---------- */
 
 .btn {
   display: inline-flex;
@@ -270,8 +264,6 @@ body.role-admin .admin-only { display: flex; }
   padding: 0.2rem;
 }
 .icon-btn:hover { color: var(--text); }
-
-/* ---------- Cards / forms ---------- */
 
 .card {
   background: var(--surface);
@@ -385,8 +377,6 @@ body.role-admin .admin-only { display: flex; }
 .google-btn-mount > div { width: 100% !important; }
 .sso-btn { gap: 0.6rem; }
 
-/* ---------- Stat cards ---------- */
-
 .stat-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -407,8 +397,6 @@ body.role-admin .admin-only { display: flex; }
 .stat-card.accent-resolved .stat-value { color: var(--success); }
 .stat-card.accent-urgent .stat-value { color: var(--danger); }
 
-/* ---------- Personal counter ---------- */
-
 .personal-counter {
   display: flex;
   align-items: center;
@@ -424,8 +412,6 @@ body.role-admin .admin-only { display: flex; }
 .personal-counter-value { font-family: var(--font-display); font-size: 1.8rem; font-weight: 800; line-height: 1.1; }
 .personal-counter-label { font-size: 0.85rem; opacity: 0.9; }
 
-/* ---------- Charts ---------- */
-
 .charts-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -433,15 +419,39 @@ body.role-admin .admin-only { display: flex; }
   margin-bottom: 1.25rem;
 }
 .chart-card { padding: 1.1rem 1.25rem; }
+.chart-card-wide { grid-column: 1 / -1; }
+.chart-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.9rem;
+  flex-wrap: wrap;
+}
+.chart-card-head select {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.85rem;
+}
 
 .bar-chart { display: flex; flex-direction: column; gap: 0.7rem; }
 .bar-row {
   display: grid;
-  grid-template-columns: 6.5rem 1fr auto;
+  grid-template-columns: minmax(6.5rem, 9rem) 1fr auto;
   align-items: center;
   gap: 0.65rem;
 }
-.bar-label { font-size: 0.83rem; color: var(--muted); font-weight: 600; }
+.bar-label {
+  font-size: 0.83rem;
+  color: var(--muted);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .bar-track {
   height: 10px;
   border-radius: 999px;
@@ -457,8 +467,6 @@ body.role-admin .admin-only { display: flex; }
 .bar-value { font-size: 0.85rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .bar-pct { font-weight: 500; color: var(--muted); }
 
-/* ---------- Filters ---------- */
-
 .filters {
   display: flex;
   flex-wrap: wrap;
@@ -472,8 +480,6 @@ body.role-admin .admin-only { display: flex; }
   background: var(--surface);
   color: var(--text);
 }
-
-/* ---------- Ticket list ---------- */
 
 .ticket-grid {
   display: grid;
@@ -554,8 +560,6 @@ body.role-admin .admin-only { display: flex; }
 }
 .empty-state .icon { width: 2.5rem; height: 2.5rem; opacity: 0.5; }
 
-/* ---------- Skeleton loaders ---------- */
-
 .skeleton-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -572,8 +576,6 @@ body.role-admin .admin-only { display: flex; }
   0% { background-position: 150% 0; }
   100% { background-position: -50% 0; }
 }
-
-/* ---------- Ticket detail ---------- */
 
 .ticket-detail-grid {
   display: grid;
@@ -652,9 +654,8 @@ body.role-admin .admin-only { display: flex; }
 }
 .checkbox-field input { width: 16px; height: 16px; accent-color: var(--primary); }
 
-/* ---------- Users table ---------- */
-
-.users-table { width: 100%; border-collapse: collapse; }
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.users-table { width: 100%; min-width: 480px; border-collapse: collapse; }
 .users-table th, .users-table td {
   text-align: left;
   padding: 0.65rem 0.5rem;
@@ -662,6 +663,17 @@ body.role-admin .admin-only { display: flex; }
   font-size: 0.9rem;
 }
 .users-table th { color: var(--muted); font-weight: 600; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.02em; }
+
+.teamInput {
+  width: 100%;
+  min-width: 120px;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.85rem;
+}
 
 .role-tag {
   font-size: 0.75rem;
@@ -671,8 +683,6 @@ body.role-admin .admin-only { display: flex; }
   background: var(--surface-alt);
   border: 1px solid var(--border);
 }
-
-/* ---------- Toast ---------- */
 
 .toast {
   position: fixed;
