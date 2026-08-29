@@ -6,6 +6,35 @@
     user: null,
   };
 
+  let ticketSocket = null;
+  function teardownTicketSocket() {
+    if (ticketSocket) {
+      try {
+        ticketSocket.emit('ticket:leave');
+        ticketSocket.disconnect();
+      } catch {}
+      ticketSocket = null;
+    }
+  }
+
+  async function connectTicketSocket(ticketId) {
+    teardownTicketSocket();
+    try {
+      const base = getApiBase();
+      await loadScriptOnce(`${base}/socket.io/socket.io.js`);
+      if (!window.io) return null;
+      const socket = window.io(base || undefined, {
+        auth: { token: state.token },
+        transports: ['websocket', 'polling'],
+      });
+      socket.on('connect', () => socket.emit('ticket:join', ticketId));
+      ticketSocket = socket;
+      return socket;
+    } catch {
+      return null;
+    }
+  }
+
   const appEl = document.getElementById('app');
   const toastEl = document.getElementById('toast');
   const navToggle = document.getElementById('navToggle');
@@ -287,6 +316,8 @@
     document.querySelectorAll('.main-nav a').forEach((a) => {
       a.classList.toggle('active', a.dataset.nav === page);
     });
+
+    if (page !== 'ticket') teardownTicketSocket();
 
     try {
       switch (page) {
@@ -732,6 +763,7 @@
         <h1>#${ticket.id} ${escapeHtml(ticket.subject)}</h1>
         <a class="btn btn-ghost" href="#/dashboard">${icon('arrowLeft')} Torna alla lista</a>
       </div>
+      <div id="presenceBanner" class="presence-banner" hidden></div>
       <div class="ticket-detail-grid">
         <div>
           <div class="card" style="margin-bottom:1rem">
@@ -869,6 +901,68 @@
         }
       });
     }
+
+    setupTicketRealtime(ticket.id);
+  }
+
+  function setupTicketRealtime(ticketId) {
+    const presence = { staff: new Set(), customer: new Set() };
+
+    function updatePresenceBanner() {
+      const banner = document.getElementById('presenceBanner');
+      if (!banner) return;
+      const parts = [];
+      if (presence.staff.size && !isStaff()) {
+        parts.push(`${icon('shield')} Un tecnico sta seguendo questo ticket in questo momento`);
+      }
+      if (presence.customer.size && isStaff()) {
+        parts.push(`${icon('userCircle')} Il richiedente sta visualizzando questo ticket in questo momento`);
+      }
+      if (parts.length) {
+        banner.hidden = false;
+        banner.innerHTML = parts.join(' · ');
+      } else {
+        banner.hidden = true;
+      }
+    }
+
+    connectTicketSocket(ticketId).then((socket) => {
+      if (!socket) return;
+
+      socket.on('activity:new', (item) => {
+        const list = document.getElementById('activityList');
+        if (!list) return;
+        if (list.querySelector('.hint')) list.innerHTML = '';
+        list.insertAdjacentHTML('beforeend', renderActivityItem(item));
+        if (item.kind === 'comment' && item.author_role !== state.user.role) {
+          showToast('Nuovo messaggio nel ticket', '');
+        }
+      });
+
+      socket.on('ticket:updated', (updated) => {
+        const badgesWrap = document.querySelector('.ticket-detail-grid .badges');
+        if (badgesWrap) {
+          badgesWrap.innerHTML = `
+            <span class="badge badge-type-${updated.type}">${icon(updated.type, 'badge-icon')}${TYPE_LABELS[updated.type] || updated.type}</span>
+            <span class="badge badge-${updated.status}">${STATUS_LABELS[updated.status]}</span>
+            <span class="badge badge-${updated.priority}">${PRIORITY_LABELS[updated.priority]}</span>
+            <span class="badge">${escapeHtml(updated.category)}</span>`;
+        }
+        const statusSel = document.getElementById('statusSel');
+        if (statusSel) statusSel.value = updated.status;
+        const prioritySel = document.getElementById('prioritySel');
+        if (prioritySel) prioritySel.value = updated.priority;
+        const typeSel = document.getElementById('typeSel');
+        if (typeSel) typeSel.value = updated.type;
+        const assignedSel = document.getElementById('assignedSel');
+        if (assignedSel) assignedSel.value = updated.assigned_to || '';
+      });
+
+      socket.on('presence:staff-joined', ({ name }) => { presence.staff.add(name); updatePresenceBanner(); });
+      socket.on('presence:staff-left', ({ name }) => { presence.staff.delete(name); updatePresenceBanner(); });
+      socket.on('presence:customer-joined', ({ name }) => { presence.customer.add(name); updatePresenceBanner(); });
+      socket.on('presence:customer-left', ({ name }) => { presence.customer.delete(name); updatePresenceBanner(); });
+    });
   }
 
   function renderActivityItem(item) {

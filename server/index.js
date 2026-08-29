@@ -1,9 +1,11 @@
 require('dotenv').config();
 const path = require('path');
+const http = require('http');
 const express = require('express');
 const cors = require('cors');
 
 const db = require('./db/database');
+const { initRealtime } = require('./realtime');
 const authRoutes = require('./routes/auth');
 const ticketRoutes = require('./routes/tickets');
 const userRoutes = require('./routes/users');
@@ -40,9 +42,12 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Errore interno del server' });
 });
 
+const httpServer = http.createServer(app);
+initRealtime(httpServer);
+
 async function main() {
   await db.initDb();
-  app.listen(PORT, '0.0.0.0', () => {
+  httpServer.listen(PORT, '0.0.0.0', () => {
     console.log(`Piattaforma di ticketing in ascolto su http://0.0.0.0:${PORT}`);
     console.log('Raggiungibile da qualsiasi dispositivo sulla stessa rete tramite l\'IP di questa macchina.');
   });

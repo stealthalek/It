@@ -620,6 +620,21 @@ body.role-admin .admin-only { display: flex; }
 .activity-event .icon { color: var(--primary); flex-shrink: 0; }
 .activity-event-time { margin-left: auto; white-space: nowrap; }
 
+.presence-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--success-soft);
+  color: #33552f;
+  border-radius: var(--radius-sm);
+  padding: 0.6rem 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+.presence-banner .icon { flex-shrink: 0; }
+.presence-banner[hidden] { display: none; }
+
 .side-field { margin-bottom: 1rem; }
 .side-field label {
   display: block;
