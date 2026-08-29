@@ -83,6 +83,11 @@ async function resolveCategory(requested) {
   return categories.includes('Altro') ? 'Altro' : categories[0];
 }
 
+async function defaultGroupForCategory(categoryName) {
+  const row = await db.get('SELECT default_group_id FROM categories WHERE name = ?', [categoryName]);
+  return row ? row.default_group_id : null;
+}
+
 async function logEvent(ticketId, actorId, message) {
   const info = await db.run('INSERT INTO ticket_events (ticket_id, actor_id, message) VALUES (?, ?, ?)', [ticketId, actorId, message]);
   const row = await db.get(
@@ -197,10 +202,11 @@ router.post(
     const finalPriority = PRIORITIES.includes(priority) ? priority : 'medium';
     const finalType = TYPES.includes(type) ? type : 'incident';
     const finalCategory = await resolveCategory(category && category.trim());
+    const autoGroupId = await defaultGroupForCategory(finalCategory);
 
     const info = await db.run(
-      'INSERT INTO tickets (subject, description, priority, type, category, created_by) VALUES (?, ?, ?, ?, ?, ?)',
-      [subject.trim(), description.trim(), finalPriority, finalType, finalCategory, req.user.id]
+      'INSERT INTO tickets (subject, description, priority, type, category, created_by, group_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [subject.trim(), description.trim(), finalPriority, finalType, finalCategory, req.user.id, autoGroupId]
     );
 
     const ticketId = Number(info.lastInsertRowid);

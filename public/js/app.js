@@ -88,7 +88,17 @@
     task: '<polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
     edit: '<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>',
     bell: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>',
+    wifi: '<path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/>',
+    globe: '<circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',
+    printer: '<polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>',
+    mail: '<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22 6 12 13 2 6"/>',
+    monitor: '<rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>',
+    server: '<rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/>',
+    phone: '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>',
+    grid: '<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>',
   };
+
+  const CATEGORY_ICON_CHOICES = ['ticket', 'wifi', 'globe', 'printer', 'mail', 'monitor', 'server', 'phone', 'grid', 'lock', 'shield', 'users'];
 
   function icon(name, cls = '') {
     return `<svg class="icon ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON_PATHS[name] || ''}</svg>`;
@@ -1131,10 +1141,14 @@
             </select>
           </div>
           <div class="field">
-            <label for="category">Categoria</label>
-            <select id="category">
-              ${categories.map((c) => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join('')}
-            </select>
+            <label>Categoria</label>
+            <div id="categoryPicker" class="category-picker">
+              ${categories.map((c, i) => `
+                <button type="button" class="category-choice ${i === 0 ? 'active' : ''}" data-category="${escapeHtml(c.name)}">
+                  ${icon(c.icon || 'ticket')}
+                  <span>${escapeHtml(c.name)}</span>
+                </button>`).join('')}
+            </div>
           </div>
           <div class="field">
             <label for="subject">Oggetto</label>
@@ -1157,12 +1171,21 @@
         </form>
       </div>`;
 
+    let selectedCategory = categories[0] ? categories[0].name : '';
+    document.querySelectorAll('.category-choice').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.category-choice').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedCategory = btn.dataset.category;
+      });
+    });
+
     guardForm(document.getElementById('newTicketForm'), async () => {
       const errEl = document.getElementById('newTicketError');
       errEl.textContent = '';
       const body = {
         subject: document.getElementById('subject').value.trim(),
-        category: document.getElementById('category').value,
+        category: selectedCategory,
         priority: document.getElementById('priority').value,
         type: document.getElementById('type').value,
         description: document.getElementById('description').value.trim(),
@@ -1555,11 +1578,16 @@
           </form>
           <div id="tempPasswordBox"></div>
         </div>
-        <div class="card">
+        <div class="card admin-grid-full">
           <h3 class="section-title" style="margin-top:0">${icon('ticket')} Categorie ticket</h3>
-          <p class="hint">Personalizza le categorie disponibili nel modulo di apertura ticket.</p>
-          <form id="newCategoryForm" style="display:flex;gap:0.5rem;margin:0.75rem 0">
-            <input id="newCategoryName" placeholder="Nuova categoria" style="flex:1;padding:0.55rem 0.7rem;border:1px solid var(--border);border-radius:var(--radius-sm)" />
+          <p class="hint">Personalizza le categorie disponibili nel modulo di apertura ticket, la loro icona e il team a cui vengono assegnate di default.</p>
+          <form id="newCategoryForm" style="display:flex;flex-wrap:wrap;gap:0.6rem;align-items:flex-end;margin:0.75rem 0">
+            <div class="field" style="flex:1 1 12rem"><label for="newCategoryName">Nome categoria</label><input id="newCategoryName" /></div>
+            <div class="field" style="flex:0 0 auto">
+              <label>Icona</label>
+              <div id="newCategoryIconPicker" class="icon-picker"></div>
+            </div>
+            <div class="field" style="flex:1 1 12rem"><label for="newCategoryGroup">Team predefinito</label><select id="newCategoryGroup"><option value="">Nessuno</option></select></div>
             <button class="btn btn-sm" type="submit">Aggiungi</button>
           </form>
           <p class="error-text" id="categoryError"></p>
@@ -1712,18 +1740,52 @@
         }
       });
 
+      let selectedNewCategoryIcon = 'ticket';
+      function renderIconPicker(containerId, selected, onSelect) {
+        const el = document.getElementById(containerId);
+        el.innerHTML = CATEGORY_ICON_CHOICES.map((name) => `
+          <button type="button" class="icon-choice ${name === selected ? 'active' : ''}" data-icon="${name}" title="${name}">${icon(name)}</button>
+        `).join('');
+        el.querySelectorAll('.icon-choice').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            el.querySelectorAll('.icon-choice').forEach((b) => b.classList.remove('active'));
+            btn.classList.add('active');
+            onSelect(btn.dataset.icon);
+          });
+        });
+      }
+      renderIconPicker('newCategoryIconPicker', selectedNewCategoryIcon, (name) => { selectedNewCategoryIcon = name; });
+
       async function loadCategories() {
         const listEl = document.getElementById('categoriesList');
         listEl.className = 'spinner-row';
         listEl.textContent = 'Caricamento...';
         try {
           const { categories } = await api('/categories');
+          const { groups } = await api('/groups');
+          const groupSelect = document.getElementById('newCategoryGroup');
+          groupSelect.innerHTML = groupOptionsHtml(groups, '', 'Nessuno');
+
           listEl.className = '';
           listEl.innerHTML = categories.length ? categories.map((c) => `
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:0.5rem 0;border-top:1px solid var(--border)">
-              <span>${escapeHtml(c.name)}</span>
+            <div class="category-row">
+              <span class="category-row-icon">${icon(c.icon || 'ticket')}</span>
+              <span class="category-row-name">${escapeHtml(c.name)}</span>
+              <select class="categoryGroupSel" data-id="${c.id}">${groupOptionsHtml(groups, c.default_group_id, 'Nessun team predefinito')}</select>
               <button type="button" class="icon-btn deleteCategoryBtn" data-id="${c.id}" title="Elimina categoria">${icon('trash')}</button>
             </div>`).join('') : '<p class="hint">Nessuna categoria.</p>';
+
+          listEl.querySelectorAll('.categoryGroupSel').forEach((sel) => {
+            sel.addEventListener('change', async () => {
+              try {
+                await api(`/categories/${sel.dataset.id}`, { method: 'PATCH', body: { defaultGroupId: sel.value || null } });
+                showToast('Team predefinito aggiornato', 'success');
+              } catch (err) {
+                showToast(err.message, 'error');
+                loadCategories();
+              }
+            });
+          });
 
           listEl.querySelectorAll('.deleteCategoryBtn').forEach((btn) => {
             btn.addEventListener('click', async () => {
@@ -1748,7 +1810,14 @@
         errEl.textContent = '';
         if (!input.value.trim()) return;
         try {
-          await api('/categories', { method: 'POST', body: { name: input.value.trim() } });
+          await api('/categories', {
+            method: 'POST',
+            body: {
+              name: input.value.trim(),
+              icon: selectedNewCategoryIcon,
+              defaultGroupId: document.getElementById('newCategoryGroup').value || null,
+            },
+          });
           input.value = '';
           showToast('Categoria aggiunta', 'success');
           loadCategories();
