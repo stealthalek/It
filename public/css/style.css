@@ -1228,6 +1228,20 @@ body:not(.role-customer):not(.role-agent):not(.role-admin) .nav-toggle { display
   cursor: pointer;
 }
 .org-node:hover { border-color: var(--primary); }
+.org-node.dragging { opacity: 0.4; }
+.org-node.drop-target { border-color: var(--primary); background: var(--primary-soft); box-shadow: 0 0 0 2px var(--primary-soft); }
+.org-root-drop {
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.65rem;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+.org-root-drop.drop-target { border-color: var(--primary); background: var(--primary-soft); color: var(--primary-dark); }
 .org-node-head {
   display: flex;
   align-items: center;
