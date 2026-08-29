@@ -6,6 +6,14 @@
     user: null,
   };
 
+  let dashboardAutoTimer = null;
+  function teardownDashboardAutoUpdate() {
+    if (dashboardAutoTimer) {
+      clearInterval(dashboardAutoTimer);
+      dashboardAutoTimer = null;
+    }
+  }
+
   let ticketSocket = null;
   function teardownTicketSocket() {
     if (ticketSocket) {
@@ -77,6 +85,8 @@
     plug: '<path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v3a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8z"/>',
     incident: '<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
     task: '<polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
+    edit: '<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>',
+    bell: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>',
   };
 
   function icon(name, cls = '') {
@@ -253,10 +263,36 @@
       userBadge.innerHTML = `${icon('userCircle')} ${escapeHtml(state.user.name)} · ${ROLE_LABELS[state.user.role] || state.user.role}`;
       userBadge.style.display = '';
       logoutBtn.style.display = '';
+      notifBtn.style.display = '';
+      if (!notifSocket) {
+        loadNotifications();
+        connectNotifSocket();
+      }
     } else {
       userBadge.style.display = 'none';
       logoutBtn.style.display = 'none';
+      notifBtn.style.display = 'none';
+      notifDropdown.hidden = true;
+      notifBadge.hidden = true;
+      teardownNotifSocket();
     }
+  }
+
+  function applyOrgName(name) {
+    if (!name) return;
+    const brandEl = document.querySelector('.brand span');
+    if (brandEl) brandEl.textContent = name;
+    document.title = document.title.replace(/^[^·]+/, `${name} `);
+  }
+
+  async function loadOrgName() {
+    const cached = localStorage.getItem('ticketing_org_name');
+    if (cached) applyOrgName(cached);
+    try {
+      const { orgName } = await api('/settings');
+      applyOrgName(orgName);
+      localStorage.setItem('ticketing_org_name', orgName);
+    } catch {}
   }
 
   let ssoConfigPromise = null;
@@ -378,6 +414,108 @@
   settingsBtn.innerHTML = icon('settings');
   settingsBtn.addEventListener('click', () => { location.hash = '#/settings'; });
 
+  const notifBtn = document.getElementById('notifBtn');
+  const notifBadge = document.getElementById('notifBadge');
+  const notifDropdown = document.getElementById('notifDropdown');
+  notifBtn.insertAdjacentHTML('afterbegin', icon('bell'));
+
+  let notifItems = [];
+  let notifSocket = null;
+
+  function updateNotifBadge() {
+    const unread = notifItems.filter((n) => !n.is_read).length;
+    if (unread > 0) {
+      notifBadge.hidden = false;
+      notifBadge.textContent = unread > 9 ? '9+' : String(unread);
+    } else {
+      notifBadge.hidden = true;
+    }
+  }
+
+  function renderNotifDropdown() {
+    notifDropdown.innerHTML = `
+      <div class="notif-header">
+        <span>Notifiche</span>
+        ${notifItems.some((n) => !n.is_read) ? `<button type="button" id="notifMarkAllBtn" class="btn-link">Segna tutte come lette</button>` : ''}
+      </div>
+      <div class="notif-list">
+        ${notifItems.length ? notifItems.map((n) => `
+          <button type="button" class="notif-item ${n.is_read ? '' : 'unread'}" data-id="${n.id}" data-ticket-id="${n.ticket_id || ''}">
+            <span>${escapeHtml(n.message)}</span>
+            <span class="notif-time">${formatDate(n.created_at)}</span>
+          </button>`).join('') : '<p class="hint" style="padding:0.75rem">Nessuna notifica.</p>'}
+      </div>`;
+
+    const markAllBtn = document.getElementById('notifMarkAllBtn');
+    if (markAllBtn) {
+      markAllBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        try { await api('/notifications/read-all', { method: 'POST' }); } catch { return; }
+        notifItems = notifItems.map((n) => ({ ...n, is_read: 1 }));
+        updateNotifBadge();
+        renderNotifDropdown();
+      });
+    }
+
+    notifDropdown.querySelectorAll('.notif-item').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        const ticketId = btn.dataset.ticketId;
+        try { await api(`/notifications/${id}/read`, { method: 'PATCH' }); } catch {}
+        notifItems = notifItems.map((n) => (String(n.id) === id ? { ...n, is_read: 1 } : n));
+        updateNotifBadge();
+        notifDropdown.hidden = true;
+        if (ticketId) location.hash = `#/ticket/${ticketId}`;
+      });
+    });
+  }
+
+  async function loadNotifications() {
+    try {
+      const { notifications } = await api('/notifications');
+      notifItems = notifications;
+      updateNotifBadge();
+      renderNotifDropdown();
+    } catch {}
+  }
+
+  function teardownNotifSocket() {
+    if (notifSocket) {
+      try { notifSocket.disconnect(); } catch {}
+      notifSocket = null;
+    }
+  }
+
+  async function connectNotifSocket() {
+    teardownNotifSocket();
+    try {
+      const base = getApiBase();
+      await loadScriptOnce(`${base}/socket.io/socket.io.js`);
+      if (!window.io) return;
+      const socket = window.io(base || undefined, {
+        auth: { token: state.token },
+        transports: ['websocket', 'polling'],
+      });
+      socket.on('notification:new', (notification) => {
+        notifItems = [notification, ...notifItems].slice(0, 30);
+        updateNotifBadge();
+        renderNotifDropdown();
+        showToast(notification.message, '');
+      });
+      notifSocket = socket;
+    } catch {}
+  }
+
+  notifBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    notifDropdown.hidden = !notifDropdown.hidden;
+  });
+  document.addEventListener('click', (e) => {
+    if (!notifDropdown.hidden && !notifDropdown.contains(e.target) && e.target !== notifBtn) {
+      notifDropdown.hidden = true;
+    }
+  });
+
   const PUBLIC_ROUTES = new Set(['login', 'register']);
   const OPEN_ROUTES = new Set(['login', 'register', 'settings']);
 
@@ -409,6 +547,7 @@
     });
 
     if (page !== 'ticket') teardownTicketSocket();
+    if (page !== 'dashboard') teardownDashboardAutoUpdate();
 
     try {
       switch (page) {
@@ -547,6 +686,32 @@
     return state.user && (state.user.role === 'agent' || state.user.role === 'admin');
   }
 
+  function donutChart(rows, total) {
+    const activeRows = rows.filter((r) => r.value > 0);
+    if (!total || !activeRows.length) return '<p class="hint">Nessun dato disponibile.</p>';
+    let cumulative = 0;
+    const stops = activeRows.map((r) => {
+      const startPct = (cumulative / total) * 100;
+      cumulative += r.value;
+      const endPct = (cumulative / total) * 100;
+      return `${r.color} ${startPct}% ${endPct}%`;
+    }).join(', ');
+    return `
+      <div class="donut-wrap">
+        <div class="donut-chart" style="background:conic-gradient(${stops})" role="img" aria-label="${activeRows.map((r) => `${r.label}: ${r.value}`).join(', ')}">
+          <div class="donut-center"><span class="donut-total">${total}</span><span class="donut-total-label">Totale</span></div>
+        </div>
+        <div class="donut-legend">
+          ${activeRows.map((r) => `
+            <div class="donut-legend-item">
+              <span class="donut-dot" style="background:${r.color}"></span>
+              <span class="donut-legend-label">${escapeHtml(r.label)}</span>
+              <span class="donut-legend-value">${r.value} · ${Math.round((r.value / total) * 100)}%</span>
+            </div>`).join('')}
+        </div>
+      </div>`;
+  }
+
   function barChart(rows, total, opts = {}) {
     const suffix = opts.suffix || '';
     const showPct = opts.showPct !== false && total > 0;
@@ -627,7 +792,13 @@
           <h1>${isStaff() ? t('dashboard_title_staff') : t('dashboard_title_customer')}</h1>
           <p class="hint">${isStaff() ? t('dashboard_hint_staff') : t('dashboard_hint_customer')}</p>
         </div>
-        <a class="btn" href="#/new">${icon('plus')} ${t('new_ticket_btn')}</a>
+        <div style="display:flex;gap:0.6rem;align-items:center">
+          <button type="button" id="autoUpdateBtn" class="btn btn-ghost">
+            <span id="autoUpdateDot" class="live-dot"></span>
+            <span id="autoUpdateLabel">Aggiornamento automatico</span>
+          </button>
+          <a class="btn" href="#/new">${icon('plus')} ${t('new_ticket_btn')}</a>
+        </div>
       </div>
       <div id="personalCounter"></div>
       <div id="statsRow" class="stat-row"></div>
@@ -761,6 +932,12 @@
             </select>
           </div>
           ${barChart(rows, tickets.length)}
+        </div>
+        <div class="card chart-card">
+          <div class="chart-card-head">
+            <h3 class="section-title" style="margin:0">Distribuzione</h3>
+          </div>
+          ${donutChart(rows, tickets.length)}
         </div>`;
 
       document.getElementById('chartDim').addEventListener('change', (e) => {
@@ -795,6 +972,19 @@
       clearTimeout(debounceTimer);
       debounceTimer = setTimeout(load, 300);
     });
+
+    const autoUpdateBtn = document.getElementById('autoUpdateBtn');
+    function setAutoUpdate(enabled) {
+      teardownDashboardAutoUpdate();
+      autoUpdateBtn.classList.toggle('active', enabled);
+      document.getElementById('autoUpdateLabel').textContent = enabled ? 'Aggiornamento automatico attivo' : 'Aggiornamento automatico';
+      localStorage.setItem('ticketing_autoupdate', enabled ? '1' : '0');
+      if (enabled) dashboardAutoTimer = setInterval(load, 15000);
+    }
+    autoUpdateBtn.addEventListener('click', () => {
+      setAutoUpdate(!autoUpdateBtn.classList.contains('active'));
+    });
+    setAutoUpdate(localStorage.getItem('ticketing_autoupdate') === '1');
 
     load();
   }
@@ -906,7 +1096,7 @@
 
     const { ticket, activity } = data;
     const isOwner = ticket.created_by === state.user.id;
-    const canEditFields = isOwner && !isStaff() && ticket.status === 'open';
+    const canEditFields = isOwner || isStaff();
     const canReopen = isOwner && !isStaff() && ['resolved', 'closed'].includes(ticket.status);
 
     let staffPanel = '';
@@ -990,7 +1180,11 @@
               ${ticket.sla_status ? `<span class="badge badge-sla-${ticket.sla_status}">${SLA_LABELS[ticket.sla_status]}</span>` : ''}
             </div>
             ${canEditFields ? `
-              <form id="editForm" class="form-grid" style="max-width:none">
+              <div id="viewDescription">
+                <p style="white-space:pre-wrap">${escapeHtml(ticket.description)}</p>
+                <button type="button" id="editToggleBtn" class="btn btn-ghost btn-sm">${icon('edit', 'badge-icon')} Modifica oggetto e descrizione</button>
+              </div>
+              <form id="editForm" class="form-grid" style="max-width:none" hidden>
                 <div class="field">
                   <label for="editSubject">Oggetto</label>
                   <input id="editSubject" type="text" value="${escapeHtml(ticket.subject)}" />
@@ -999,7 +1193,10 @@
                   <label for="editDescription">Descrizione</label>
                   <textarea id="editDescription">${escapeHtml(ticket.description)}</textarea>
                 </div>
-                <div><button class="btn btn-sm" type="submit">Aggiorna</button></div>
+                <div style="display:flex;gap:0.5rem">
+                  <button class="btn btn-sm" type="submit">Salva modifiche</button>
+                  <button type="button" id="editCancelBtn" class="btn btn-sm btn-ghost">Annulla</button>
+                </div>
               </form>
             ` : `<p style="white-space:pre-wrap">${escapeHtml(ticket.description)}</p>`}
             <p class="ticket-meta">
@@ -1050,7 +1247,22 @@
       }
     });
 
+    const editToggleBtn = document.getElementById('editToggleBtn');
+    const editCancelBtn = document.getElementById('editCancelBtn');
+    const viewDescription = document.getElementById('viewDescription');
     const editForm = document.getElementById('editForm');
+    if (editToggleBtn) {
+      editToggleBtn.addEventListener('click', () => {
+        viewDescription.hidden = true;
+        editForm.hidden = false;
+      });
+    }
+    if (editCancelBtn) {
+      editCancelBtn.addEventListener('click', () => {
+        editForm.hidden = true;
+        viewDescription.hidden = false;
+      });
+    }
     if (editForm) {
       guardForm(editForm, async () => {
         try {
@@ -1236,6 +1448,13 @@
               <select id="newGroup"><option value="">Nessun gruppo</option></select>
               <span class="hint">I membri dello stesso gruppo si vedono a vicenda nell'assegnazione dei ticket</span>
             </div>
+            <div class="field">
+              <label for="newLocale">Lingua account</label>
+              <select id="newLocale">
+                ${Object.entries(LANG_LABELS).map(([v, l]) => `<option value="${v}" ${v === 'it' ? 'selected' : ''}>${l}</option>`).join('')}
+              </select>
+              <span class="hint">Le email inviate a questo account useranno questa lingua</span>
+            </div>
             <p class="error-text" id="createStaffError"></p>
             <div><button class="btn btn-sm" type="submit">Crea account</button></div>
           </form>
@@ -1251,16 +1470,14 @@
           <p class="error-text" id="categoryError"></p>
           <div id="categoriesList" class="spinner-row">Caricamento...</div>
         </div>
-        <div class="card">
+        <div class="card admin-grid-full">
           <h3 class="section-title" style="margin-top:0">${icon('users')} Gruppi di assegnazione</h3>
           <p class="hint">Ogni gruppo ha un proprio SLA (ore per risposta/risoluzione), usato per calcolare lo stato SLA dei ticket.</p>
-          <form id="newGroupForm" class="form-grid" style="max-width:none;margin:0.75rem 0">
-            <input id="newGroupName" placeholder="Nome gruppo" />
-            <select id="newGroupParent"><option value="">Nessuno (gruppo di primo livello)</option></select>
-            <div style="display:flex;gap:0.5rem">
-              <input id="newGroupResponse" type="number" min="1" placeholder="SLA risposta (ore)" style="flex:1" />
-              <input id="newGroupResolve" type="number" min="1" placeholder="SLA risoluzione (ore)" style="flex:1" />
-            </div>
+          <form id="newGroupForm" style="display:flex;flex-wrap:wrap;gap:0.6rem;align-items:flex-end;margin:0.75rem 0">
+            <div class="field" style="flex:1 1 12rem"><label for="newGroupName">Nome gruppo</label><input id="newGroupName" /></div>
+            <div class="field" style="flex:1 1 12rem"><label for="newGroupParent">Gruppo padre</label><select id="newGroupParent"><option value="">Nessuno (primo livello)</option></select></div>
+            <div class="field" style="flex:0 0 7rem"><label for="newGroupResponse">Risposta (h)</label><input id="newGroupResponse" type="number" min="1" /></div>
+            <div class="field" style="flex:0 0 7rem"><label for="newGroupResolve">Risoluzione (h)</label><input id="newGroupResolve" type="number" min="1" /></div>
             <button class="btn btn-sm" type="submit">Crea gruppo</button>
           </form>
           <p class="error-text" id="groupError"></p>
@@ -1295,8 +1512,14 @@
           listEl.innerHTML = flat.length ? flat.map((g) => `
             <div class="group-row" style="padding-left:${g.depth * 1.25}rem">
               <span class="group-row-name">${g.depth ? '– ' : ''}${escapeHtml(g.name)}</span>
-              <input type="number" min="1" class="slaInput" data-group-id="${g.id}" data-field="slaResponseHours" value="${g.sla_response_hours ?? ''}" placeholder="Risposta (h)" />
-              <input type="number" min="1" class="slaInput" data-group-id="${g.id}" data-field="slaResolveHours" value="${g.sla_resolve_hours ?? ''}" placeholder="Risoluzione (h)" />
+              <span class="group-row-sla">
+                <label for="sla-response-${g.id}">Risposta (h)</label>
+                <input id="sla-response-${g.id}" type="number" min="1" class="slaInput" data-group-id="${g.id}" data-field="slaResponseHours" value="${g.sla_response_hours ?? ''}" />
+              </span>
+              <span class="group-row-sla">
+                <label for="sla-resolve-${g.id}">Risoluzione (h)</label>
+                <input id="sla-resolve-${g.id}" type="number" min="1" class="slaInput" data-group-id="${g.id}" data-field="slaResolveHours" value="${g.sla_resolve_hours ?? ''}" />
+              </span>
               <button type="button" class="icon-btn deleteGroupBtn" data-id="${g.id}" title="Elimina gruppo">${icon('trash')}</button>
             </div>`).join('') : '<p class="hint">Nessun gruppo.</p>';
 
@@ -1372,6 +1595,7 @@
           email: document.getElementById('newEmail').value.trim(),
           role: document.getElementById('newRole').value,
           groupId: document.getElementById('newGroup').value || null,
+          locale: document.getElementById('newLocale').value,
         };
         try {
           const { user, tempPassword } = await api('/users', { method: 'POST', body });
@@ -1447,7 +1671,7 @@
         wrap.innerHTML = `
           <div class="table-scroll">
             <table class="users-table">
-              <thead><tr><th>Nome</th><th>Email</th><th>Ruolo</th><th>Gruppo</th><th>Registrato</th>${isAdmin ? '<th></th>' : ''}</tr></thead>
+              <thead><tr><th>Nome</th><th>Email</th><th>Ruolo</th><th>Gruppo</th><th>Lingua</th><th>Registrato</th>${isAdmin ? '<th></th>' : ''}</tr></thead>
               <tbody>
                 ${users.map((u) => `
                   <tr>
@@ -1459,18 +1683,27 @@
                         <select class="groupSel" data-user-id="${u.id}">${groupOptionsHtml(groups, u.group_id, 'Nessun gruppo')}</select>
                       ` : escapeHtml(u.group_name ? (u.group_parent_name ? `${u.group_parent_name} / ${u.group_name}` : u.group_name) : '—')}
                     </td>
+                    <td>
+                      ${isAdmin ? `
+                        <select class="localeSel" data-user-id="${u.id}">
+                          ${Object.entries(LANG_LABELS).map(([v, l]) => `<option value="${v}" ${u.locale === v ? 'selected' : ''}>${l}</option>`).join('')}
+                        </select>
+                      ` : escapeHtml(LANG_LABELS[u.locale] || u.locale || '—')}
+                    </td>
                     <td>${formatDate(u.created_at)}</td>
                     ${isAdmin ? `
-                      <td>
+                      <td style="display:flex;gap:0.4rem;align-items:center">
                         ${u.id === state.user.id ? '' : `
                         <select data-user-id="${u.id}" class="roleSel">
                           ${Object.entries(ROLE_LABELS).map(([v, l]) => `<option value="${v}" ${u.role === v ? 'selected' : ''}>${l}</option>`).join('')}
-                        </select>`}
+                        </select>
+                        <button type="button" class="icon-btn resetPwBtn" data-user-id="${u.id}" title="Reimposta password">${icon('refresh')}</button>`}
                       </td>` : ''}
                   </tr>`).join('')}
               </tbody>
             </table>
-          </div>`;
+          </div>
+          <div id="resetPwBox"></div>`;
 
         wrap.querySelectorAll('.groupSel').forEach((select) => {
           select.addEventListener('change', async () => {
@@ -1492,6 +1725,35 @@
             } catch (err) {
               showToast(err.message, 'error');
               loadUsersTable();
+            }
+          });
+        });
+
+        wrap.querySelectorAll('.localeSel').forEach((sel) => {
+          sel.addEventListener('change', async () => {
+            try {
+              await api(`/users/${sel.dataset.userId}/locale`, { method: 'PATCH', body: { locale: sel.value } });
+              showToast('Lingua aggiornata', 'success');
+            } catch (err) {
+              showToast(err.message, 'error');
+              loadUsersTable();
+            }
+          });
+        });
+
+        wrap.querySelectorAll('.resetPwBtn').forEach((btn) => {
+          btn.addEventListener('click', async () => {
+            if (!confirm('Generare una nuova password temporanea per questo utente?')) return;
+            try {
+              const { user, tempPassword } = await api(`/users/${btn.dataset.userId}/reset-password`, { method: 'POST' });
+              document.getElementById('resetPwBox').innerHTML = `
+                <div class="divider"></div>
+                <p class="success-text">Password reimpostata per ${escapeHtml(user.name)}.</p>
+                <p class="hint">Nuova password temporanea (comunicala in modo sicuro, non sarà più visibile):</p>
+                <p class="card" style="font-family:monospace;font-size:1rem;padding:0.6rem 0.9rem;display:inline-block">${escapeHtml(tempPassword)}</p>`;
+              showToast('Password reimpostata', 'success');
+            } catch (err) {
+              showToast(err.message, 'error');
             }
           });
         });
@@ -1902,9 +2164,10 @@
   function renderSettings() {
     const currentLang = getLang();
     const currentAccent = getAccent();
+    const isAdmin = state.user && state.user.role === 'admin';
     appEl.innerHTML = `
       <div class="view-header"><h1>${icon('plug')} Impostazioni</h1></div>
-      <div class="two-col">
+      <div class="admin-grid">
         <div class="card">
           <h3 class="section-title" style="margin-top:0">Lingua</h3>
           <p class="hint">Scegli la lingua dell'interfaccia.</p>
@@ -1924,6 +2187,16 @@
             `).join('')}
           </div>
         </div>
+        ${isAdmin ? `
+        <div class="card">
+          <h3 class="section-title" style="margin-top:0">${icon('shield')} Organizzazione</h3>
+          <p class="hint">Il nome scelto compare nell'intestazione e nelle email inviate agli utenti.</p>
+          <form id="orgForm" class="form-grid" style="max-width:none">
+            <div class="field"><label for="orgName">Nome organizzazione</label><input id="orgName" required /></div>
+            <div><button class="btn btn-sm" type="submit">Salva</button></div>
+          </form>
+          <p class="error-text" id="orgError"></p>
+        </div>` : ''}
       </div>`;
 
     document.getElementById('langSel').addEventListener('change', (e) => {
@@ -1941,6 +2214,27 @@
         showToast('Colore aggiornato', 'success');
       });
     });
+
+    if (isAdmin) {
+      api('/settings').then(({ orgName }) => {
+        document.getElementById('orgName').value = orgName;
+      }).catch(() => {});
+
+      guardForm(document.getElementById('orgForm'), async () => {
+        const errEl = document.getElementById('orgError');
+        errEl.textContent = '';
+        const name = document.getElementById('orgName').value.trim();
+        if (!name) return;
+        try {
+          const { orgName } = await api('/settings', { method: 'PATCH', body: { orgName: name } });
+          applyOrgName(orgName);
+          localStorage.setItem('ticketing_org_name', orgName);
+          showToast('Nome organizzazione aggiornato', 'success');
+        } catch (err) {
+          errEl.textContent = err.message;
+        }
+      });
+    }
   }
 
   function renderNotFound() {
@@ -1958,8 +2252,9 @@
     });
 
     let hasReloadedForUpdate = false;
+    const hadController = !!navigator.serviceWorker.controller;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (hasReloadedForUpdate) return;
+      if (hasReloadedForUpdate || !hadController) return;
       hasReloadedForUpdate = true;
       window.location.reload();
     });
@@ -2004,5 +2299,6 @@
   applyAccent(getAccent());
   applyChromeTranslations();
   updateChrome();
+  loadOrgName();
   route();
 })();

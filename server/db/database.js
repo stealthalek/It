@@ -49,6 +49,7 @@ async function setupSchema() {
         role TEXT NOT NULL DEFAULT 'customer' CHECK (role IN ('customer', 'agent', 'admin')),
         team TEXT,
         is_super_admin INTEGER NOT NULL DEFAULT 0,
+        locale TEXT NOT NULL DEFAULT 'it',
         created_at TEXT NOT NULL DEFAULT (datetime('now'))
       )`,
       `CREATE TABLE IF NOT EXISTS tickets (
@@ -92,6 +93,18 @@ async function setupSchema() {
         sla_resolve_hours INTEGER,
         created_at TEXT NOT NULL DEFAULT (datetime('now'))
       )`,
+      `CREATE TABLE IF NOT EXISTS app_settings (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        org_name TEXT NOT NULL DEFAULT 'Ticketing'
+      )`,
+      `CREATE TABLE IF NOT EXISTS notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        ticket_id INTEGER REFERENCES tickets(id) ON DELETE CASCADE,
+        message TEXT NOT NULL,
+        is_read INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now'))
+      )`,
       `CREATE TABLE IF NOT EXISTS assets (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
@@ -108,6 +121,7 @@ async function setupSchema() {
       'CREATE INDEX IF NOT EXISTS idx_comments_ticket_id ON comments(ticket_id)',
       'CREATE INDEX IF NOT EXISTS idx_events_ticket_id ON ticket_events(ticket_id)',
       'CREATE INDEX IF NOT EXISTS idx_assets_assigned_to ON assets(assigned_to)',
+      'CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id)',
     ],
     'write'
   );
@@ -140,6 +154,9 @@ async function migrate() {
   }
   if (!userCols.some((c) => c.name === 'is_super_admin')) {
     await run('ALTER TABLE users ADD COLUMN is_super_admin INTEGER NOT NULL DEFAULT 0');
+  }
+  if (!userCols.some((c) => c.name === 'locale')) {
+    await run("ALTER TABLE users ADD COLUMN locale TEXT NOT NULL DEFAULT 'it'");
   }
   const superAdminRow = await get("SELECT COUNT(*) AS n FROM users WHERE is_super_admin = 1");
   if (superAdminRow.n === 0) {
@@ -224,11 +241,19 @@ async function seedDefaultAdmin() {
   console.log('======================================================');
 }
 
+async function seedAppSettings() {
+  const row = await get('SELECT id FROM app_settings WHERE id = 1');
+  if (!row) {
+    await run('INSERT INTO app_settings (id, org_name) VALUES (1, ?)', ['Ticketing']);
+  }
+}
+
 async function initDb() {
   await setupSchema();
   await migrate();
   await seedDefaultCategories();
   await seedDefaultAdmin();
+  await seedAppSettings();
   console.log(usingTurso ? 'Database: Turso (persistente)' : `Database: file locale (${url})`);
 }
 

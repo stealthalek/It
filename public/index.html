@@ -8,7 +8,8 @@
 <meta name="theme-color" content="#8f2436" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap" onload="this.onload=null;this.rel='stylesheet'" />
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap" /></noscript>
 <link rel="manifest" href="manifest.json" />
 <link rel="icon" href="img/icon.svg" type="image/svg+xml" />
 <link rel="apple-touch-icon" href="img/icon.svg" />
@@ -22,6 +23,12 @@
       <span>Ticketing</span>
     </a>
     <button id="installBtn" class="topbar-icon-btn" type="button" title="Installa l'app" aria-label="Installa l'app" style="display:none"></button>
+    <div class="notif-wrap">
+      <button id="notifBtn" class="topbar-icon-btn" type="button" title="Notifiche" aria-label="Notifiche" style="display:none">
+        <span id="notifBadge" class="notif-badge" hidden></span>
+      </button>
+      <div id="notifDropdown" class="notif-dropdown" hidden></div>
+    </div>
     <button id="settingsBtn" class="topbar-icon-btn" type="button" title="Impostazioni" aria-label="Impostazioni"></button>
     <button id="navToggle" class="nav-toggle" aria-label="Apri menu" aria-expanded="false">
       <span></span><span></span><span></span>
