@@ -1224,13 +1224,13 @@
       return [];
     }
 
+    const donutDims = ['status', 'priority', 'type'];
+
     function renderCharts(tickets) {
       chartsEl.innerHTML = '';
       if (!tickets.length) return;
 
       const rows = computeBreakdown(tickets, currentChartDim);
-      const selectableDims = ['status', 'priority', 'type'];
-      const donutOpts = { dim: currentChartDim, onSelect: selectableDims.includes(currentChartDim) ? true : null };
       chartsEl.innerHTML = `
         <div class="card chart-card chart-card-wide">
           <div class="chart-card-head">
@@ -1241,36 +1241,39 @@
           </div>
           ${barChart(rows, tickets.length)}
         </div>
-        <div class="card chart-card">
-          <div class="chart-card-head">
-            <h3 class="section-title" style="margin:0">${t('chart_distribution')}</h3>
-          </div>
-          ${donutChart(rows, tickets.length, donutOpts)}
-        </div>`;
+        ${donutDims.map((dim) => `
+          <div class="card chart-card" data-dim="${dim}">
+            <div class="chart-card-head">
+              <h3 class="section-title" style="margin:0">${chartDimensions()[dim]}</h3>
+            </div>
+            ${donutChart(computeBreakdown(tickets, dim), tickets.length, { dim, onSelect: true })}
+          </div>`).join('')}`;
 
       document.getElementById('chartDim').addEventListener('change', (e) => {
         currentChartDim = e.target.value;
         renderCharts(tickets);
       });
 
-      if (selectableDims.includes(currentChartDim)) {
-        chartsEl.querySelectorAll('.donut-legend-item.selectable').forEach((item) => {
+      chartsEl.querySelectorAll('.chart-card[data-dim]').forEach((card) => {
+        const dim = card.dataset.dim;
+        card.querySelectorAll('.donut-legend-item.selectable').forEach((item) => {
           item.addEventListener('click', (e) => {
             if (e.target.classList.contains('donut-color-input')) return;
             const key = item.dataset.key;
-            if (currentChartDim === 'status') fStatus.value = key;
-            else if (currentChartDim === 'priority') fPriority.value = key;
-            else if (currentChartDim === 'type') fType.value = key;
+            if (dim === 'status') fStatus.value = key;
+            else if (dim === 'priority') fPriority.value = key;
+            else if (dim === 'type') fType.value = key;
             load();
           });
         });
-      }
-      chartsEl.querySelectorAll('.donut-color-input').forEach((input) => {
+      });
+      chartsEl.querySelectorAll('.chart-card[data-dim] .donut-color-input').forEach((input) => {
         input.addEventListener('click', (e) => e.stopPropagation());
         input.addEventListener('input', (e) => {
-          setCustomChartColor(currentChartDim, input.dataset.key, e.target.value);
+          const dim = input.closest('.chart-card[data-dim]').dataset.dim;
+          setCustomChartColor(dim, input.dataset.key, e.target.value);
           renderCharts(tickets);
-          if (currentChartDim === 'status') renderScopedCharts();
+          if (dim === 'status') renderScopedCharts();
         });
       });
     }
