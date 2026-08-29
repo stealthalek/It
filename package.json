@@ -19,6 +19,8 @@
     "express": "^4.19.2",
     "google-auth-library": "^9.14.1",
     "jsonwebtoken": "^9.0.2",
-    "jwks-rsa": "^3.1.0"
+    "jwks-rsa": "^3.1.0",
+    "nodemailer": "^9.0.6",
+    "socket.io": "^4.8.3"
   }
 }

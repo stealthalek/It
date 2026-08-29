@@ -5,6 +5,7 @@ Piattaforma di ticketing full-stack e realmente funzionante: gestione di richies
 ## Stack tecnico
 
 - **Backend:** Node.js + Express, REST API con autenticazione JWT
+- **Tempo reale:** Socket.IO per chat live e presenza sui ticket
 - **Database:** SQLite/libSQL (`@libsql/client`) — file locale zero-configurazione in sviluppo, oppure [Turso](https://turso.tech) per una copia remota persistente in produzione (vedi sotto)
 - **Frontend:** SPA in JavaScript vanilla, nessun build step, CSS responsive
 - **PWA:** manifest + service worker per installazione, cache degli asset statici e aggiornamento automatico
@@ -17,8 +18,12 @@ Piattaforma di ticketing full-stack e realmente funzionante: gestione di richies
 - Stati (`aperto`, `in lavorazione`, `risolto`, `chiuso`) e priorità (`bassa`…`urgente`)
 - Categorie personalizzabili dall'amministratore, selezionabili dal cliente in fase di apertura
 - **Timeline attività** su ogni ticket: commenti e cambi di stato/priorità/assegnazione in un unico flusso cronologico (in stile ITSM)
-- Assegnazione dei ticket agli agenti, filtri per stato/priorità/assegnatario, ricerca testuale
-- Dashboard con contatori in tempo reale (aperti, in lavorazione, risolti, urgenti)
+- **Tipo Incident / Task** per ogni ticket, con badge dedicato e filtro in dashboard
+- Assegnazione dei ticket agli agenti, filtri per stato/priorità/tipo/assegnatario, ricerca testuale
+- Dashboard con contatori in tempo reale (aperti, in lavorazione, risolti, urgenti), un **contatore personale** (carico assegnato per lo staff, ticket in corso per i clienti) e **grafici** (distribuzione per stato, incident vs task)
+- **Chat e attività in tempo reale**: commenti e cambi di stato appaiono istantaneamente su tutti i dispositivi collegati al ticket, senza ricaricare la pagina (Socket.IO)
+- **Indicatore di presenza**: quando un tecnico apre un ticket il cliente lo vede in tempo reale, e viceversa
+- **Notifica email** al cliente quando il suo ticket viene contrassegnato come risolto (richiede la configurazione SMTP opzionale, vedi sotto)
 - **Note interne**, visibili solo allo staff
 - Il cliente può riaprire un ticket risolto/chiuso se il problema persiste
 - Pannello di amministrazione grafico: ruoli utente, creazione account staff con password temporanea, categorie ticket
@@ -119,6 +124,23 @@ Dopo aver impostato le variabili e riavviato/ridistribuito il backend, i pulsant
 
 Aprendo il sito da un browser mobile è possibile installarlo come app (pulsante di installazione in alto, o "Aggiungi a schermata Home" su iOS/Safari dove il browser non espone un prompt automatico). Gli asset statici vengono messi in cache dal service worker per l'uso offline, mentre i dati dei ticket sono sempre recuperati in tempo reale dal server. Ad ogni apertura dell'app (o quando torna in primo piano), viene controllata automaticamente la presenza di una nuova versione: se disponibile, viene scaricata e l'app si aggiorna da sola.
 
+## Chat in tempo reale e presenza
+
+Ogni pagina di dettaglio ticket apre una connessione Socket.IO verso il backend: nuovi commenti, cambi di stato/priorità/tipo/assegnazione e la riapertura del ticket compaiono istantaneamente su tutti i dispositivi collegati a quel ticket, senza bisogno di ricaricare la pagina. Quando un tecnico apre un ticket, il cliente vede un avviso in tempo reale ("Un tecnico sta seguendo questo ticket"), e viceversa lo staff vede quando il cliente sta guardando il ticket. Le note interne restano visibili solo allo staff anche negli aggiornamenti live. Non serve alcuna configurazione: funziona automaticamente non appena backend e frontend sono collegati.
+
+## Notifica email al completamento del ticket
+
+Quando uno staff member contrassegna un ticket come **risolto**, il cliente può ricevere automaticamente un'email di notifica, oltre all'avviso già visibile nella piattaforma. La funzione è opzionale e disattivata finché non configuri un server SMTP: se le variabili non sono impostate, il backend continua a funzionare normalmente e semplicemente non invia email.
+
+1. Scegli un provider SMTP. Alcune opzioni gratuite: il tuo stesso account Gmail (richiede una ["password per le app"](https://myaccount.google.com/apppasswords), disponibile se hai la verifica in due passaggi attiva), oppure un servizio email transazionale come [Brevo](https://www.brevo.com) o [Resend](https://resend.com) (piano gratuito, credenziali SMTP dedicate).
+2. Su Render, apri il servizio → **Environment** e imposta:
+   - `SMTP_HOST` (es. `smtp.gmail.com`)
+   - `SMTP_PORT` (es. `465` per connessione SSL diretta, o `587`)
+   - `SMTP_USER` (il tuo indirizzo email o l'utente fornito dal provider)
+   - `SMTP_PASS` (la password per le app o la chiave SMTP del provider — mai la password normale dell'account)
+   - `SMTP_FROM` (opzionale, indirizzo mittente mostrato al destinatario; se omesso usa `SMTP_USER`)
+3. Render riavvia automaticamente il servizio: da questo momento, ogni volta che un ticket passa a "Risolto", il cliente riceve un'email.
+
 ## Variabili d'ambiente
 
 | Variabile | Descrizione | Default |
@@ -132,6 +154,11 @@ Aprendo il sito da un browser mobile è possibile installarlo come app (pulsante
 | `MICROSOFT_TENANT_ID` | Limita l'accesso Microsoft a un singolo tenant aziendale | `common` (qualsiasi account Microsoft) |
 | `TURSO_DATABASE_URL` | URL del database Turso (`libsql://...`), rende i dati persistenti tra i deploy | non impostato (usa file SQLite locale) |
 | `TURSO_AUTH_TOKEN` | Token di accesso al database Turso | non impostato |
+| `SMTP_HOST` | Host del server SMTP, abilita le email di notifica | non impostato (email disattivate) |
+| `SMTP_PORT` | Porta del server SMTP | `587` |
+| `SMTP_USER` | Utente/indirizzo per l'autenticazione SMTP | non impostato |
+| `SMTP_PASS` | Password o chiave API SMTP | non impostato |
+| `SMTP_FROM` | Indirizzo mittente mostrato nelle email | uguale a `SMTP_USER` |
 
 ## Struttura del progetto
 

@@ -2,6 +2,8 @@ const express = require('express');
 const db = require('../db/database');
 const { authenticate } = require('../middleware/auth');
 const asyncHandler = require('../middleware/asyncHandler');
+const realtime = require('../realtime');
+const mailer = require('../mailer');
 
 const router = express.Router();
 router.use(authenticate);
@@ -53,7 +55,14 @@ async function resolveCategory(requested) {
 }
 
 async function logEvent(ticketId, actorId, message) {
-  await db.run('INSERT INTO ticket_events (ticket_id, actor_id, message) VALUES (?, ?, ?)', [ticketId, actorId, message]);
+  const info = await db.run('INSERT INTO ticket_events (ticket_id, actor_id, message) VALUES (?, ?, ?)', [ticketId, actorId, message]);
+  const row = await db.get(
+    `SELECT e.id, e.message, e.created_at, u.name AS actor_name
+     FROM ticket_events e LEFT JOIN users u ON u.id = e.actor_id
+     WHERE e.id = ?`,
+    [Number(info.lastInsertRowid)]
+  );
+  realtime.broadcastActivityItem(ticketId, { kind: 'event', ...row });
 }
 
 async function listActivity(ticketId, includeInternal) {
@@ -169,6 +178,7 @@ router.patch(
     const params = [];
     const body = req.body || {};
     const events = [];
+    let justResolved = false;
 
     if (isStaff(req.user)) {
       if (body.status !== undefined) {
@@ -179,6 +189,7 @@ router.patch(
           updates.push('status = ?');
           params.push(body.status);
           events.push(`Stato cambiato da "${STATUS_LABELS[ticket.status]}" a "${STATUS_LABELS[body.status]}"`);
+          justResolved = body.status === 'resolved';
         }
       }
       if (body.priority !== undefined) {
@@ -269,6 +280,10 @@ router.patch(
     }
 
     const updated = await db.get(`${TICKET_SELECT} WHERE t.id = ?`, [ticket.id]);
+    realtime.broadcastTicketUpdate(ticket.id, updated);
+    if (justResolved) {
+      mailer.notifyTicketResolved(updated).catch((err) => console.error('Invio email fallito:', err.message));
+    }
     res.json({ ticket: updated });
   })
 );
@@ -299,13 +314,21 @@ router.post(
     }
     const internal = isStaff(req.user) && is_internal ? 1 : 0;
 
-    await db.run('INSERT INTO comments (ticket_id, user_id, message, is_internal) VALUES (?, ?, ?, ?)', [
+    const info = await db.run('INSERT INTO comments (ticket_id, user_id, message, is_internal) VALUES (?, ?, ?, ?)', [
       ticket.id,
       req.user.id,
       message.trim(),
       internal,
     ]);
     await db.run("UPDATE tickets SET updated_at = datetime('now') WHERE id = ?", [ticket.id]);
+
+    const commentRow = await db.get(
+      `SELECT c.id, c.message, c.is_internal, c.created_at, u.name AS author_name, u.role AS author_role
+       FROM comments c JOIN users u ON u.id = c.user_id
+       WHERE c.id = ?`,
+      [Number(info.lastInsertRowid)]
+    );
+    realtime.broadcastActivityItem(ticket.id, { kind: 'comment', ...commentRow });
 
     const activity = await listActivity(ticket.id, isStaff(req.user));
     res.status(201).json({ activity });
