@@ -188,6 +188,14 @@ async function migrate() {
       await run('UPDATE users SET group_id = ? WHERE id = ?', [g.id, u.id]);
     }
   }
+
+  const categoryCols = await all('PRAGMA table_info(categories)');
+  if (!categoryCols.some((c) => c.name === 'icon')) {
+    await run("ALTER TABLE categories ADD COLUMN icon TEXT NOT NULL DEFAULT 'ticket'");
+  }
+  if (!categoryCols.some((c) => c.name === 'default_group_id')) {
+    await run('ALTER TABLE categories ADD COLUMN default_group_id INTEGER REFERENCES groups(id) ON DELETE SET NULL');
+  }
 }
 
 async function seedDefaultGroups() {
