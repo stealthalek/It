@@ -189,6 +189,7 @@
       stat_incidents: 'Incident', stat_tasks: 'Task',
       personal_counter_staff: 'Assegnati a te, ancora aperti', personal_counter_customer: 'Tuoi ticket in corso',
       chart_title: 'Grafico', chart_distribution: 'Distribuzione', chart_total: 'Totale',
+      chart_mine_title: 'I miei ticket', chart_team_title: 'Il mio team', chart_no_team: 'Non fai parte di nessun gruppo',
       dim_status: 'Stato', dim_priority: 'Priorità', dim_type: 'Tipo', dim_category: 'Categoria', dim_assigned: 'Assegnatario',
       auto_update: 'Aggiornamento automatico', auto_update_on: 'Aggiornamento automatico attivo', impersonate: 'Immedesimati',
       btn_save: 'Salva', btn_cancel: 'Annulla', btn_delete: 'Elimina', btn_add: 'Aggiungi', btn_search: 'Cerca',
@@ -271,6 +272,7 @@
       stat_incidents: 'Incidents', stat_tasks: 'Tasks',
       personal_counter_staff: 'Assigned to you, still open', personal_counter_customer: 'Your ongoing tickets',
       chart_title: 'Chart', chart_distribution: 'Distribution', chart_total: 'Total',
+      chart_mine_title: 'My tickets', chart_team_title: 'My team', chart_no_team: 'You are not part of any group',
       dim_status: 'Status', dim_priority: 'Priority', dim_type: 'Type', dim_category: 'Category', dim_assigned: 'Assignee',
       auto_update: 'Auto update', auto_update_on: 'Auto update active', impersonate: 'View as',
       btn_save: 'Save', btn_cancel: 'Cancel', btn_delete: 'Delete', btn_add: 'Add', btn_search: 'Search',
@@ -1050,6 +1052,7 @@
       <div id="personalCounter"></div>
       <div id="statsRow" class="stat-row"></div>
       <div id="chartsRow" class="charts-row"></div>
+      <div id="scopedChartsRow" class="charts-row"></div>
       <div class="filters">
         <select id="fType">
           <option value="">${t('filter_all_types')}</option>
@@ -1117,6 +1120,7 @@
     const statsEl = document.getElementById('statsRow');
     const personalEl = document.getElementById('personalCounter');
     const chartsEl = document.getElementById('chartsRow');
+    const scopedChartsEl = document.getElementById('scopedChartsRow');
     const fType = document.getElementById('fType');
     const fStatus = document.getElementById('fStatus');
     const fPriority = document.getElementById('fPriority');
@@ -1186,6 +1190,7 @@
       return { status: t('dim_status'), priority: t('dim_priority'), type: t('dim_type'), category: t('dim_category'), assigned: t('dim_assigned') };
     }
     let currentChartDim = 'status';
+    let lastTickets = [];
 
     function computeBreakdown(tickets, dim) {
       if (dim === 'status') {
@@ -1265,6 +1270,55 @@
         input.addEventListener('input', (e) => {
           setCustomChartColor(currentChartDim, input.dataset.key, e.target.value);
           renderCharts(tickets);
+          if (currentChartDim === 'status') renderScopedCharts();
+        });
+      });
+    }
+
+    function scopedChartCard(id, title, rows, total, emptyHint) {
+      return `
+        <div class="card chart-card">
+          <div class="chart-card-head">
+            <h3 class="section-title" style="margin:0">${escapeHtml(title)}</h3>
+          </div>
+          ${total ? donutChart(rows, total, { dim: 'status' }) : `<p class="hint">${escapeHtml(emptyHint)}</p>`}
+        </div>`;
+    }
+
+    async function renderScopedCharts() {
+      const targetId = viewingAs ? viewingAs.id : state.user.id;
+      const targetRole = viewingAs ? viewingAs.role : state.user.role;
+      if (targetRole === 'customer') { scopedChartsEl.innerHTML = ''; return; }
+
+      let groupId = null;
+      let groupName = '';
+      try {
+        const { users } = await api('/users');
+        const me = users.find((u) => u.id === targetId);
+        if (me && me.group_id) {
+          groupId = me.group_id;
+          groupName = me.group_parent_name ? `${me.group_parent_name} / ${me.group_name}` : me.group_name;
+        }
+      } catch {}
+
+      const [mineData, teamData] = await Promise.all([
+        api(`/tickets?assigned=${targetId}`).catch(() => ({ tickets: [] })),
+        groupId ? api(`/tickets?group=${groupId}`).catch(() => ({ tickets: [] })) : Promise.resolve({ tickets: [] }),
+      ]);
+
+      const mineRows = computeBreakdown(mineData.tickets, 'status');
+      const teamRows = computeBreakdown(teamData.tickets, 'status');
+
+      scopedChartsEl.innerHTML =
+        scopedChartCard('mineChart', t('chart_mine_title'), mineRows, mineData.tickets.length, t('no_tickets_found')) +
+        scopedChartCard('teamChart', groupName || t('chart_team_title'), teamRows, teamData.tickets.length, t('chart_no_team'));
+
+      scopedChartsEl.querySelectorAll('.donut-color-input').forEach((input) => {
+        input.addEventListener('click', (e) => e.stopPropagation());
+        input.addEventListener('input', (e) => {
+          setCustomChartColor('status', input.dataset.key, e.target.value);
+          renderCharts(lastTickets);
+          renderScopedCharts();
         });
       });
     }
@@ -1283,9 +1337,11 @@
 
       try {
         const { tickets } = await api(`/tickets?${params.toString()}`);
+        lastTickets = tickets;
         renderStats(tickets);
         renderPersonalCounter(tickets);
         renderCharts(tickets);
+        renderScopedCharts();
         renderTicketList(listEl, tickets);
       } catch (err) {
         listEl.className = '';
