@@ -55,6 +55,7 @@ async function setupSchema() {
         description TEXT NOT NULL,
         status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'in_progress', 'resolved', 'closed')),
         priority TEXT NOT NULL DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
+        type TEXT NOT NULL DEFAULT 'incident' CHECK (type IN ('incident', 'task')),
         category TEXT NOT NULL DEFAULT 'generale',
         created_by INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         assigned_to INTEGER REFERENCES users(id) ON DELETE SET NULL,
@@ -96,6 +97,10 @@ async function migrate() {
     await run('ALTER TABLE comments ADD COLUMN is_internal INTEGER NOT NULL DEFAULT 0');
   }
 
+  const ticketCols = await all('PRAGMA table_info(tickets)');
+  if (!ticketCols.some((c) => c.name === 'type')) {
+    await run("ALTER TABLE tickets ADD COLUMN type TEXT NOT NULL DEFAULT 'incident'");
+  }
 }
 
 async function seedDefaultCategories() {
