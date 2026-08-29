@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ticketing-static-v4';
+const CACHE_NAME = 'ticketing-static-v5';
 const STATIC_ASSETS = [
   './',
   './index.html',
