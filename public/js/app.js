@@ -50,6 +50,9 @@
   const mainNav = document.getElementById('mainNav');
   const userBadge = document.getElementById('userBadge');
   const logoutBtn = document.getElementById('logoutBtn');
+  const sidebarEl = document.getElementById('sidebar');
+  const sidebarBackdrop = document.getElementById('sidebarBackdrop');
+  const sidebarCollapseBtn = document.getElementById('sidebarCollapseBtn');
 
   function statusLabels() {
     return {
@@ -426,13 +429,18 @@
     dashboard: 'nav_dashboard', new: 'nav_new', search: 'nav_search', backlog: 'nav_backlog',
     assets: 'nav_assets', report: 'nav_report', admin: 'nav_admin', profile: 'nav_profile',
   };
+  const NAV_ICON_BY_ROUTE = {
+    dashboard: 'ticket', new: 'plus', search: 'inbox', backlog: 'check',
+    assets: 'monitor', report: 'activity', admin: 'shield', profile: 'userCircle',
+  };
 
   function applyChromeTranslations() {
     document.querySelectorAll('.main-nav a[data-nav]').forEach((a) => {
       const key = NAV_KEY_BY_ROUTE[a.dataset.nav];
-      if (key) a.textContent = t(key);
+      const iconName = NAV_ICON_BY_ROUTE[a.dataset.nav];
+      if (key) a.innerHTML = `${icon(iconName, 'nav-icon')}<span class="nav-label">${t(key)}</span>`;
     });
-    logoutBtn.innerHTML = `${icon('logout')} ${t('logout')}`;
+    logoutBtn.innerHTML = `${icon('logout')} <span class="nav-label">${t('logout')}</span>`;
   }
 
   const ACCENT_PRESETS = {
@@ -516,7 +524,7 @@
     document.body.classList.remove('role-customer', 'role-agent', 'role-admin');
     if (state.user) {
       document.body.classList.add(`role-${state.user.role}`);
-      userBadge.innerHTML = `${icon('userCircle')} ${escapeHtml(state.user.name)} · ${roleLabels()[state.user.role] || state.user.role}`;
+      userBadge.innerHTML = `${icon('userCircle')} <span>${escapeHtml(state.user.name)} · ${roleLabels()[state.user.role] || state.user.role}</span>`;
       userBadge.style.display = '';
       logoutBtn.style.display = '';
       notifBtn.style.display = '';
@@ -692,13 +700,29 @@
     });
   }
 
-  navToggle.addEventListener('click', () => {
-    const open = mainNav.classList.toggle('open');
+  function setSidebarOpen(open) {
+    sidebarEl.classList.toggle('open', open);
+    sidebarBackdrop.hidden = !open;
     navToggle.setAttribute('aria-expanded', String(open));
+  }
+  navToggle.addEventListener('click', () => {
+    setSidebarOpen(!sidebarEl.classList.contains('open'));
   });
+  sidebarBackdrop.addEventListener('click', () => setSidebarOpen(false));
   mainNav.addEventListener('click', (e) => {
-    if (e.target.closest('a')) mainNav.classList.remove('open');
+    if (e.target.closest('a')) setSidebarOpen(false);
   });
+
+  function setSidebarCollapsed(collapsed) {
+    sidebarEl.classList.toggle('collapsed', collapsed);
+    sidebarCollapseBtn.setAttribute('aria-expanded', String(!collapsed));
+    localStorage.setItem('ticketing_sidebar_collapsed', collapsed ? '1' : '0');
+  }
+  sidebarCollapseBtn.addEventListener('click', () => {
+    setSidebarCollapsed(!sidebarEl.classList.contains('collapsed'));
+  });
+  sidebarCollapseBtn.innerHTML = icon('arrowLeft');
+  setSidebarCollapsed(localStorage.getItem('ticketing_sidebar_collapsed') === '1');
 
   logoutBtn.addEventListener('click', () => {
     state.viewAs = null;
