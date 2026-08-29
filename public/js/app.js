@@ -232,6 +232,16 @@
       no_group_label: 'Senza gruppo',
       filter_all_teams: 'Tutti i team', filter_all_members: 'Tutti i membri', report_chart_type_label: 'Tipo di grafico',
       chart_type_bar: 'A barre', chart_type_donut: 'A ciambella',
+      report_date_from: 'Da', report_date_to: 'A',
+      btn_export_csv: 'Esporta CSV', btn_export_excel: 'Esporta Excel',
+      report_export_count_label: 'Ticket nel filtro:',
+      toast_export_no_data: 'Nessun ticket corrisponde ai filtri selezionati',
+      toast_export_failed: 'Esportazione non riuscita',
+      report_col_number: 'Numero', report_col_subject: 'Oggetto', report_col_type: 'Tipo', report_col_status: 'Stato',
+      report_col_priority: 'Priorità', report_col_group: 'Gruppo', report_col_requester: 'Richiedente',
+      report_col_requester_email: 'Email richiedente', report_col_assignee: 'Assegnatario',
+      report_col_created: 'Creato il', report_col_resolved: 'Risolto il', report_col_resolution_hours: 'Ore di risoluzione',
+      report_col_sla: 'SLA',
       your_account_title: 'Il tuo account', change_password_title: 'Cambia password',
       current_password_label: 'Password attuale', new_password_label: 'Nuova password',
       confirm_new_password_label: 'Conferma nuova password', btn_update_password: 'Aggiorna password',
@@ -362,6 +372,16 @@
       no_group_label: 'No group',
       filter_all_teams: 'All teams', filter_all_members: 'All members', report_chart_type_label: 'Chart type',
       chart_type_bar: 'Bar', chart_type_donut: 'Donut',
+      report_date_from: 'From', report_date_to: 'To',
+      btn_export_csv: 'Export CSV', btn_export_excel: 'Export Excel',
+      report_export_count_label: 'Tickets in filter:',
+      toast_export_no_data: 'No tickets match the selected filters',
+      toast_export_failed: 'Export failed',
+      report_col_number: 'Number', report_col_subject: 'Subject', report_col_type: 'Type', report_col_status: 'Status',
+      report_col_priority: 'Priority', report_col_group: 'Group', report_col_requester: 'Requester',
+      report_col_requester_email: 'Requester email', report_col_assignee: 'Assignee',
+      report_col_created: 'Created at', report_col_resolved: 'Resolved at', report_col_resolution_hours: 'Resolution hours',
+      report_col_sla: 'SLA',
       your_account_title: 'Your account', change_password_title: 'Change password',
       current_password_label: 'Current password', new_password_label: 'New password',
       confirm_new_password_label: 'Confirm new password', btn_update_password: 'Update password',
@@ -2934,21 +2954,44 @@
       <div class="filters">
         <select id="reportTeam"><option value="">${t('filter_all_teams')}</option></select>
         <select id="reportMember"><option value="">${t('filter_all_members')}</option></select>
+        <select id="reportStatus">
+          <option value="">${t('filter_all_statuses')}</option>
+          ${Object.entries(statusLabels()).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
+        </select>
+        <select id="reportType">
+          <option value="">${t('filter_all_types')}</option>
+          ${Object.entries(typeLabels()).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
+        </select>
+        <input type="date" id="reportDateFrom" title="${t('report_date_from')}" />
+        <input type="date" id="reportDateTo" title="${t('report_date_to')}" />
         <select id="reportChartType">
           <option value="bar">${t('chart_type_bar')}</option>
           <option value="donut">${t('chart_type_donut')}</option>
         </select>
+      </div>
+      <div class="report-export-bar">
+        <button type="button" id="exportCsvBtn" class="btn btn-ghost">${icon('download')} ${t('btn_export_csv')}</button>
+        <button type="button" id="exportExcelBtn" class="btn btn-ghost">${icon('download')} ${t('btn_export_excel')}</button>
+        <span class="hint" id="reportExportCount"></span>
       </div>
       <div id="reportCharts" class="charts-row spinner-row">${t('loading')}</div>`;
 
     const chartsEl = document.getElementById('reportCharts');
     const teamSel = document.getElementById('reportTeam');
     const memberSel = document.getElementById('reportMember');
+    const statusSel = document.getElementById('reportStatus');
+    const typeSel = document.getElementById('reportType');
+    const dateFromEl = document.getElementById('reportDateFrom');
+    const dateToEl = document.getElementById('reportDateTo');
     const chartTypeSel = document.getElementById('reportChartType');
+    const exportCountEl = document.getElementById('reportExportCount');
+    const exportCsvBtn = document.getElementById('exportCsvBtn');
+    const exportExcelBtn = document.getElementById('exportExcelBtn');
 
     let allTickets = [];
     let groups = [];
     let staffUsers = [];
+    let filteredTickets = [];
     try {
       const [ticketsRes, groupsRes, usersRes] = await Promise.all([api('/tickets'), api('/groups'), api('/users')]);
       allTickets = ticketsRes.tickets;
@@ -2981,11 +3024,27 @@
       }
     }
 
+    function passesDateFilter(tk) {
+      if (!dateFromEl.value && !dateToEl.value) return true;
+      const created = new Date(tk.created_at.replace(' ', 'T') + 'Z').getTime();
+      if (dateFromEl.value && created < new Date(`${dateFromEl.value}T00:00:00Z`).getTime()) return false;
+      if (dateToEl.value && created > new Date(`${dateToEl.value}T23:59:59Z`).getTime()) return false;
+      return true;
+    }
+
     function renderAll() {
       const teamId = teamSel.value ? Number(teamSel.value) : null;
       const memberId = memberSel.value ? Number(memberSel.value) : null;
+      const statusVal = statusSel.value;
+      const typeVal = typeSel.value;
       const tickets = allTickets.filter((tk) =>
-        (!teamId || tk.group_id === teamId) && (!memberId || tk.assigned_to === memberId));
+        (!teamId || tk.group_id === teamId) &&
+        (!memberId || tk.assigned_to === memberId) &&
+        (!statusVal || tk.status === statusVal) &&
+        (!typeVal || tk.type === typeVal) &&
+        passesDateFilter(tk));
+      filteredTickets = tickets;
+      exportCountEl.textContent = `${t('report_export_count_label')} ${tickets.length}`;
       const noGroupLabel = t('no_group_label');
 
       const groupCounts = new Map();
@@ -3043,7 +3102,80 @@
 
     teamSel.addEventListener('change', () => { populateMemberOptions(); renderAll(); });
     memberSel.addEventListener('change', renderAll);
+    statusSel.addEventListener('change', renderAll);
+    typeSel.addEventListener('change', renderAll);
+    dateFromEl.addEventListener('change', renderAll);
+    dateToEl.addEventListener('change', renderAll);
     chartTypeSel.addEventListener('change', renderAll);
+
+    function buildExportRows() {
+      return filteredTickets.map((tk) => ({
+        [t('report_col_number')]: `#${tk.id}`,
+        [t('report_col_subject')]: tk.subject,
+        [t('report_col_type')]: typeLabels()[tk.type] || tk.type,
+        [t('report_col_status')]: statusLabels()[tk.status] || tk.status,
+        [t('report_col_priority')]: priorityLabels()[tk.priority] || tk.priority,
+        [t('report_col_group')]: tk.group_name || t('no_group_label'),
+        [t('report_col_requester')]: tk.creator_name,
+        [t('report_col_requester_email')]: tk.creator_email,
+        [t('report_col_assignee')]: tk.assignee_name || '',
+        [t('report_col_created')]: tk.created_at,
+        [t('report_col_resolved')]: tk.resolved_at || '',
+        [t('report_col_resolution_hours')]: tk.resolved_at
+          ? Math.round(((new Date(tk.resolved_at.replace(' ', 'T') + 'Z') - new Date(tk.created_at.replace(' ', 'T') + 'Z')) / 3600000) * 10) / 10
+          : '',
+        [t('report_col_sla')]: tk.sla_status ? (slaLabels()[tk.sla_status] || tk.sla_status) : '',
+      }));
+    }
+
+    function exportFilename(ext) {
+      return `report-ticket-${new Date().toISOString().slice(0, 10)}.${ext}`;
+    }
+
+    function csvEscape(value) {
+      const str = String(value ?? '');
+      return /[",\n;]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
+    }
+
+    function downloadBlob(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    exportCsvBtn.addEventListener('click', () => {
+      const rows = buildExportRows();
+      if (!rows.length) { showToast(t('toast_export_no_data'), 'error'); return; }
+      const headers = Object.keys(rows[0]);
+      const lines = [headers.join(',')].concat(rows.map((r) => headers.map((h) => csvEscape(r[h])).join(',')));
+      const blob = new Blob([`﻿${lines.join('\r\n')}`], { type: 'text/csv;charset=utf-8;' });
+      downloadBlob(blob, exportFilename('csv'));
+    });
+
+    exportExcelBtn.addEventListener('click', async () => {
+      const rows = buildExportRows();
+      if (!rows.length) { showToast(t('toast_export_no_data'), 'error'); return; }
+      const originalLabel = exportExcelBtn.innerHTML;
+      exportExcelBtn.disabled = true;
+      exportExcelBtn.innerHTML = `${icon('download')} ${t('loading')}`;
+      try {
+        if (!window.XLSX) await loadScriptOnce('vendor/xlsx.full.min.js');
+        const sheet = window.XLSX.utils.json_to_sheet(rows);
+        const wb = window.XLSX.utils.book_new();
+        window.XLSX.utils.book_append_sheet(wb, sheet, t('nav_report'));
+        window.XLSX.writeFile(wb, exportFilename('xlsx'));
+      } catch {
+        showToast(t('toast_export_failed'), 'error');
+      } finally {
+        exportExcelBtn.disabled = false;
+        exportExcelBtn.innerHTML = originalLabel;
+      }
+    });
 
     renderAll();
   }

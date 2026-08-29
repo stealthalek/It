@@ -927,6 +927,15 @@ body:not(.role-customer):not(.role-agent):not(.role-admin) .nav-toggle { display
 }
 .filters select { padding: 0.5rem 2.1rem 0.5rem 0.65rem; }
 
+.report-export-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.2rem;
+}
+.report-export-bar .hint { margin: 0; }
+
 .ticket-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
