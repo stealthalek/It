@@ -109,6 +109,22 @@
     showToast._t = setTimeout(() => { toastEl.className = 'toast'; }, 3200);
   }
 
+  function guardForm(form, handler) {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (form.dataset.submitting === '1') return;
+      form.dataset.submitting = '1';
+      const buttons = [...form.querySelectorAll('button[type="submit"]')];
+      buttons.forEach((b) => { b.disabled = true; });
+      try {
+        await handler(e);
+      } finally {
+        form.dataset.submitting = '';
+        buttons.forEach((b) => { b.disabled = false; });
+      }
+    });
+  }
+
   const HOSTED_DEFAULT_API_BASE = 'https://it-ticketing-api-2g68.onrender.com';
 
   function getApiBase() {
@@ -367,8 +383,7 @@
     attachPasswordToggle('password', 'pwToggle');
     renderSsoButtons('ssoContainer');
 
-    document.getElementById('loginForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
+    guardForm(document.getElementById('loginForm'), async () => {
       const email = document.getElementById('email').value.trim();
       const password = document.getElementById('password').value;
       const errEl = document.getElementById('loginError');
@@ -426,8 +441,7 @@
     attachPasswordToggle('password2', 'pwToggle2');
     renderSsoButtons('ssoContainer');
 
-    document.getElementById('registerForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
+    guardForm(document.getElementById('registerForm'), async () => {
       const name = document.getElementById('name').value.trim();
       const email = document.getElementById('email').value.trim();
       const password = document.getElementById('password').value;
@@ -452,6 +466,22 @@
 
   function isStaff() {
     return state.user && (state.user.role === 'agent' || state.user.role === 'admin');
+  }
+
+  function groupStaffByTeam(users) {
+    const staffUsers = users.filter((u) => u.role === 'agent' || u.role === 'admin');
+    const groups = new Map();
+    staffUsers.forEach((u) => {
+      const key = u.team || 'Senza team';
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(u);
+    });
+    const sortedTeams = [...groups.keys()].sort((a, b) => {
+      if (a === 'Senza team') return 1;
+      if (b === 'Senza team') return -1;
+      return a.localeCompare(b);
+    });
+    return sortedTeams.map((team) => ({ team, members: groups.get(team) }));
   }
 
   async function renderDashboard() {
@@ -485,7 +515,7 @@
           <option value="me">Assegnati a me</option>
           <option value="unassigned">Non assegnati</option>
         </select>` : ''}
-        <input id="fQuery" type="search" placeholder="Cerca per testo o numero ticket..." />
+        <input id="fQuery" type="search" placeholder="${isStaff() ? 'Cerca per testo, numero ticket o richiedente...' : 'Cerca per testo o numero ticket...'}" />
       </div>
       <div id="ticketList" class="skeleton-grid">
         ${Array(4).fill('<div class="skeleton-card"></div>').join('')}
@@ -500,6 +530,19 @@
     const fPriority = document.getElementById('fPriority');
     const fAssigned = document.getElementById('fAssigned');
     const fQuery = document.getElementById('fQuery');
+
+    if (fAssigned) {
+      api('/users').then(({ users }) => {
+        const teamGroups = groupStaffByTeam(users).map(({ team, members }) => ({
+          team,
+          members: members.filter((u) => u.id !== state.user.id),
+        })).filter((g) => g.members.length);
+        fAssigned.insertAdjacentHTML('beforeend', teamGroups.map(({ team, members }) => `
+          <optgroup label="${escapeHtml(team)}">
+            ${members.map((u) => `<option value="${u.id}">${escapeHtml(u.name)}</option>`).join('')}
+          </optgroup>`).join(''));
+      }).catch(() => {});
+    }
 
     function renderStats(tickets) {
       const counts = { open: 0, in_progress: 0, resolved: 0, closed: 0, urgent: 0 };
@@ -712,8 +755,7 @@
         </form>
       </div>`;
 
-    document.getElementById('newTicketForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
+    guardForm(document.getElementById('newTicketForm'), async () => {
       const errEl = document.getElementById('newTicketError');
       errEl.textContent = '';
       const body = {
@@ -753,22 +795,11 @@
     if (isStaff()) {
       try {
         const { users } = await api('/users');
-        const staffUsers = users.filter((u) => u.role === 'agent' || u.role === 'admin');
-        const groups = new Map();
-        staffUsers.forEach((u) => {
-          const key = u.team || 'Senza team';
-          if (!groups.has(key)) groups.set(key, []);
-          groups.get(key).push(u);
-        });
-        const sortedTeams = [...groups.keys()].sort((a, b) => {
-          if (a === 'Senza team') return 1;
-          if (b === 'Senza team') return -1;
-          return a.localeCompare(b);
-        });
+        const teamGroups = groupStaffByTeam(users);
         assigneesOptions = `<option value="">Non assegnato</option>` +
-          sortedTeams.map((team) => `
+          teamGroups.map(({ team, members }) => `
             <optgroup label="${escapeHtml(team)}">
-              ${groups.get(team).map((u) => `<option value="${u.id}" ${ticket.assigned_to === u.id ? 'selected' : ''}>${escapeHtml(u.name)}</option>`).join('')}
+              ${members.map((u) => `<option value="${u.id}" ${ticket.assigned_to === u.id ? 'selected' : ''}>${escapeHtml(u.name)}</option>`).join('')}
             </optgroup>`).join('');
       } catch { assigneesOptions = ''; }
 
@@ -859,8 +890,7 @@
         <div>${staffPanel}</div>
       </div>`;
 
-    document.getElementById('commentForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
+    guardForm(document.getElementById('commentForm'), async () => {
       const msgEl = document.getElementById('commentMsg');
       const internalEl = document.getElementById('internalCheck');
       if (!msgEl.value.trim()) return;
@@ -879,8 +909,7 @@
 
     const editForm = document.getElementById('editForm');
     if (editForm) {
-      editForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
+      guardForm(editForm, async () => {
         try {
           await api(`/tickets/${ticket.id}`, {
             method: 'PATCH',
@@ -1074,8 +1103,7 @@
       <div id="usersWrap" class="card spinner-row">Caricamento...</div>`;
 
     if (isAdmin) {
-      document.getElementById('createStaffForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
+      guardForm(document.getElementById('createStaffForm'), async (e) => {
         const errEl = document.getElementById('createStaffError');
         errEl.textContent = '';
         const body = {
@@ -1129,8 +1157,7 @@
         }
       }
 
-      document.getElementById('newCategoryForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
+      guardForm(document.getElementById('newCategoryForm'), async () => {
         const input = document.getElementById('newCategoryName');
         const errEl = document.getElementById('categoryError');
         errEl.textContent = '';
@@ -1246,8 +1273,7 @@
         </div>
       </div>`;
 
-    document.getElementById('pwForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
+    guardForm(document.getElementById('pwForm'), async (e) => {
       const errEl = document.getElementById('pwError');
       errEl.textContent = '';
       const currentPassword = document.getElementById('currentPassword').value;
@@ -1319,8 +1345,7 @@
       input.value = '';
     });
 
-    document.getElementById('settingsForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
+    guardForm(document.getElementById('settingsForm'), async () => {
       setApiBase(input.value.trim());
       showToast('Indirizzo server salvato', 'success');
       await testConnection(getApiBase());

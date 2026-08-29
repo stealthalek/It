@@ -20,7 +20,7 @@ Piattaforma di ticketing full-stack e realmente funzionante: gestione di richies
 - **Timeline attività** su ogni ticket: commenti e cambi di stato/priorità/assegnazione in un unico flusso cronologico (in stile ITSM)
 - **Tipo Incident / Task** per ogni ticket, con badge dedicato e filtro in dashboard
 - **Team di assegnazione**: l'amministratore può assegnare ogni agente a un team; nel pannello di gestione del ticket l'elenco degli assegnatari è raggruppato per team, così i membri dello stesso team si vedono e si assegnano i ticket a vicenda con un colpo d'occhio
-- Assegnazione dei ticket agli agenti, filtri per stato/priorità/tipo/assegnatario, ricerca testuale che trova anche un ticket per numero esatto (es. cercando `42` salta dritto al ticket #42)
+- Assegnazione dei ticket agli agenti, filtri per stato/priorità/tipo e per un assegnatario specifico (ogni membro dello staff, non solo "assegnati a me"); ricerca testuale che trova anche un ticket per numero esatto (es. cercando `42` salta dritto al ticket #42) e, per lo staff, anche per nome o email del richiedente — così un admin trova subito i ticket di una persona specifica
 - Dashboard con contatori in tempo reale (aperti, in lavorazione, risolti, urgenti), un **contatore personale** (carico assegnato per lo staff, ticket in corso per i clienti) e un **grafico personalizzabile** (cambia al volo la vista: stato, priorità, tipo, categoria o assegnatario)
 - **Storico completo**: nessun ticket sparisce dalla dashboard quando viene risolto o chiuso, resta sempre consultabile e filtrabile per stato
 - **Chat e attività in tempo reale**: commenti e cambi di stato appaiono istantaneamente su tutti i dispositivi collegati al ticket, senza ricaricare la pagina (Socket.IO)

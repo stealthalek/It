@@ -103,6 +103,9 @@ router.get(
       params.push(req.user.id);
     } else if (assigned === 'unassigned') {
       clauses.push('t.assigned_to IS NULL');
+    } else if (assigned && /^\d+$/.test(assigned)) {
+      clauses.push('t.assigned_to = ?');
+      params.push(Number(assigned));
     }
 
     if (status && STATUSES.includes(status)) {
@@ -120,11 +123,15 @@ router.get(
     if (q && q.trim()) {
       const trimmed = q.trim();
       const asId = /^\d+$/.test(trimmed) ? Number(trimmed) : null;
+      const requesterMatch = isStaff(req.user) ? ' OR creator.name LIKE ? OR creator.email LIKE ?' : '';
       if (asId !== null) {
-        clauses.push('(t.subject LIKE ? OR t.description LIKE ? OR t.id = ?)');
+        clauses.push(`(t.subject LIKE ? OR t.description LIKE ? OR t.id = ?${requesterMatch})`);
         params.push(`%${trimmed}%`, `%${trimmed}%`, asId);
       } else {
-        clauses.push('(t.subject LIKE ? OR t.description LIKE ?)');
+        clauses.push(`(t.subject LIKE ? OR t.description LIKE ?${requesterMatch})`);
+        params.push(`%${trimmed}%`, `%${trimmed}%`);
+      }
+      if (isStaff(req.user)) {
         params.push(`%${trimmed}%`, `%${trimmed}%`);
       }
     }
