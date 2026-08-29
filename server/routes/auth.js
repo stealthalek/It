@@ -12,10 +12,20 @@ const router = express.Router();
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-function makeAuthLimiter() {
+function passwordError(password) {
+  if (!password || password.length < 8) {
+    return 'La password deve avere almeno 8 caratteri';
+  }
+  if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
+    return 'La password deve contenere almeno una lettera e un numero';
+  }
+  return null;
+}
+
+function makeAuthLimiter(max = 20) {
   return rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 20,
+    max,
     standardHeaders: true,
     legacyHeaders: false,
     message: { error: 'Troppi tentativi, riprova tra qualche minuto' },
@@ -57,8 +67,9 @@ router.post(
     if (!email || !EMAIL_RE.test(email)) {
       return res.status(400).json({ error: 'Email non valida' });
     }
-    if (!password || password.length < 6) {
-      return res.status(400).json({ error: 'La password deve avere almeno 6 caratteri' });
+    const pwError = passwordError(password);
+    if (pwError) {
+      return res.status(400).json({ error: pwError });
     }
 
     const existing = await db.get('SELECT id FROM users WHERE email = ?', [email.toLowerCase()]);
@@ -82,7 +93,7 @@ router.post(
 
 router.post(
   '/login',
-  makeAuthLimiter(),
+  makeAuthLimiter(8),
   asyncHandler(async (req, res) => {
     const { email, password } = req.body || {};
     if (!email || !password) {
@@ -154,8 +165,9 @@ router.post(
     if (!currentPassword || !newPassword) {
       return res.status(400).json({ error: 'Password attuale e nuova password sono obbligatorie' });
     }
-    if (newPassword.length < 6) {
-      return res.status(400).json({ error: 'La nuova password deve avere almeno 6 caratteri' });
+    const pwError = passwordError(newPassword);
+    if (pwError) {
+      return res.status(400).json({ error: pwError });
     }
 
     const user = await db.get('SELECT * FROM users WHERE id = ?', [req.user.id]);
