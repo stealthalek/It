@@ -255,6 +255,7 @@
       btn_create_group: 'Crea gruppo', delete_group_title: 'Elimina gruppo', shift_from_label: 'Turno dalle', shift_to_label: 'alle',
       confirm_delete_group: 'Eliminare questo gruppo?', toast_sla_updated: 'SLA aggiornata', toast_work_hours_updated: 'Orario di lavoro aggiornato',
       toast_group_deleted: 'Gruppo eliminato', toast_group_created: 'Gruppo creato', toast_default_team_updated: 'Team predefinito aggiornato',
+      org_drop_root_hint: 'Trascina qui un gruppo per renderlo di primo livello', toast_group_reparented: 'Gruppo riorganizzato',
       toast_category_deleted: 'Categoria eliminata', toast_category_added: 'Categoria aggiunta', delete_category_title: 'Elimina categoria',
       no_categories_hint: 'Nessuna categoria.', no_groups_hint: 'Nessun gruppo.', account_created_for: 'Account creato per',
       temp_password_hint: 'Password temporanea (comunicala in modo sicuro, non sarà più visibile):', toast_staff_created: 'Account staff creato',
@@ -376,6 +377,7 @@
       btn_create_group: 'Create group', delete_group_title: 'Delete group', shift_from_label: 'Shift from', shift_to_label: 'to',
       confirm_delete_group: 'Delete this group?', toast_sla_updated: 'SLA updated', toast_work_hours_updated: 'Work hours updated',
       toast_group_deleted: 'Group deleted', toast_group_created: 'Group created', toast_default_team_updated: 'Default team updated',
+      org_drop_root_hint: 'Drag a group here to make it top-level', toast_group_reparented: 'Group reorganized',
       toast_category_deleted: 'Category deleted', toast_category_added: 'Category added', delete_category_title: 'Delete category',
       no_categories_hint: 'No categories.', no_groups_hint: 'No groups.', account_created_for: 'Account created for',
       temp_password_hint: 'Temporary password (share it securely, it won\'t be shown again):', toast_staff_created: 'Staff account created',
@@ -2020,7 +2022,7 @@
         const stats = statsById.get(node.id) || { open: 0, breached: 0 };
         return `
           <div class="org-branch">
-            <div class="org-node" data-group-id="${node.id}" data-group-name="${escapeHtml(node.name)}" title="${t('org_node_hint')}">
+            <div class="org-node" draggable="true" data-group-id="${node.id}" data-group-name="${escapeHtml(node.name)}" title="${t('org_node_hint')}">
               <div class="org-node-head">
                 <span class="org-node-name">${escapeHtml(node.name)}</span>
                 <button type="button" class="icon-btn deleteGroupBtn" data-id="${node.id}" title="${t('delete_group_title')}">${icon('trash')}</button>
@@ -2060,7 +2062,9 @@
           });
           const tree = buildGroupTree(groups);
           listEl.className = '';
-          listEl.innerHTML = tree.length ? `<div class="org-chart">${tree.map((node) => renderOrgNode(node, statsById)).join('')}</div>` : `<p class="hint">${t('no_groups_hint')}</p>`;
+          listEl.innerHTML = tree.length ? `
+            <div id="orgRootDrop" class="org-root-drop">${t('org_drop_root_hint')}</div>
+            <div class="org-chart">${tree.map((node) => renderOrgNode(node, statsById)).join('')}</div>` : `<p class="hint">${t('no_groups_hint')}</p>`;
 
           listEl.querySelectorAll('.org-node').forEach((nodeEl) => {
             nodeEl.addEventListener('click', (e) => {
@@ -2069,6 +2073,64 @@
               location.hash = '#/search';
             });
           });
+
+          let draggedGroupId = null;
+          async function reparentGroup(sourceId, parentId) {
+            try {
+              await api(`/groups/${sourceId}`, { method: 'PATCH', body: { parentId } });
+              showToast(t('toast_group_reparented'), 'success');
+              loadGroups();
+              loadGroupOptions();
+            } catch (err) {
+              showToast(err.message, 'error');
+            }
+          }
+          listEl.querySelectorAll('.org-node').forEach((nodeEl) => {
+            nodeEl.addEventListener('dragstart', (e) => {
+              draggedGroupId = nodeEl.dataset.groupId;
+              nodeEl.classList.add('dragging');
+              e.dataTransfer.effectAllowed = 'move';
+              e.dataTransfer.setData('text/plain', draggedGroupId);
+            });
+            nodeEl.addEventListener('dragend', () => {
+              nodeEl.classList.remove('dragging');
+              listEl.querySelectorAll('.drop-target').forEach((el) => el.classList.remove('drop-target'));
+              draggedGroupId = null;
+            });
+            nodeEl.addEventListener('dragover', (e) => {
+              if (!draggedGroupId || draggedGroupId === nodeEl.dataset.groupId) return;
+              e.preventDefault();
+              e.dataTransfer.dropEffect = 'move';
+              nodeEl.classList.add('drop-target');
+            });
+            nodeEl.addEventListener('dragleave', () => nodeEl.classList.remove('drop-target'));
+            nodeEl.addEventListener('drop', (e) => {
+              e.preventDefault();
+              nodeEl.classList.remove('drop-target');
+              const sourceId = draggedGroupId;
+              const targetId = nodeEl.dataset.groupId;
+              if (!sourceId || sourceId === targetId) return;
+              reparentGroup(sourceId, Number(targetId));
+            });
+          });
+
+          const rootDrop = document.getElementById('orgRootDrop');
+          if (rootDrop) {
+            rootDrop.addEventListener('dragover', (e) => {
+              if (!draggedGroupId) return;
+              e.preventDefault();
+              e.dataTransfer.dropEffect = 'move';
+              rootDrop.classList.add('drop-target');
+            });
+            rootDrop.addEventListener('dragleave', () => rootDrop.classList.remove('drop-target'));
+            rootDrop.addEventListener('drop', (e) => {
+              e.preventDefault();
+              rootDrop.classList.remove('drop-target');
+              const sourceId = draggedGroupId;
+              if (!sourceId) return;
+              reparentGroup(sourceId, null);
+            });
+          }
 
           listEl.querySelectorAll('.slaInput').forEach((input) => {
             input.addEventListener('change', async () => {
