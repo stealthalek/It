@@ -312,10 +312,12 @@ svg { display: block; }
   align-items: center;
   gap: 0.4rem;
 }
-.staff-only { display: none; }
-body.role-agent .staff-only, body.role-admin .staff-only { display: flex; }
-.admin-only { display: none; }
-body.role-admin .admin-only { display: flex; }
+.main-nav a.logged-in-only { display: none; }
+body.role-customer .main-nav a.logged-in-only, body.role-agent .main-nav a.logged-in-only, body.role-admin .main-nav a.logged-in-only { display: flex; }
+.main-nav a.staff-only { display: none; }
+body.role-agent .main-nav a.staff-only, body.role-admin .main-nav a.staff-only { display: flex; }
+.main-nav a.admin-only { display: none; }
+body.role-admin .main-nav a.admin-only { display: flex; }
 
 @media (min-width: 760px) {
   .nav-toggle { display: none; }
