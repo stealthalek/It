@@ -79,8 +79,19 @@ function computeSlaStatus(ticket) {
   return 'on_track';
 }
 
+function computeSlaRemaining(ticket) {
+  if (!ticket.sla_resolve_hours || !ticket.created_at) return null;
+  if (ticket.status === 'resolved' || ticket.status === 'closed') return null;
+  const workStart = ticket.work_start_hour ?? 9;
+  const workEnd = ticket.work_end_hour ?? 18;
+  const created = new Date(ticket.created_at.replace(' ', 'T') + 'Z').getTime();
+  const resolveMs = ticket.sla_resolve_hours * 3600 * 1000;
+  const elapsed = businessMillisBetween(created, Date.now(), workStart, workEnd);
+  return resolveMs - elapsed;
+}
+
 function withSla(ticket) {
-  return { ...ticket, sla_status: computeSlaStatus(ticket) };
+  return { ...ticket, sla_status: computeSlaStatus(ticket), sla_remaining_ms: computeSlaRemaining(ticket) };
 }
 
 function isStaff(user) {
@@ -88,7 +99,10 @@ function isStaff(user) {
 }
 
 function canAccessTicket(user, ticket) {
-  return isStaff(user) || ticket.created_by === user.id;
+  if (!isStaff(user)) return ticket.created_by === user.id;
+  if (user.is_super_admin) return true;
+  if (!ticket.group_id) return true;
+  return ticket.group_id === user.group_id;
 }
 
 async function getTicketOr404(req, res) {
@@ -172,6 +186,15 @@ router.get(
     if (isStaff(req.user) && req.query.createdBy && /^\d+$/.test(req.query.createdBy)) {
       clauses.push('t.created_by = ?');
       params.push(Number(req.query.createdBy));
+    }
+
+    if (isStaff(req.user) && !req.user.is_super_admin) {
+      if (req.user.group_id) {
+        clauses.push('(t.group_id IS NULL OR t.group_id = ?)');
+        params.push(req.user.group_id);
+      } else {
+        clauses.push('t.group_id IS NULL');
+      }
     }
 
     if (status && STATUSES.includes(status)) {
@@ -428,6 +451,8 @@ router.delete(
     if (req.user.role !== 'admin') {
       return res.status(403).json({ error: 'Solo un amministratore può eliminare un ticket' });
     }
+    const ticket = await getTicketOr404(req, res);
+    if (!ticket) return;
     const result = await db.run('DELETE FROM tickets WHERE id = ?', [req.params.id]);
     if (Number(result.rowsAffected) === 0) {
       return res.status(404).json({ error: 'Ticket non trovato' });
