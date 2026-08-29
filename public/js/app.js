@@ -279,6 +279,19 @@
     }
   }
 
+  function getMotionPref() {
+    const stored = localStorage.getItem('ticketing_motion');
+    if (stored === 'full' || stored === 'reduced') return stored;
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'reduced' : 'full';
+  }
+  function applyMotion(pref) {
+    document.documentElement.classList.toggle('reduce-motion', pref === 'reduced');
+  }
+  function setMotion(pref) {
+    localStorage.setItem('ticketing_motion', pref);
+    applyMotion(pref);
+  }
+
   function applyOrgName(name) {
     if (!name) return;
     const brandEl = document.querySelector('.brand span');
@@ -665,15 +678,15 @@
             <div class="field">
               <label for="password">Password</label>
               <div class="password-field">
-                <input id="password" type="password" required minlength="6" autocomplete="new-password" />
+                <input id="password" type="password" required minlength="8" autocomplete="new-password" />
                 <button type="button" id="pwToggle" class="icon-btn password-toggle" aria-label="Mostra password"></button>
               </div>
-              <span class="hint">Almeno 6 caratteri</span>
+              <span class="hint">Almeno 8 caratteri, con lettere e numeri</span>
             </div>
             <div class="field">
               <label for="password2">Conferma password</label>
               <div class="password-field">
-                <input id="password2" type="password" required minlength="6" autocomplete="new-password" />
+                <input id="password2" type="password" required minlength="8" autocomplete="new-password" />
                 <button type="button" id="pwToggle2" class="icon-btn password-toggle" aria-label="Mostra password"></button>
               </div>
             </div>
@@ -2266,11 +2279,11 @@
             </div>
             <div class="field">
               <label for="newPassword">Nuova password</label>
-              <input id="newPassword" type="password" required minlength="6" autocomplete="new-password" />
+              <input id="newPassword" type="password" required minlength="8" autocomplete="new-password" />
             </div>
             <div class="field">
               <label for="newPassword2">Conferma nuova password</label>
-              <input id="newPassword2" type="password" required minlength="6" autocomplete="new-password" />
+              <input id="newPassword2" type="password" required minlength="8" autocomplete="new-password" />
             </div>
             <p class="error-text" id="pwError"></p>
             <div><button class="btn btn-sm" type="submit">Aggiorna password</button></div>
@@ -2354,6 +2367,10 @@
               <button type="button" class="accent-swatch ${currentAccent === key ? 'active' : ''}" data-accent="${key}" style="background:${preset.primary}" title="${escapeHtml(preset.label)}"></button>
             `).join('')}
           </div>
+          <label class="checkbox-field" style="margin-top:1rem">
+            <input type="checkbox" id="motionToggle" ${getMotionPref() === 'full' ? 'checked' : ''} />
+            Animazioni fluide
+          </label>
         </div>
         ${isAdmin ? `
         <div class="card">
@@ -2381,6 +2398,11 @@
         btn.classList.add('active');
         showToast('Colore aggiornato', 'success');
       });
+    });
+
+    document.getElementById('motionToggle').addEventListener('change', (e) => {
+      setMotion(e.target.checked ? 'full' : 'reduced');
+      showToast('Preferenza animazioni aggiornata', 'success');
     });
 
     if (isAdmin) {
@@ -2465,6 +2487,7 @@
   });
 
   applyAccent(getAccent());
+  applyMotion(getMotionPref());
   applyChromeTranslations();
   updateChrome();
   loadOrgName();

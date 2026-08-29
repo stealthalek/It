@@ -67,7 +67,8 @@ initRealtime(httpServer);
 
 async function main() {
   if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
-    console.warn('ATTENZIONE: JWT_SECRET non impostato in produzione, viene usato un valore di default non sicuro.');
+    console.error('JWT_SECRET non impostato in produzione: avvio bloccato per sicurezza. Imposta la variabile d\'ambiente JWT_SECRET.');
+    process.exit(1);
   }
   await db.initDb();
   startAutoCloseScheduler();

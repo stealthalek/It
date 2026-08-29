@@ -156,7 +156,7 @@ Quando uno staff member contrassegna un ticket come **risolto**, il cliente può
 | Variabile | Descrizione | Default |
 |---|---|---|
 | `PORT` | Porta HTTP del server | `3000` |
-| `JWT_SECRET` | Segreto per la firma dei token JWT — **da cambiare in produzione** | `dev-secret-change-me` |
+| `JWT_SECRET` | Segreto per la firma dei token JWT — **obbligatorio in produzione** (l'avvio viene bloccato se manca) | `dev-secret-change-me` (solo in sviluppo locale) |
 | `DEFAULT_ADMIN_EMAIL` | Email dell'admin creato al primo avvio | `admin@ticketing.local` |
 | `DEFAULT_ADMIN_PASSWORD` | Password dell'admin creato al primo avvio | `Admin123!` |
 | `GOOGLE_CLIENT_ID` | Client ID OAuth Google, abilita l'accesso "Sign in with Google" | non impostato (SSO Google disattivato) |
