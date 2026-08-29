@@ -7,10 +7,16 @@ const router = express.Router();
 router.use(authenticate);
 
 const GROUP_SELECT = `
-  SELECT g.id, g.name, g.parent_id, parent.name AS parent_name, g.sla_response_hours, g.sla_resolve_hours
+  SELECT g.id, g.name, g.parent_id, parent.name AS parent_name, g.sla_response_hours, g.sla_resolve_hours,
+    g.work_start_hour, g.work_end_hour
   FROM groups g
   LEFT JOIN groups parent ON parent.id = g.parent_id
 `;
+
+function validWorkHour(value) {
+  const n = Number(value);
+  return Number.isInteger(n) && n >= 0 && n <= 24;
+}
 
 async function isDescendant(candidateId, ofId) {
   let current = await db.get('SELECT parent_id FROM groups WHERE id = ?', [candidateId]);
@@ -33,9 +39,15 @@ router.post(
   '/',
   requireRole('admin'),
   asyncHandler(async (req, res) => {
-    const { name, parentId, slaResponseHours, slaResolveHours } = req.body || {};
+    const { name, parentId, slaResponseHours, slaResolveHours, workStartHour, workEndHour } = req.body || {};
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Il nome del gruppo è obbligatorio' });
+    }
+    if (workStartHour !== undefined && workStartHour !== null && !validWorkHour(workStartHour)) {
+      return res.status(400).json({ error: 'Orario di inizio non valido' });
+    }
+    if (workEndHour !== undefined && workEndHour !== null && !validWorkHour(workEndHour)) {
+      return res.status(400).json({ error: 'Orario di fine non valido' });
     }
 
     const existing = await db.get('SELECT id FROM groups WHERE name = ?', [name.trim()]);
@@ -52,12 +64,17 @@ router.post(
       finalParentId = parent.id;
     }
 
-    const info = await db.run('INSERT INTO groups (name, parent_id, sla_response_hours, sla_resolve_hours) VALUES (?, ?, ?, ?)', [
-      name.trim(),
-      finalParentId,
-      slaResponseHours ? Number(slaResponseHours) : null,
-      slaResolveHours ? Number(slaResolveHours) : null,
-    ]);
+    const info = await db.run(
+      'INSERT INTO groups (name, parent_id, sla_response_hours, sla_resolve_hours, work_start_hour, work_end_hour) VALUES (?, ?, ?, ?, ?, ?)',
+      [
+        name.trim(),
+        finalParentId,
+        slaResponseHours ? Number(slaResponseHours) : null,
+        slaResolveHours ? Number(slaResolveHours) : null,
+        workStartHour !== undefined && workStartHour !== null ? Number(workStartHour) : 9,
+        workEndHour !== undefined && workEndHour !== null ? Number(workEndHour) : 18,
+      ]
+    );
     const group = await db.get(`${GROUP_SELECT} WHERE g.id = ?`, [Number(info.lastInsertRowid)]);
     res.status(201).json({ group });
   })
@@ -72,9 +89,16 @@ router.patch(
       return res.status(404).json({ error: 'Gruppo non trovato' });
     }
 
-    const { parentId, slaResponseHours, slaResolveHours } = req.body || {};
+    const { parentId, slaResponseHours, slaResolveHours, workStartHour, workEndHour } = req.body || {};
     const updates = [];
     const params = [];
+
+    if (workStartHour !== undefined && workStartHour !== null && !validWorkHour(workStartHour)) {
+      return res.status(400).json({ error: 'Orario di inizio non valido' });
+    }
+    if (workEndHour !== undefined && workEndHour !== null && !validWorkHour(workEndHour)) {
+      return res.status(400).json({ error: 'Orario di fine non valido' });
+    }
 
     if (parentId !== undefined) {
       if (parentId === null) {
@@ -102,6 +126,14 @@ router.patch(
     if (slaResolveHours !== undefined) {
       updates.push('sla_resolve_hours = ?');
       params.push(slaResolveHours || null);
+    }
+    if (workStartHour !== undefined && workStartHour !== null) {
+      updates.push('work_start_hour = ?');
+      params.push(Number(workStartHour));
+    }
+    if (workEndHour !== undefined && workEndHour !== null) {
+      updates.push('work_end_hour = ?');
+      params.push(Number(workEndHour));
     }
 
     if (updates.length === 0) {

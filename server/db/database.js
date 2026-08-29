@@ -189,6 +189,21 @@ async function migrate() {
     }
   }
 
+  const settingsCols = await all('PRAGMA table_info(app_settings)');
+  for (const col of ['invite_subject_it', 'invite_body_it', 'invite_subject_en', 'invite_body_en']) {
+    if (!settingsCols.some((c) => c.name === col)) {
+      await run(`ALTER TABLE app_settings ADD COLUMN ${col} TEXT`);
+    }
+  }
+
+  const groupCols2 = await all('PRAGMA table_info(groups)');
+  if (!groupCols2.some((c) => c.name === 'work_start_hour')) {
+    await run('ALTER TABLE groups ADD COLUMN work_start_hour INTEGER NOT NULL DEFAULT 9');
+  }
+  if (!groupCols2.some((c) => c.name === 'work_end_hour')) {
+    await run('ALTER TABLE groups ADD COLUMN work_end_hour INTEGER NOT NULL DEFAULT 18');
+  }
+
   const categoryCols = await all('PRAGMA table_info(categories)');
   if (!categoryCols.some((c) => c.name === 'icon')) {
     await run("ALTER TABLE categories ADD COLUMN icon TEXT NOT NULL DEFAULT 'ticket'");

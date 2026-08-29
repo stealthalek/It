@@ -27,4 +27,36 @@ router.patch(
   })
 );
 
+router.get(
+  '/invite-template',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const row = await db.get(
+      'SELECT invite_subject_it, invite_body_it, invite_subject_en, invite_body_en FROM app_settings WHERE id = 1'
+    );
+    res.json({
+      it: { subject: row?.invite_subject_it || '', body: row?.invite_body_it || '' },
+      en: { subject: row?.invite_subject_en || '', body: row?.invite_body_en || '' },
+    });
+  })
+);
+
+router.patch(
+  '/invite-template',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const { locale, subject, body } = req.body || {};
+    if (!['it', 'en'].includes(locale)) {
+      return res.status(400).json({ error: 'Lingua non valida' });
+    }
+    await db.run(
+      `UPDATE app_settings SET invite_subject_${locale} = ?, invite_body_${locale} = ? WHERE id = 1`,
+      [subject && subject.trim() ? subject.trim() : null, body && body.trim() ? body.trim() : null]
+    );
+    res.json({ ok: true });
+  })
+);
+
 module.exports = router;

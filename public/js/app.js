@@ -51,18 +51,32 @@
   const userBadge = document.getElementById('userBadge');
   const logoutBtn = document.getElementById('logoutBtn');
 
-  const STATUS_LABELS = {
-    open: 'Aperto',
-    in_progress: 'In lavorazione',
-    resolved: 'Risolto',
-    closed: 'Chiuso',
-  };
-  const PRIORITY_LABELS = { low: 'Bassa', medium: 'Media', high: 'Alta', urgent: 'Urgente' };
-  const TYPE_LABELS = { incident: 'Incident', task: 'Task' };
-  const SLA_LABELS = { on_track: 'SLA in linea', at_risk: 'SLA a rischio', breached: 'SLA superata' };
-  const ASSET_TYPE_LABELS = { laptop: 'Laptop', desktop: 'Desktop', monitor: 'Monitor', telefono: 'Telefono', altro: 'Altro' };
-  const ASSET_STATUS_LABELS = { disponibile: 'Disponibile', in_uso: 'In uso', in_riparazione: 'In riparazione', dismesso: 'Dismesso' };
-  const ROLE_LABELS = { customer: 'Cliente', agent: 'Agente', admin: 'Amministratore' };
+  function statusLabels() {
+    return {
+      open: t('status_open'),
+      in_progress: t('status_in_progress'),
+      resolved: t('status_resolved'),
+      closed: t('status_closed'),
+    };
+  }
+  function priorityLabels() {
+    return { low: t('priority_low'), medium: t('priority_medium'), high: t('priority_high'), urgent: t('priority_urgent') };
+  }
+  function typeLabels() {
+    return { incident: t('type_incident'), task: t('type_task') };
+  }
+  function slaLabels() {
+    return { on_track: t('sla_on_track'), at_risk: t('sla_at_risk'), breached: t('sla_breached') };
+  }
+  function assetTypeLabels() {
+    return { laptop: t('asset_type_laptop'), desktop: t('asset_type_desktop'), monitor: t('asset_type_monitor'), telefono: t('asset_type_phone'), altro: t('asset_type_other') };
+  }
+  function assetStatusLabels() {
+    return { disponibile: t('asset_status_available'), in_uso: t('asset_status_in_use'), in_riparazione: t('asset_status_repair'), dismesso: t('asset_status_retired') };
+  }
+  function roleLabels() {
+    return { customer: t('role_customer'), agent: t('role_agent'), admin: t('role_admin') };
+  }
 
   const ICON_PATHS = {
     plus: '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
@@ -161,6 +175,25 @@
       dashboard_hint_staff: 'Gestisci e rispondi alle richieste di assistenza.',
       dashboard_hint_customer: 'Consulta lo stato delle tue richieste.',
       new_ticket_btn: 'Nuovo ticket',
+      status_open: 'Aperto', status_in_progress: 'In lavorazione', status_resolved: 'Risolto', status_closed: 'Chiuso',
+      priority_low: 'Bassa', priority_medium: 'Media', priority_high: 'Alta', priority_urgent: 'Urgente',
+      type_incident: 'Incident', type_task: 'Task',
+      sla_on_track: 'SLA in linea', sla_at_risk: 'SLA a rischio', sla_breached: 'SLA superata',
+      asset_type_laptop: 'Laptop', asset_type_desktop: 'Desktop', asset_type_monitor: 'Monitor', asset_type_phone: 'Telefono', asset_type_other: 'Altro',
+      asset_status_available: 'Disponibile', asset_status_in_use: 'In uso', asset_status_repair: 'In riparazione', asset_status_retired: 'Dismesso',
+      role_customer: 'Cliente', role_agent: 'Agente', role_admin: 'Amministratore',
+      filter_all_types: 'Tutti i tipi', filter_all_statuses: 'Tutti gli stati', filter_all_priorities: 'Tutte le priorità',
+      filter_all_assignees: 'Tutti gli assegnatari', filter_assigned_me: 'Assegnati a me', filter_unassigned: 'Non assegnati',
+      search_placeholder_staff: 'Cerca per testo, numero ticket o richiedente...', search_placeholder_customer: 'Cerca per testo o numero ticket...',
+      stat_open: 'Aperti', stat_in_progress: 'In lavorazione', stat_resolved: 'Risolti', stat_urgent: 'Urgenti aperti',
+      stat_incidents: 'Incident', stat_tasks: 'Task',
+      personal_counter_staff: 'Assegnati a te, ancora aperti', personal_counter_customer: 'Tuoi ticket in corso',
+      chart_title: 'Grafico', chart_distribution: 'Distribuzione', chart_total: 'Totale',
+      dim_status: 'Stato', dim_priority: 'Priorità', dim_type: 'Tipo', dim_category: 'Categoria', dim_assigned: 'Assegnatario',
+      auto_update: 'Aggiornamento automatico', auto_update_on: 'Aggiornamento automatico attivo', impersonate: 'Immedesimati',
+      btn_save: 'Salva', btn_cancel: 'Annulla', btn_delete: 'Elimina', btn_add: 'Aggiungi', btn_search: 'Cerca',
+      loading: 'Caricamento...', no_results: 'Nessun risultato.', unassigned_label: 'Non assegnato',
+      lang_updated: 'Lingua aggiornata', by_label: 'Di', assigned_to_label: 'Assegnato a', no_tickets_found: 'Nessun ticket trovato.',
     },
     en: {
       nav_dashboard: 'Tickets', nav_new: 'New ticket', nav_search: 'Search', nav_backlog: 'Backlog',
@@ -173,6 +206,25 @@
       dashboard_hint_staff: 'Manage and respond to support requests.',
       dashboard_hint_customer: 'Check the status of your requests.',
       new_ticket_btn: 'New ticket',
+      status_open: 'Open', status_in_progress: 'In progress', status_resolved: 'Resolved', status_closed: 'Closed',
+      priority_low: 'Low', priority_medium: 'Medium', priority_high: 'High', priority_urgent: 'Urgent',
+      type_incident: 'Incident', type_task: 'Task',
+      sla_on_track: 'SLA on track', sla_at_risk: 'SLA at risk', sla_breached: 'SLA breached',
+      asset_type_laptop: 'Laptop', asset_type_desktop: 'Desktop', asset_type_monitor: 'Monitor', asset_type_phone: 'Phone', asset_type_other: 'Other',
+      asset_status_available: 'Available', asset_status_in_use: 'In use', asset_status_repair: 'Under repair', asset_status_retired: 'Retired',
+      role_customer: 'Customer', role_agent: 'Agent', role_admin: 'Administrator',
+      filter_all_types: 'All types', filter_all_statuses: 'All statuses', filter_all_priorities: 'All priorities',
+      filter_all_assignees: 'All assignees', filter_assigned_me: 'Assigned to me', filter_unassigned: 'Unassigned',
+      search_placeholder_staff: 'Search by text, ticket number or requester...', search_placeholder_customer: 'Search by text or ticket number...',
+      stat_open: 'Open', stat_in_progress: 'In progress', stat_resolved: 'Resolved', stat_urgent: 'Open urgent',
+      stat_incidents: 'Incidents', stat_tasks: 'Tasks',
+      personal_counter_staff: 'Assigned to you, still open', personal_counter_customer: 'Your ongoing tickets',
+      chart_title: 'Chart', chart_distribution: 'Distribution', chart_total: 'Total',
+      dim_status: 'Status', dim_priority: 'Priority', dim_type: 'Type', dim_category: 'Category', dim_assigned: 'Assignee',
+      auto_update: 'Auto update', auto_update_on: 'Auto update active', impersonate: 'View as',
+      btn_save: 'Save', btn_cancel: 'Cancel', btn_delete: 'Delete', btn_add: 'Add', btn_search: 'Search',
+      loading: 'Loading...', no_results: 'No results.', unassigned_label: 'Unassigned',
+      lang_updated: 'Language updated', by_label: 'By', assigned_to_label: 'Assigned to', no_tickets_found: 'No tickets found.',
     },
   };
   const LANG_LABELS = { it: 'Italiano', en: 'English' };
@@ -271,7 +323,7 @@
     document.body.classList.remove('role-customer', 'role-agent', 'role-admin');
     if (state.user) {
       document.body.classList.add(`role-${state.user.role}`);
-      userBadge.innerHTML = `${icon('userCircle')} ${escapeHtml(state.user.name)} · ${ROLE_LABELS[state.user.role] || state.user.role}`;
+      userBadge.innerHTML = `${icon('userCircle')} ${escapeHtml(state.user.name)} · ${roleLabels()[state.user.role] || state.user.role}`;
       userBadge.style.display = '';
       logoutBtn.style.display = '';
       notifBtn.style.display = '';
@@ -739,8 +791,29 @@
     return state.user && (state.user.role === 'agent' || state.user.role === 'admin');
   }
 
-  function donutChart(rows, total) {
-    const activeRows = rows.filter((r) => r.value > 0);
+  function resolveCssColor(value) {
+    if (!value || !value.startsWith('var(')) return value;
+    const varName = value.slice(4, -1).trim();
+    const resolved = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+    return resolved || '#8f2436';
+  }
+
+  function getCustomChartColor(dim, key) {
+    try {
+      const stored = JSON.parse(localStorage.getItem('ticketing_chart_colors') || '{}');
+      return stored[`${dim}:${key}`] || null;
+    } catch { return null; }
+  }
+
+  function setCustomChartColor(dim, key, color) {
+    let stored = {};
+    try { stored = JSON.parse(localStorage.getItem('ticketing_chart_colors') || '{}'); } catch { stored = {}; }
+    stored[`${dim}:${key}`] = color;
+    localStorage.setItem('ticketing_chart_colors', JSON.stringify(stored));
+  }
+
+  function donutChart(rows, total, opts = {}) {
+    const activeRows = rows.filter((r) => r.value > 0).map((r) => ({ ...r, color: resolveCssColor(getCustomChartColor(opts.dim, r.key) || r.color) }));
     if (!total || !activeRows.length) return '<p class="hint">Nessun dato disponibile.</p>';
     let cumulative = 0;
     const stops = activeRows.map((r) => {
@@ -749,15 +822,16 @@
       const endPct = (cumulative / total) * 100;
       return `${r.color} ${startPct}% ${endPct}%`;
     }).join(', ');
+    const selectable = !!opts.onSelect;
     return `
       <div class="donut-wrap">
         <div class="donut-chart" style="background:conic-gradient(${stops})" role="img" aria-label="${activeRows.map((r) => `${r.label}: ${r.value}`).join(', ')}">
-          <div class="donut-center"><span class="donut-total">${total}</span><span class="donut-total-label">Totale</span></div>
+          <div class="donut-center"><span class="donut-total">${total}</span><span class="donut-total-label">${t('chart_total')}</span></div>
         </div>
         <div class="donut-legend">
           ${activeRows.map((r) => `
-            <div class="donut-legend-item">
-              <span class="donut-dot" style="background:${r.color}"></span>
+            <div class="donut-legend-item ${selectable ? 'selectable' : ''}" data-key="${escapeHtml(r.key)}">
+              <input type="color" class="donut-color-input" data-key="${escapeHtml(r.key)}" value="${r.color.startsWith('#') ? r.color : '#8f2436'}" title="Personalizza colore" />
               <span class="donut-legend-label">${escapeHtml(r.label)}</span>
               <span class="donut-legend-value">${r.value} · ${Math.round((r.value / total) * 100)}%</span>
             </div>`).join('')}
@@ -850,10 +924,10 @@
           ${!viewingAs ? `
           <button type="button" id="autoUpdateBtn" class="btn btn-ghost">
             <span id="autoUpdateDot" class="live-dot"></span>
-            <span id="autoUpdateLabel">Aggiornamento automatico</span>
+            <span id="autoUpdateLabel">${t('auto_update')}</span>
           </button>
           <a class="btn" href="#/new">${icon('plus')} ${t('new_ticket_btn')}</a>` : ''}
-          ${state.user.is_super_admin && !viewingAs ? `<button type="button" id="dashImpersonateBtn" class="btn btn-ghost">${icon('eye')} Immedesimati</button>` : ''}
+          ${state.user.is_super_admin && !viewingAs ? `<button type="button" id="dashImpersonateBtn" class="btn btn-ghost">${icon('eye')} ${t('impersonate')}</button>` : ''}
         </div>
       </div>
       <div id="dashImpersonatePanel" hidden></div>
@@ -862,24 +936,24 @@
       <div id="chartsRow" class="charts-row"></div>
       <div class="filters">
         <select id="fType">
-          <option value="">Tutti i tipi</option>
-          ${Object.entries(TYPE_LABELS).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
+          <option value="">${t('filter_all_types')}</option>
+          ${Object.entries(typeLabels()).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
         </select>
         <select id="fStatus">
-          <option value="">Tutti gli stati</option>
-          ${Object.entries(STATUS_LABELS).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
+          <option value="">${t('filter_all_statuses')}</option>
+          ${Object.entries(statusLabels()).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
         </select>
         <select id="fPriority">
-          <option value="">Tutte le priorità</option>
-          ${Object.entries(PRIORITY_LABELS).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
+          <option value="">${t('filter_all_priorities')}</option>
+          ${Object.entries(priorityLabels()).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
         </select>
         ${isStaff() && !viewingAs ? `
         <select id="fAssigned">
-          <option value="">Tutti gli assegnatari</option>
-          <option value="me">Assegnati a me</option>
-          <option value="unassigned">Non assegnati</option>
+          <option value="">${t('filter_all_assignees')}</option>
+          <option value="me">${t('filter_assigned_me')}</option>
+          <option value="unassigned">${t('filter_unassigned')}</option>
         </select>` : ''}
-        <input id="fQuery" type="search" placeholder="${isStaff() ? 'Cerca per testo, numero ticket o richiedente...' : 'Cerca per testo o numero ticket...'}" />
+        <input id="fQuery" type="search" placeholder="${isStaff() ? t('search_placeholder_staff') : t('search_placeholder_customer')}" />
       </div>
       <div id="ticketList" class="skeleton-grid">
         ${Array(4).fill('<div class="skeleton-card"></div>').join('')}
@@ -904,7 +978,7 @@
           resultsEl.innerHTML = list.length ? list.slice(0, 8).map((u) => `
             <button type="button" class="impersonate-result" data-user-id="${u.id}">
               <span>${escapeHtml(u.name)}</span>
-              <span class="hint">${escapeHtml(u.email)} · ${ROLE_LABELS[u.role] || u.role}</span>
+              <span class="hint">${escapeHtml(u.email)} · ${roleLabels()[u.role] || u.role}</span>
             </button>`).join('') : '<p class="hint">Nessuna persona trovata.</p>';
           resultsEl.querySelectorAll('.impersonate-result').forEach((btn) => {
             btn.addEventListener('click', () => {
@@ -947,16 +1021,28 @@
     }
 
     function renderStats(tickets) {
-      const counts = { open: 0, in_progress: 0, resolved: 0, closed: 0, urgent: 0 };
-      tickets.forEach((t) => {
-        counts[t.status] = (counts[t.status] || 0) + 1;
-        if (t.priority === 'urgent' && t.status !== 'closed' && t.status !== 'resolved') counts.urgent += 1;
+      const counts = { open: 0, in_progress: 0, resolved: 0, closed: 0, urgent: 0, incident: 0, task: 0 };
+      tickets.forEach((tk) => {
+        counts[tk.status] = (counts[tk.status] || 0) + 1;
+        counts[tk.type] = (counts[tk.type] || 0) + 1;
+        if (tk.priority === 'urgent' && tk.status !== 'closed' && tk.status !== 'resolved') counts.urgent += 1;
       });
       statsEl.innerHTML = `
-        <div class="stat-card accent-open"><div class="stat-value">${counts.open}</div><div class="stat-label">Aperti</div></div>
-        <div class="stat-card accent-in_progress"><div class="stat-value">${counts.in_progress}</div><div class="stat-label">In lavorazione</div></div>
-        <div class="stat-card accent-resolved"><div class="stat-value">${counts.resolved}</div><div class="stat-label">Risolti</div></div>
-        <div class="stat-card accent-urgent"><div class="stat-value">${counts.urgent}</div><div class="stat-label">Urgenti aperti</div></div>`;
+        <button type="button" class="stat-card accent-open" data-status="open"><div class="stat-value">${counts.open}</div><div class="stat-label">${t('stat_open')}</div></button>
+        <button type="button" class="stat-card accent-in_progress" data-status="in_progress"><div class="stat-value">${counts.in_progress}</div><div class="stat-label">${t('stat_in_progress')}</div></button>
+        <button type="button" class="stat-card accent-resolved" data-status="resolved"><div class="stat-value">${counts.resolved}</div><div class="stat-label">${t('stat_resolved')}</div></button>
+        <button type="button" class="stat-card accent-urgent" data-priority="urgent"><div class="stat-value">${counts.urgent}</div><div class="stat-label">${t('stat_urgent')}</div></button>
+        <button type="button" class="stat-card accent-incident" data-type="incident"><div class="stat-value">${counts.incident}</div><div class="stat-label">${t('stat_incidents')}</div></button>
+        <button type="button" class="stat-card accent-task" data-type="task"><div class="stat-value">${counts.task}</div><div class="stat-label">${t('stat_tasks')}</div></button>`;
+
+      statsEl.querySelectorAll('.stat-card').forEach((card) => {
+        card.addEventListener('click', () => {
+          if (card.dataset.status !== undefined) fStatus.value = card.dataset.status;
+          if (card.dataset.priority !== undefined) fPriority.value = card.dataset.priority;
+          if (card.dataset.type !== undefined) fType.value = card.dataset.type;
+          load();
+        });
+      });
     }
 
     function renderPersonalCounter(tickets) {
@@ -964,11 +1050,11 @@
       const asId = viewingAs ? viewingAs.id : state.user.id;
       const asStaff = viewingAs ? viewingAs.role !== 'customer' : isStaff();
       if (asStaff) {
-        value = tickets.filter((t) => t.assigned_to === asId && t.status !== 'resolved' && t.status !== 'closed').length;
-        label = viewingAs ? `Assegnati a ${viewingAs.name}, ancora aperti` : 'Assegnati a te, ancora aperti';
+        value = tickets.filter((tk) => tk.assigned_to === asId && tk.status !== 'resolved' && tk.status !== 'closed').length;
+        label = viewingAs ? `${viewingAs.name} — ${t('personal_counter_staff')}` : t('personal_counter_staff');
       } else {
-        value = tickets.filter((t) => t.status === 'open' || t.status === 'in_progress').length;
-        label = viewingAs ? `Ticket in corso di ${viewingAs.name}` : 'Tuoi ticket in corso';
+        value = tickets.filter((tk) => tk.status === 'open' || tk.status === 'in_progress').length;
+        label = viewingAs ? `${viewingAs.name} — ${t('personal_counter_customer')}` : t('personal_counter_customer');
       }
       personalEl.innerHTML = `
         <div class="personal-counter">
@@ -980,24 +1066,26 @@
         </div>`;
     }
 
-    const CHART_DIMENSIONS = { status: 'Stato', priority: 'Priorità', type: 'Tipo', category: 'Categoria', assigned: 'Assegnatario' };
+    function chartDimensions() {
+      return { status: t('dim_status'), priority: t('dim_priority'), type: t('dim_type'), category: t('dim_category'), assigned: t('dim_assigned') };
+    }
     let currentChartDim = 'status';
 
     function computeBreakdown(tickets, dim) {
       if (dim === 'status') {
         const order = ['open', 'in_progress', 'resolved', 'closed'];
         const colors = { open: 'var(--primary)', in_progress: 'var(--warning)', resolved: 'var(--success)', closed: 'var(--muted)' };
-        return order.map((k) => ({ key: k, label: STATUS_LABELS[k], value: tickets.filter((t) => t.status === k).length, color: colors[k] }));
+        return order.map((k) => ({ key: k, label: statusLabels()[k], value: tickets.filter((t) => t.status === k).length, color: colors[k] }));
       }
       if (dim === 'priority') {
         const order = ['low', 'medium', 'high', 'urgent'];
         const colors = { low: 'var(--muted)', medium: 'var(--primary)', high: 'var(--warning)', urgent: 'var(--danger)' };
-        return order.map((k) => ({ key: k, label: PRIORITY_LABELS[k], value: tickets.filter((t) => t.priority === k).length, color: colors[k] }));
+        return order.map((k) => ({ key: k, label: priorityLabels()[k], value: tickets.filter((t) => t.priority === k).length, color: colors[k] }));
       }
       if (dim === 'type') {
         const order = ['incident', 'task'];
         const colors = { incident: 'var(--type-incident)', task: 'var(--type-task)' };
-        return order.map((k) => ({ key: k, label: TYPE_LABELS[k], value: tickets.filter((t) => t.type === k).length, color: colors[k] }));
+        return order.map((k) => ({ key: k, label: typeLabels()[k], value: tickets.filter((t) => t.type === k).length, color: colors[k] }));
       }
       if (dim === 'category') {
         const counts = new Map();
@@ -1006,8 +1094,8 @@
       }
       if (dim === 'assigned') {
         const counts = new Map();
-        tickets.forEach((t) => {
-          const label = t.assignee_name || 'Non assegnato';
+        tickets.forEach((tk) => {
+          const label = tk.assignee_name || t('unassigned_label');
           counts.set(label, (counts.get(label) || 0) + 1);
         });
         return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([label, value]) => ({ key: label, label, value, color: 'var(--primary)' }));
@@ -1020,26 +1108,48 @@
       if (!tickets.length) return;
 
       const rows = computeBreakdown(tickets, currentChartDim);
+      const selectableDims = ['status', 'priority', 'type'];
+      const donutOpts = { dim: currentChartDim, onSelect: selectableDims.includes(currentChartDim) ? true : null };
       chartsEl.innerHTML = `
         <div class="card chart-card chart-card-wide">
           <div class="chart-card-head">
-            <h3 class="section-title" style="margin:0">Grafico</h3>
+            <h3 class="section-title" style="margin:0">${t('chart_title')}</h3>
             <select id="chartDim">
-              ${Object.entries(CHART_DIMENSIONS).map(([v, l]) => `<option value="${v}" ${v === currentChartDim ? 'selected' : ''}>${l}</option>`).join('')}
+              ${Object.entries(chartDimensions()).map(([v, l]) => `<option value="${v}" ${v === currentChartDim ? 'selected' : ''}>${l}</option>`).join('')}
             </select>
           </div>
           ${barChart(rows, tickets.length)}
         </div>
         <div class="card chart-card">
           <div class="chart-card-head">
-            <h3 class="section-title" style="margin:0">Distribuzione</h3>
+            <h3 class="section-title" style="margin:0">${t('chart_distribution')}</h3>
           </div>
-          ${donutChart(rows, tickets.length)}
+          ${donutChart(rows, tickets.length, donutOpts)}
         </div>`;
 
       document.getElementById('chartDim').addEventListener('change', (e) => {
         currentChartDim = e.target.value;
         renderCharts(tickets);
+      });
+
+      if (selectableDims.includes(currentChartDim)) {
+        chartsEl.querySelectorAll('.donut-legend-item.selectable').forEach((item) => {
+          item.addEventListener('click', (e) => {
+            if (e.target.classList.contains('donut-color-input')) return;
+            const key = item.dataset.key;
+            if (currentChartDim === 'status') fStatus.value = key;
+            else if (currentChartDim === 'priority') fPriority.value = key;
+            else if (currentChartDim === 'type') fType.value = key;
+            load();
+          });
+        });
+      }
+      chartsEl.querySelectorAll('.donut-color-input').forEach((input) => {
+        input.addEventListener('click', (e) => e.stopPropagation());
+        input.addEventListener('input', (e) => {
+          setCustomChartColor(currentChartDim, input.dataset.key, e.target.value);
+          renderCharts(tickets);
+        });
       });
     }
 
@@ -1079,7 +1189,7 @@
       const setAutoUpdate = (enabled) => {
         teardownDashboardAutoUpdate();
         autoUpdateBtn.classList.toggle('active', enabled);
-        document.getElementById('autoUpdateLabel').textContent = enabled ? 'Aggiornamento automatico attivo' : 'Aggiornamento automatico';
+        document.getElementById('autoUpdateLabel').textContent = enabled ? t('auto_update_on') : t('auto_update');
         localStorage.setItem('ticketing_autoupdate', enabled ? '1' : '0');
         if (enabled) dashboardAutoTimer = setInterval(load, 15000);
       };
@@ -1095,24 +1205,24 @@
   function renderTicketList(container, tickets) {
     if (!tickets.length) {
       container.className = '';
-      container.innerHTML = `<div class="empty-state">${icon('inbox')}<span>Nessun ticket trovato.</span></div>`;
+      container.innerHTML = `<div class="empty-state">${icon('inbox')}<span>${t('no_tickets_found')}</span></div>`;
       return;
     }
     container.className = 'ticket-grid';
-    container.innerHTML = tickets.map((t) => `
-      <a class="ticket-card prio-${t.priority}" href="#/ticket/${t.id}">
+    container.innerHTML = tickets.map((tk) => `
+      <a class="ticket-card prio-${tk.priority}" href="#/ticket/${tk.id}">
         <div class="badges">
-          <span class="badge badge-type-${t.type}">${icon(t.type, 'badge-icon')}${TYPE_LABELS[t.type] || t.type}</span>
-          <span class="badge badge-${t.status}">${STATUS_LABELS[t.status]}</span>
-          <span class="badge badge-${t.priority}">${PRIORITY_LABELS[t.priority]}</span>
-          ${t.sla_status && t.sla_status !== 'on_track' ? `<span class="badge badge-sla-${t.sla_status}">${SLA_LABELS[t.sla_status]}</span>` : ''}
+          <span class="badge badge-type-${tk.type}">${icon(tk.type, 'badge-icon')}${typeLabels()[tk.type] || tk.type}</span>
+          <span class="badge badge-${tk.status}">${statusLabels()[tk.status]}</span>
+          <span class="badge badge-${tk.priority}">${priorityLabels()[tk.priority]}</span>
+          ${tk.sla_status && tk.sla_status !== 'on_track' ? `<span class="badge badge-sla-${tk.sla_status}">${slaLabels()[tk.sla_status]}</span>` : ''}
         </div>
-        <h3>#${t.id} ${escapeHtml(t.subject)}</h3>
-        <p class="ticket-desc">${escapeHtml(t.description)}</p>
+        <h3>#${tk.id} ${escapeHtml(tk.subject)}</h3>
+        <p class="ticket-desc">${escapeHtml(tk.description)}</p>
         <div class="ticket-meta">
-          Di ${escapeHtml(t.creator_name)} · ${formatDate(t.updated_at)}
-          ${t.assignee_name ? ` · Assegnato a ${escapeHtml(t.assignee_name)}` : ''}
-          ${groupLabel(t) ? ` · ${escapeHtml(groupLabel(t))}` : ''}
+          ${t('by_label')} ${escapeHtml(tk.creator_name)} · ${formatDate(tk.updated_at)}
+          ${tk.assignee_name ? ` · ${t('assigned_to_label')} ${escapeHtml(tk.assignee_name)}` : ''}
+          ${groupLabel(tk) ? ` · ${escapeHtml(groupLabel(tk))}` : ''}
         </div>
       </a>`).join('');
   }
@@ -1136,8 +1246,8 @@
           <div class="field">
             <label for="type">Tipo di richiesta</label>
             <select id="type">
-              <option value="incident">${TYPE_LABELS.incident} — qualcosa non funziona</option>
-              <option value="task">${TYPE_LABELS.task} — richiesta pianificabile</option>
+              <option value="incident">${typeLabels().incident} — qualcosa non funziona</option>
+              <option value="task">${typeLabels().task} — richiesta pianificabile</option>
             </select>
           </div>
           <div class="field">
@@ -1157,7 +1267,7 @@
           <div class="field">
             <label for="priority">Quanto è urgente?</label>
             <select id="priority">
-              ${Object.entries(PRIORITY_LABELS).map(([v, l]) => `<option value="${v}" ${v === 'medium' ? 'selected' : ''}>${l}</option>`).join('')}
+              ${Object.entries(priorityLabels()).map(([v, l]) => `<option value="${v}" ${v === 'medium' ? 'selected' : ''}>${l}</option>`).join('')}
             </select>
           </div>
           <div class="field">
@@ -1248,19 +1358,19 @@
           <div class="side-field">
             <label for="statusSel">Stato</label>
             <select id="statusSel">
-              ${Object.entries(STATUS_LABELS).map(([v, l]) => `<option value="${v}" ${ticket.status === v ? 'selected' : ''}>${l}</option>`).join('')}
+              ${Object.entries(statusLabels()).map(([v, l]) => `<option value="${v}" ${ticket.status === v ? 'selected' : ''}>${l}</option>`).join('')}
             </select>
           </div>
           <div class="side-field">
             <label for="prioritySel">Priorità</label>
             <select id="prioritySel">
-              ${Object.entries(PRIORITY_LABELS).map(([v, l]) => `<option value="${v}" ${ticket.priority === v ? 'selected' : ''}>${l}</option>`).join('')}
+              ${Object.entries(priorityLabels()).map(([v, l]) => `<option value="${v}" ${ticket.priority === v ? 'selected' : ''}>${l}</option>`).join('')}
             </select>
           </div>
           <div class="side-field">
             <label for="typeSel">Tipo</label>
             <select id="typeSel">
-              ${Object.entries(TYPE_LABELS).map(([v, l]) => `<option value="${v}" ${ticket.type === v ? 'selected' : ''}>${l}</option>`).join('')}
+              ${Object.entries(typeLabels()).map(([v, l]) => `<option value="${v}" ${ticket.type === v ? 'selected' : ''}>${l}</option>`).join('')}
             </select>
           </div>
           <div class="side-field">
@@ -1290,11 +1400,11 @@
         <div>
           <div class="card" style="margin-bottom:1rem">
             <div class="badges" style="margin-bottom:0.75rem">
-              <span class="badge badge-type-${ticket.type}">${icon(ticket.type, 'badge-icon')}${TYPE_LABELS[ticket.type] || ticket.type}</span>
-              <span class="badge badge-${ticket.status}">${STATUS_LABELS[ticket.status]}</span>
-              <span class="badge badge-${ticket.priority}">${PRIORITY_LABELS[ticket.priority]}</span>
+              <span class="badge badge-type-${ticket.type}">${icon(ticket.type, 'badge-icon')}${typeLabels()[ticket.type] || ticket.type}</span>
+              <span class="badge badge-${ticket.status}">${statusLabels()[ticket.status]}</span>
+              <span class="badge badge-${ticket.priority}">${priorityLabels()[ticket.priority]}</span>
               <span class="badge">${escapeHtml(ticket.category)}</span>
-              ${ticket.sla_status ? `<span class="badge badge-sla-${ticket.sla_status}">${SLA_LABELS[ticket.sla_status]}</span>` : ''}
+              ${ticket.sla_status ? `<span class="badge badge-sla-${ticket.sla_status}">${slaLabels()[ticket.sla_status]}</span>` : ''}
             </div>
             ${canEditFields ? `
               <div id="viewDescription">
@@ -1493,11 +1603,11 @@
         const badgesWrap = document.querySelector('.ticket-detail-grid .badges');
         if (badgesWrap) {
           badgesWrap.innerHTML = `
-            <span class="badge badge-type-${updated.type}">${icon(updated.type, 'badge-icon')}${TYPE_LABELS[updated.type] || updated.type}</span>
-            <span class="badge badge-${updated.status}">${STATUS_LABELS[updated.status]}</span>
-            <span class="badge badge-${updated.priority}">${PRIORITY_LABELS[updated.priority]}</span>
+            <span class="badge badge-type-${updated.type}">${icon(updated.type, 'badge-icon')}${typeLabels()[updated.type] || updated.type}</span>
+            <span class="badge badge-${updated.status}">${statusLabels()[updated.status]}</span>
+            <span class="badge badge-${updated.priority}">${priorityLabels()[updated.priority]}</span>
             <span class="badge">${escapeHtml(updated.category)}</span>
-            ${updated.sla_status ? `<span class="badge badge-sla-${updated.sla_status}">${SLA_LABELS[updated.sla_status]}</span>` : ''}`;
+            ${updated.sla_status ? `<span class="badge badge-sla-${updated.sla_status}">${slaLabels()[updated.sla_status]}</span>` : ''}`;
         }
         const statusSel = document.getElementById('statusSel');
         if (statusSel) statusSel.value = updated.status;
@@ -1532,7 +1642,7 @@
     return `
       <div class="comment ${item.is_internal ? 'is-internal' : ''}">
         <div class="comment-head">
-          <span>${escapeHtml(item.author_name)} (${ROLE_LABELS[item.author_role] || item.author_role})${item.is_internal ? ' <span class="badge badge-internal">Nota interna</span>' : ''}</span>
+          <span>${escapeHtml(item.author_name)} (${roleLabels()[item.author_role] || item.author_role})${item.is_internal ? ' <span class="badge badge-internal">Nota interna</span>' : ''}</span>
           <span>${formatDate(item.created_at)}</span>
         </div>
         <div class="comment-body">${escapeHtml(item.message)}</div>
@@ -1595,12 +1705,14 @@
         </div>
         <div class="card admin-grid-full">
           <h3 class="section-title" style="margin-top:0">${icon('users')} Gruppi di assegnazione</h3>
-          <p class="hint">Ogni gruppo ha un proprio SLA (ore per risposta/risoluzione), usato per calcolare lo stato SLA dei ticket.</p>
+          <p class="hint">Ogni gruppo ha un proprio SLA (ore per risposta/risoluzione) e orario di lavoro: fuori da quella fascia, e nel weekend, l'SLA resta in pausa e riprende al turno successivo.</p>
           <form id="newGroupForm" style="display:flex;flex-wrap:wrap;gap:0.6rem;align-items:flex-end;margin:0.75rem 0">
             <div class="field" style="flex:1 1 12rem"><label for="newGroupName">Nome gruppo</label><input id="newGroupName" /></div>
             <div class="field" style="flex:1 1 12rem"><label for="newGroupParent">Gruppo padre</label><select id="newGroupParent"><option value="">Nessuno (primo livello)</option></select></div>
             <div class="field" style="flex:0 0 7rem"><label for="newGroupResponse">Risposta (h)</label><input id="newGroupResponse" type="number" min="1" /></div>
             <div class="field" style="flex:0 0 7rem"><label for="newGroupResolve">Risoluzione (h)</label><input id="newGroupResolve" type="number" min="1" /></div>
+            <div class="field" style="flex:0 0 6rem"><label for="newGroupWorkStart">Inizio turno</label><input id="newGroupWorkStart" type="number" min="0" max="24" value="9" /></div>
+            <div class="field" style="flex:0 0 6rem"><label for="newGroupWorkEnd">Fine turno</label><input id="newGroupWorkEnd" type="number" min="0" max="24" value="18" /></div>
             <button class="btn btn-sm" type="submit">Crea gruppo</button>
           </form>
           <p class="error-text" id="groupError"></p>
@@ -1634,6 +1746,8 @@
               <div class="org-node-sla">
                 <label>Risposta (h) <input type="number" min="1" class="slaInput" data-group-id="${node.id}" data-field="slaResponseHours" value="${node.sla_response_hours ?? ''}" /></label>
                 <label>Risoluzione (h) <input type="number" min="1" class="slaInput" data-group-id="${node.id}" data-field="slaResolveHours" value="${node.sla_resolve_hours ?? ''}" /></label>
+                <label>Turno dalle <input type="number" min="0" max="24" class="workHourInput" data-group-id="${node.id}" data-field="workStartHour" value="${node.work_start_hour ?? 9}" /></label>
+                <label>alle <input type="number" min="0" max="24" class="workHourInput" data-group-id="${node.id}" data-field="workEndHour" value="${node.work_end_hour ?? 18}" /></label>
               </div>
             </div>
             ${node.children.length ? `<div class="org-children">${node.children.map(renderOrgNode).join('')}</div>` : ''}
@@ -1663,6 +1777,23 @@
                 });
                 showToast('SLA aggiornata', 'success');
                 loadGroupOptions();
+              } catch (err) {
+                showToast(err.message, 'error');
+              }
+            });
+          });
+
+          listEl.querySelectorAll('.workHourInput').forEach((input) => {
+            input.addEventListener('change', async () => {
+              const groupId = input.dataset.groupId;
+              const startInput = listEl.querySelector(`[data-group-id="${groupId}"][data-field="workStartHour"]`);
+              const endInput = listEl.querySelector(`[data-group-id="${groupId}"][data-field="workEndHour"]`);
+              try {
+                await api(`/groups/${groupId}`, {
+                  method: 'PATCH',
+                  body: { workStartHour: startInput.value, workEndHour: endInput.value },
+                });
+                showToast('Orario di lavoro aggiornato', 'success');
               } catch (err) {
                 showToast(err.message, 'error');
               }
@@ -1701,6 +1832,8 @@
               parentId: document.getElementById('newGroupParent').value || null,
               slaResponseHours: document.getElementById('newGroupResponse').value || null,
               slaResolveHours: document.getElementById('newGroupResolve').value || null,
+              workStartHour: document.getElementById('newGroupWorkStart').value || null,
+              workEndHour: document.getElementById('newGroupWorkEnd').value || null,
             },
           });
           document.getElementById('newGroupForm').reset();
@@ -1860,7 +1993,7 @@
                 <tr class="user-row" data-user-id="${u.id}" tabindex="0" role="link">
                   <td>${escapeHtml(u.name)}</td>
                   <td>${escapeHtml(u.email)}</td>
-                  <td><span class="role-tag">${ROLE_LABELS[u.role] || u.role}</span></td>
+                  <td><span class="role-tag">${roleLabels()[u.role] || u.role}</span></td>
                   <td>${escapeHtml(groupLabel(u) || '—')}</td>
                   <td>${formatDate(u.created_at)}</td>
                 </tr>`).join('') : `<tr><td colspan="5"><p class="hint">Nessuna persona trovata.</p></td></tr>`}
@@ -1922,7 +2055,7 @@
           <div>
             <h2 style="margin:0 0 0.2rem">${escapeHtml(user.name)}</h2>
             <p class="hint" style="margin:0">${escapeHtml(user.email)}</p>
-            <span class="role-tag" style="margin-top:0.5rem;display:inline-block">${ROLE_LABELS[user.role] || user.role}</span>
+            <span class="role-tag" style="margin-top:0.5rem;display:inline-block">${roleLabels()[user.role] || user.role}</span>
           </div>
           ${state.user.is_super_admin && !isSelf ? `<button type="button" id="impersonateBtn" class="btn btn-sm" style="margin-left:auto">${icon('eye')} Immedesimati</button>` : ''}
         </div>
@@ -1934,7 +2067,7 @@
           <div class="field">
             <label for="detailRole">Ruolo</label>
             <select id="detailRole" ${isSelf ? 'disabled' : ''}>
-              ${Object.entries(ROLE_LABELS).map(([v, l]) => `<option value="${v}" ${user.role === v ? 'selected' : ''}>${l}</option>`).join('')}
+              ${Object.entries(roleLabels()).map(([v, l]) => `<option value="${v}" ${user.role === v ? 'selected' : ''}>${l}</option>`).join('')}
             </select>
           </div>
           <div class="field">
@@ -2061,7 +2194,7 @@
           <div style="display:flex;gap:0.75rem">
             <div class="field" style="flex:1">
               <label for="assetType">Tipo</label>
-              <select id="assetType">${Object.entries(ASSET_TYPE_LABELS).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>
+              <select id="assetType">${Object.entries(assetTypeLabels()).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>
             </div>
             <div class="field" style="flex:1"><label for="assetTag">Tag/matricola</label><input id="assetTag" placeholder="es. IT-0012" /></div>
           </div>
@@ -2071,7 +2204,7 @@
       <div class="filters">
         <select id="assetStatusFilter">
           <option value="">Tutti gli stati</option>
-          ${Object.entries(ASSET_STATUS_LABELS).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
+          ${Object.entries(assetStatusLabels()).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
         </select>
       </div>
       <div id="assetsWrap" class="card spinner-row">Caricamento...</div>`;
@@ -2100,11 +2233,11 @@
                 ${assets.map((a) => `
                   <tr>
                     <td>${escapeHtml(a.name)}</td>
-                    <td>${ASSET_TYPE_LABELS[a.asset_type] || a.asset_type}</td>
+                    <td>${assetTypeLabels()[a.asset_type] || a.asset_type}</td>
                     <td>${escapeHtml(a.tag || '—')}</td>
                     <td>
                       <select class="assetStatusSel groupSel" data-id="${a.id}">
-                        ${Object.entries(ASSET_STATUS_LABELS).map(([v, l]) => `<option value="${v}" ${a.status === v ? 'selected' : ''}>${l}</option>`).join('')}
+                        ${Object.entries(assetStatusLabels()).map(([v, l]) => `<option value="${v}" ${a.status === v ? 'selected' : ''}>${l}</option>`).join('')}
                       </select>
                     </td>
                     <td>
@@ -2204,15 +2337,15 @@
         <input id="searchQuery" type="search" placeholder="Numero ticket, parola chiave, richiedente..." style="flex:2 1 260px" autofocus />
         <select id="searchType">
           <option value="">Tutti i tipi</option>
-          ${Object.entries(TYPE_LABELS).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
+          ${Object.entries(typeLabels()).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
         </select>
         <select id="searchStatus">
           <option value="">Tutti gli stati</option>
-          ${Object.entries(STATUS_LABELS).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
+          ${Object.entries(statusLabels()).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
         </select>
         <select id="searchPriority">
           <option value="">Tutte le priorità</option>
-          ${Object.entries(PRIORITY_LABELS).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
+          ${Object.entries(priorityLabels()).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
         </select>
         <select id="searchGroup">${groupOptionsHtml(groups, '', 'Tutti i gruppi')}</select>
       </div>
@@ -2337,7 +2470,7 @@
           <h3 class="section-title" style="margin-top:0">Il tuo account</h3>
           <p><strong>${escapeHtml(state.user.name)}</strong></p>
           <p class="hint">${escapeHtml(state.user.email)}</p>
-          <p><span class="role-tag">${ROLE_LABELS[state.user.role] || state.user.role}</span></p>
+          <p><span class="role-tag">${roleLabels()[state.user.role] || state.user.role}</span></p>
         </div>
         <div class="card">
           <h3 class="section-title" style="margin-top:0">${icon('lock')} Cambia password</h3>
@@ -2450,13 +2583,28 @@
             <div><button class="btn btn-sm" type="submit">Salva</button></div>
           </form>
           <p class="error-text" id="orgError"></p>
+        </div>
+        <div class="card admin-grid-full">
+          <h3 class="section-title" style="margin-top:0">${icon('mail')} Email di invito account</h3>
+          <p class="hint">Personalizza l'oggetto e il testo dell'email automatica inviata quando crei un nuovo account staff. Lasciala vuota per usare il testo predefinito. Segnaposto disponibili: <code>{{name}}</code>, <code>{{email}}</code>, <code>{{password}}</code>, <code>{{org}}</code>.</p>
+          <div class="tab-row" id="inviteTemplateTabs">
+            <button type="button" class="tab-btn active" data-locale="it">Italiano</button>
+            <button type="button" class="tab-btn" data-locale="en">English</button>
+          </div>
+          <form id="inviteTemplateForm" class="form-grid" style="max-width:none">
+            <div class="field"><label for="inviteSubject">Oggetto</label><input id="inviteSubject" placeholder="(predefinito)" /></div>
+            <div class="field"><label for="inviteBody">Testo email</label><textarea id="inviteBody" rows="6" placeholder="(predefinito)"></textarea></div>
+            <div><button class="btn btn-sm" type="submit">Salva modello</button></div>
+          </form>
+          <p class="error-text" id="inviteTemplateError"></p>
         </div>` : ''}
       </div>`;
 
     document.getElementById('langSel').addEventListener('change', (e) => {
       setLang(e.target.value);
       applyChromeTranslations();
-      showToast('Lingua aggiornata', 'success');
+      updateChrome();
+      showToast(t('lang_updated'), 'success');
       route();
     });
 
@@ -2489,6 +2637,38 @@
           applyOrgName(orgName);
           localStorage.setItem('ticketing_org_name', orgName);
           showToast('Nome organizzazione aggiornato', 'success');
+        } catch (err) {
+          errEl.textContent = err.message;
+        }
+      });
+
+      let inviteTemplates = { it: { subject: '', body: '' }, en: { subject: '', body: '' } };
+      let inviteTemplateLocale = 'it';
+      api('/settings/invite-template').then((data) => {
+        inviteTemplates = data;
+        document.getElementById('inviteSubject').value = inviteTemplates.it.subject;
+        document.getElementById('inviteBody').value = inviteTemplates.it.body;
+      }).catch(() => {});
+
+      document.querySelectorAll('#inviteTemplateTabs .tab-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('#inviteTemplateTabs .tab-btn').forEach((b) => b.classList.remove('active'));
+          btn.classList.add('active');
+          inviteTemplateLocale = btn.dataset.locale;
+          document.getElementById('inviteSubject').value = inviteTemplates[inviteTemplateLocale].subject;
+          document.getElementById('inviteBody').value = inviteTemplates[inviteTemplateLocale].body;
+        });
+      });
+
+      guardForm(document.getElementById('inviteTemplateForm'), async () => {
+        const errEl = document.getElementById('inviteTemplateError');
+        errEl.textContent = '';
+        const subject = document.getElementById('inviteSubject').value;
+        const body = document.getElementById('inviteBody').value;
+        try {
+          await api('/settings/invite-template', { method: 'PATCH', body: { locale: inviteTemplateLocale, subject, body } });
+          inviteTemplates[inviteTemplateLocale] = { subject, body };
+          showToast('Modello email aggiornato', 'success');
         } catch (err) {
           errEl.textContent = err.message;
         }
