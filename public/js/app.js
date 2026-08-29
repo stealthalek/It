@@ -140,11 +140,11 @@
     return d.toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   }
 
-  function showToast(message, type = '') {
+  function showToast(message, type = '', duration = 3200) {
     toastEl.textContent = message;
     toastEl.className = 'toast show' + (type ? ` ${type}` : '');
     clearTimeout(showToast._t);
-    showToast._t = setTimeout(() => { toastEl.className = 'toast'; }, 3200);
+    showToast._t = setTimeout(() => { toastEl.className = 'toast'; }, duration);
   }
 
   function guardForm(form, handler) {
@@ -194,6 +194,57 @@
       btn_save: 'Salva', btn_cancel: 'Annulla', btn_delete: 'Elimina', btn_add: 'Aggiungi', btn_search: 'Cerca',
       loading: 'Caricamento...', no_results: 'Nessun risultato.', unassigned_label: 'Non assegnato',
       lang_updated: 'Lingua aggiornata', by_label: 'Di', assigned_to_label: 'Assegnato a', no_tickets_found: 'Nessun ticket trovato.',
+      back_to_list: 'Torna alla lista', edit_subject_desc: 'Modifica oggetto e descrizione',
+      field_subject: 'Oggetto', field_description: 'Descrizione', btn_save_changes: 'Salva modifiche',
+      created_by: 'Creato da', on_date: 'il', reopen_ticket: 'Riapri ticket',
+      activity_title: 'Attività', no_activity: 'Nessuna attività ancora.',
+      readonly_no_comments: 'Modalità sola lettura: non è possibile inviare commenti.',
+      add_comment_label: 'Aggiungi un commento', comment_placeholder: 'Scrivi una risposta...',
+      internal_note_label: 'Nota interna (visibile solo allo staff)', btn_send: 'Invia',
+      management_title: 'Gestione', field_group: 'Gruppo di assegnazione', field_linked_asset: 'Asset collegato',
+      delete_ticket_btn: 'Elimina ticket', no_group_option: 'Nessun gruppo', no_asset_option: 'Nessun asset',
+      confirm_delete_ticket: 'Eliminare definitivamente questo ticket?',
+      toast_ticket_updated: 'Ticket aggiornato', toast_ticket_reopened: 'Ticket riaperto', toast_ticket_deleted: 'Ticket eliminato',
+      toast_comment_added: 'Commento aggiunto', new_message_toast: 'Nuovo messaggio nel ticket',
+      presence_staff: 'Un tecnico sta seguendo questo ticket in questo momento',
+      presence_customer: 'Il richiedente sta visualizzando questo ticket in questo momento',
+      group_label_prefix: 'Gruppo', viewing_as_title: 'Vista di', viewing_as_hint: 'Stai visualizzando i ticket di questa persona in sola lettura.',
+      viewas_banner_text: 'Stai vedendo la piattaforma come', viewas_readonly_suffix: 'sola lettura', viewas_exit: 'Esci dalla modalità',
+      backlog_hint: 'Ticket non assegnati, in ordine di urgenza SLA.',
+      assets_hint: 'Inventario dispositivi, assegnazioni permanenti e prestiti.', new_asset_title: 'Nuovo asset',
+      field_name: 'Nome', field_tag: 'Tag/matricola', btn_add_asset: 'Aggiungi asset',
+      table_type: 'Tipo', table_tag: 'Tag', table_status: 'Stato', table_assignment: 'Assegnazione', table_due_date: 'Scadenza',
+      assignment_permanent: 'Permanente', assignment_loan: 'Prestito', none_option: 'Nessuno', no_assets_found: 'Nessun asset trovato.',
+      toast_asset_status_updated: 'Stato asset aggiornato', toast_assignment_updated: 'Assegnazione aggiornata',
+      toast_assignee_updated: 'Assegnatario aggiornato', toast_due_date_updated: 'Scadenza aggiornata',
+      confirm_delete_asset: 'Eliminare questo asset?', toast_asset_deleted: 'Asset eliminato', delete_asset_title: 'Elimina asset',
+      search_hint: 'Cerca per numero ticket, parola chiave o richiedente: i risultati compaiono mentre scrivi.',
+      search_placeholder_full: 'Numero ticket, parola chiave, richiedente...', all_groups_option: 'Tutti i gruppi',
+      report_hint: 'Volumi, tempi di risoluzione e rispetto SLA per gruppo e per agente.',
+      chart_volume_by_group: 'Volume ticket per gruppo', chart_avg_resolution: 'Tempo medio di risoluzione (ore) per gruppo',
+      chart_sla_compliance: 'SLA rispettata per gruppo (%)', chart_load_by_agent: 'Carico ticket per agente',
+      no_data: 'Nessun dato.', no_resolved_yet: 'Nessun ticket risolto ancora.',
+      no_group_sla_configured: 'Nessun gruppo con SLA configurata.', no_assigned_tickets: 'Nessun ticket assegnato.',
+      no_group_label: 'Senza gruppo',
+      your_account_title: 'Il tuo account', change_password_title: 'Cambia password',
+      current_password_label: 'Password attuale', new_password_label: 'Nuova password',
+      confirm_new_password_label: 'Conferma nuova password', btn_update_password: 'Aggiorna password',
+      change_email_title: 'Cambia email', new_email_label: 'Nuova email', btn_update_email: 'Aggiorna email',
+      passwords_dont_match: 'Le nuove password non coincidono',
+      toast_password_updated: 'Password aggiornata', toast_email_updated: 'Email aggiornata',
+      settings_language_title: 'Lingua', settings_lang_hint: 'Scegli la lingua dell\'interfaccia.',
+      personalization_title: 'Personalizzazione', personalization_hint: 'Scegli il colore principale dell\'interfaccia.',
+      cold_start_hint: 'Il server si sta risvegliando dopo un periodo di inattività, un momento...',
+      admin_title: 'Amministrazione', access_denied: 'Accesso non consentito.', person_card_title: 'Scheda persona',
+      account_details_title: 'Dettagli account', registered_on_label: 'Registrato il', field_role: 'Ruolo', field_locale: 'Lingua',
+      reset_password_btn: 'Reimposta password', ticket_activity_title: 'Attività ticket',
+      opened_by_person: 'Aperti da questa persona', assigned_to_person: 'Assegnati a questa persona',
+      toast_role_updated: 'Ruolo aggiornato', toast_group_updated: 'Gruppo aggiornato', toast_locale_updated: 'Lingua aggiornata',
+      confirm_reset_password_prefix: 'Generare una nuova password temporanea per', confirm_reset_password_suffix: '?',
+      password_reset_success_msg: 'Password reimpostata.',
+      new_temp_password_hint: 'Nuova password temporanea (comunicala in modo sicuro, non sarà più visibile):',
+      toast_password_reset: 'Password reimpostata', settings_title: 'Impostazioni',
+      motion_fluid_label: 'Animazioni fluide', toast_accent_updated: 'Colore aggiornato', toast_motion_updated: 'Preferenza animazioni aggiornata',
     },
     en: {
       nav_dashboard: 'Tickets', nav_new: 'New ticket', nav_search: 'Search', nav_backlog: 'Backlog',
@@ -225,6 +276,57 @@
       btn_save: 'Save', btn_cancel: 'Cancel', btn_delete: 'Delete', btn_add: 'Add', btn_search: 'Search',
       loading: 'Loading...', no_results: 'No results.', unassigned_label: 'Unassigned',
       lang_updated: 'Language updated', by_label: 'By', assigned_to_label: 'Assigned to', no_tickets_found: 'No tickets found.',
+      back_to_list: 'Back to list', edit_subject_desc: 'Edit subject and description',
+      field_subject: 'Subject', field_description: 'Description', btn_save_changes: 'Save changes',
+      created_by: 'Created by', on_date: 'on', reopen_ticket: 'Reopen ticket',
+      activity_title: 'Activity', no_activity: 'No activity yet.',
+      readonly_no_comments: 'Read-only mode: comments cannot be sent.',
+      add_comment_label: 'Add a comment', comment_placeholder: 'Write a reply...',
+      internal_note_label: 'Internal note (staff only)', btn_send: 'Send',
+      management_title: 'Management', field_group: 'Assignment group', field_linked_asset: 'Linked asset',
+      delete_ticket_btn: 'Delete ticket', no_group_option: 'No group', no_asset_option: 'No asset',
+      confirm_delete_ticket: 'Permanently delete this ticket?',
+      toast_ticket_updated: 'Ticket updated', toast_ticket_reopened: 'Ticket reopened', toast_ticket_deleted: 'Ticket deleted',
+      toast_comment_added: 'Comment added', new_message_toast: 'New message on the ticket',
+      presence_staff: 'A technician is currently viewing this ticket',
+      presence_customer: 'The requester is currently viewing this ticket',
+      group_label_prefix: 'Group', viewing_as_title: 'View of', viewing_as_hint: "You're viewing this person's tickets in read-only mode.",
+      viewas_banner_text: "You're viewing the platform as", viewas_readonly_suffix: 'read-only', viewas_exit: 'Exit this mode',
+      backlog_hint: 'Unassigned tickets, ordered by SLA urgency.',
+      assets_hint: 'Device inventory, permanent assignments and loans.', new_asset_title: 'New asset',
+      field_name: 'Name', field_tag: 'Tag/asset number', btn_add_asset: 'Add asset',
+      table_type: 'Type', table_tag: 'Tag', table_status: 'Status', table_assignment: 'Assignment', table_due_date: 'Due date',
+      assignment_permanent: 'Permanent', assignment_loan: 'Loan', none_option: 'None', no_assets_found: 'No assets found.',
+      toast_asset_status_updated: 'Asset status updated', toast_assignment_updated: 'Assignment updated',
+      toast_assignee_updated: 'Assignee updated', toast_due_date_updated: 'Due date updated',
+      confirm_delete_asset: 'Delete this asset?', toast_asset_deleted: 'Asset deleted', delete_asset_title: 'Delete asset',
+      search_hint: 'Search by ticket number, keyword or requester: results appear as you type.',
+      search_placeholder_full: 'Ticket number, keyword, requester...', all_groups_option: 'All groups',
+      report_hint: 'Volumes, resolution times and SLA compliance by group and agent.',
+      chart_volume_by_group: 'Ticket volume by group', chart_avg_resolution: 'Average resolution time (hours) by group',
+      chart_sla_compliance: 'SLA compliance by group (%)', chart_load_by_agent: 'Ticket load by agent',
+      no_data: 'No data.', no_resolved_yet: 'No resolved tickets yet.',
+      no_group_sla_configured: 'No group with SLA configured.', no_assigned_tickets: 'No assigned tickets.',
+      no_group_label: 'No group',
+      your_account_title: 'Your account', change_password_title: 'Change password',
+      current_password_label: 'Current password', new_password_label: 'New password',
+      confirm_new_password_label: 'Confirm new password', btn_update_password: 'Update password',
+      change_email_title: 'Change email', new_email_label: 'New email', btn_update_email: 'Update email',
+      passwords_dont_match: 'The new passwords do not match',
+      toast_password_updated: 'Password updated', toast_email_updated: 'Email updated',
+      settings_language_title: 'Language', settings_lang_hint: 'Choose the interface language.',
+      personalization_title: 'Personalization', personalization_hint: 'Choose the main interface color.',
+      cold_start_hint: 'The server is waking up after a period of inactivity, one moment...',
+      admin_title: 'Administration', access_denied: 'Access not allowed.', person_card_title: 'Person profile',
+      account_details_title: 'Account details', registered_on_label: 'Registered on', field_role: 'Role', field_locale: 'Language',
+      reset_password_btn: 'Reset password', ticket_activity_title: 'Ticket activity',
+      opened_by_person: 'Opened by this person', assigned_to_person: 'Assigned to this person',
+      toast_role_updated: 'Role updated', toast_group_updated: 'Group updated', toast_locale_updated: 'Language updated',
+      confirm_reset_password_prefix: 'Generate a new temporary password for', confirm_reset_password_suffix: '?',
+      password_reset_success_msg: 'Password reset.',
+      new_temp_password_hint: 'New temporary password (share it securely, it will not be shown again):',
+      toast_password_reset: 'Password reset', settings_title: 'Settings',
+      motion_fluid_label: 'Smooth animations', toast_accent_updated: 'Color updated', toast_motion_updated: 'Animation preference updated',
     },
   };
   const LANG_LABELS = { it: 'Italiano', en: 'English' };
@@ -288,15 +390,28 @@
     return '';
   }
 
+  let coldStartToastShown = false;
   async function api(path, { method = 'GET', body } = {}) {
     const headers = { 'Content-Type': 'application/json' };
     if (state.token) headers.Authorization = `Bearer ${state.token}`;
 
-    const res = await fetch(`${getApiBase()}/api${path}`, {
-      method,
-      headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
-    });
+    const wakeTimer = setTimeout(() => {
+      if (!coldStartToastShown) {
+        coldStartToastShown = true;
+        showToast(t('cold_start_hint'), '', 20000);
+      }
+    }, 4000);
+
+    let res;
+    try {
+      res = await fetch(`${getApiBase()}/api${path}`, {
+        method,
+        headers,
+        body: body !== undefined ? JSON.stringify(body) : undefined,
+      });
+    } finally {
+      clearTimeout(wakeTimer);
+    }
 
     let data = null;
     const text = await res.text();
@@ -375,7 +490,7 @@
   function renderViewAsBanner() {
     if (state.viewAs) {
       viewAsBanner.hidden = false;
-      viewAsBanner.innerHTML = `${icon('eye')} <span>Stai vedendo la piattaforma come <strong>${escapeHtml(state.viewAs.name)}</strong> · sola lettura</span> <button type="button" id="stopImpersonateBtn" class="btn btn-sm">Esci dalla modalità</button>`;
+      viewAsBanner.innerHTML = `${icon('eye')} <span>${t('viewas_banner_text')} <strong>${escapeHtml(state.viewAs.name)}</strong> · ${t('viewas_readonly_suffix')}</span> <button type="button" id="stopImpersonateBtn" class="btn btn-sm">${t('viewas_exit')}</button>`;
       document.getElementById('stopImpersonateBtn').addEventListener('click', stopImpersonation);
     } else {
       viewAsBanner.hidden = true;
@@ -386,7 +501,7 @@
   function startImpersonation(user) {
     state.viewAs = { id: user.id, name: user.name, role: user.role };
     renderViewAsBanner();
-    showToast(`Stai vedendo la piattaforma come ${user.name}`, '');
+    showToast(`${t('viewas_banner_text')} ${user.name}`, '');
     location.hash = '#/dashboard';
     route();
   }
@@ -861,16 +976,17 @@
   }
 
   function groupStaffByGroup(users) {
+    const noGroupLabel = t('no_group_label');
     const staffUsers = users.filter((u) => u.role === 'agent' || u.role === 'admin');
     const groups = new Map();
     staffUsers.forEach((u) => {
-      const key = u.group_name ? (u.group_parent_name ? `${u.group_parent_name} / ${u.group_name}` : u.group_name) : 'Senza gruppo';
+      const key = u.group_name ? (u.group_parent_name ? `${u.group_parent_name} / ${u.group_name}` : u.group_name) : noGroupLabel;
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key).push(u);
     });
     const sortedGroups = [...groups.keys()].sort((a, b) => {
-      if (a === 'Senza gruppo') return 1;
-      if (b === 'Senza gruppo') return -1;
+      if (a === noGroupLabel) return 1;
+      if (b === noGroupLabel) return -1;
       return a.localeCompare(b);
     });
     return sortedGroups.map((group) => ({ group, members: groups.get(group) }));
@@ -917,8 +1033,8 @@
     appEl.innerHTML = `
       <div class="view-header">
         <div>
-          <h1>${viewingAs ? `Vista di ${escapeHtml(viewingAs.name)}` : (isStaff() ? t('dashboard_title_staff') : t('dashboard_title_customer'))}</h1>
-          <p class="hint">${viewingAs ? 'Stai visualizzando i ticket di questa persona in sola lettura.' : (isStaff() ? t('dashboard_hint_staff') : t('dashboard_hint_customer'))}</p>
+          <h1>${viewingAs ? `${t('viewing_as_title')} ${escapeHtml(viewingAs.name)}` : (isStaff() ? t('dashboard_title_staff') : t('dashboard_title_customer'))}</h1>
+          <p class="hint">${viewingAs ? t('viewing_as_hint') : (isStaff() ? t('dashboard_hint_staff') : t('dashboard_hint_customer'))}</p>
         </div>
         <div style="display:flex;gap:0.6rem;align-items:center">
           ${!viewingAs ? `
@@ -1161,9 +1277,8 @@
       if (fPriority.value) params.set('priority', fPriority.value);
       if (fAssigned && fAssigned.value) params.set('assigned', fAssigned.value);
       if (fQuery.value.trim()) params.set('q', fQuery.value.trim());
-      if (viewingAs) {
-        if (viewingAs.role === 'customer') params.set('createdBy', viewingAs.id);
-        else params.set('assigned', viewingAs.id);
+      if (viewingAs && viewingAs.role === 'customer') {
+        params.set('createdBy', viewingAs.id);
       }
 
       try {
@@ -1334,7 +1449,7 @@
       try {
         const { users } = await api('/users');
         const staffGroups = groupStaffByGroup(users);
-        assigneesOptions = `<option value="">Non assegnato</option>` +
+        assigneesOptions = `<option value="">${t('unassigned_label')}</option>` +
           staffGroups.map(({ group, members }) => `
             <optgroup label="${escapeHtml(group)}">
               ${members.map((u) => `<option value="${u.id}" ${ticket.assigned_to === u.id ? 'selected' : ''}>${escapeHtml(u.name)}</option>`).join('')}
@@ -1343,57 +1458,57 @@
 
       try {
         const { groups } = await api('/groups');
-        groupOptions = groupOptionsHtml(groups, ticket.group_id, 'Nessun gruppo');
+        groupOptions = groupOptionsHtml(groups, ticket.group_id, t('no_group_option'));
       } catch { groupOptions = ''; }
 
       try {
         const { assets } = await api('/assets');
-        assetOptions = `<option value="">Nessun asset</option>` +
+        assetOptions = `<option value="">${t('no_asset_option')}</option>` +
           assets.map((a) => `<option value="${a.id}" ${ticket.asset_id === a.id ? 'selected' : ''}>${escapeHtml(a.name)}${a.tag ? ` (${escapeHtml(a.tag)})` : ''}</option>`).join('');
       } catch { assetOptions = ''; }
 
       staffPanel = `
         <div class="card">
-          <h3 class="section-title" style="margin-top:0">${icon('shield')} Gestione</h3>
+          <h3 class="section-title" style="margin-top:0">${icon('shield')} ${t('management_title')}</h3>
           <div class="side-field">
-            <label for="statusSel">Stato</label>
+            <label for="statusSel">${t('dim_status')}</label>
             <select id="statusSel">
               ${Object.entries(statusLabels()).map(([v, l]) => `<option value="${v}" ${ticket.status === v ? 'selected' : ''}>${l}</option>`).join('')}
             </select>
           </div>
           <div class="side-field">
-            <label for="prioritySel">Priorità</label>
+            <label for="prioritySel">${t('dim_priority')}</label>
             <select id="prioritySel">
               ${Object.entries(priorityLabels()).map(([v, l]) => `<option value="${v}" ${ticket.priority === v ? 'selected' : ''}>${l}</option>`).join('')}
             </select>
           </div>
           <div class="side-field">
-            <label for="typeSel">Tipo</label>
+            <label for="typeSel">${t('dim_type')}</label>
             <select id="typeSel">
               ${Object.entries(typeLabels()).map(([v, l]) => `<option value="${v}" ${ticket.type === v ? 'selected' : ''}>${l}</option>`).join('')}
             </select>
           </div>
           <div class="side-field">
-            <label for="groupSel">Gruppo di assegnazione</label>
+            <label for="groupSel">${t('field_group')}</label>
             <select id="groupSel">${groupOptions}</select>
           </div>
           <div class="side-field">
-            <label for="assignedSel">Assegnato a</label>
+            <label for="assignedSel">${t('assigned_to_label')}</label>
             <select id="assignedSel">${assigneesOptions}</select>
           </div>
           <div class="side-field">
-            <label for="assetSel">Asset collegato</label>
+            <label for="assetSel">${t('field_linked_asset')}</label>
             <select id="assetSel">${assetOptions}</select>
           </div>
-          <button id="saveMgmtBtn" class="btn btn-sm btn-block">Salva modifiche</button>
-          ${state.user.role === 'admin' ? `<button id="deleteBtn" class="btn btn-sm btn-outline-danger btn-block" style="margin-top:0.5rem">Elimina ticket</button>` : ''}
+          <button id="saveMgmtBtn" class="btn btn-sm btn-block">${t('btn_save_changes')}</button>
+          ${state.user.role === 'admin' ? `<button id="deleteBtn" class="btn btn-sm btn-outline-danger btn-block" style="margin-top:0.5rem">${t('delete_ticket_btn')}</button>` : ''}
         </div>`;
     }
 
     appEl.innerHTML = `
       <div class="view-header">
         <h1>#${ticket.id} ${escapeHtml(ticket.subject)}</h1>
-        <a class="btn btn-ghost" href="#/dashboard">${icon('arrowLeft')} Torna alla lista</a>
+        <a class="btn btn-ghost" href="#/dashboard">${icon('arrowLeft')} ${t('back_to_list')}</a>
       </div>
       <div id="presenceBanner" class="presence-banner" hidden></div>
       <div class="ticket-detail-grid">
@@ -1409,49 +1524,49 @@
             ${canEditFields ? `
               <div id="viewDescription">
                 <p style="white-space:pre-wrap">${escapeHtml(ticket.description)}</p>
-                <button type="button" id="editToggleBtn" class="btn btn-ghost btn-sm">${icon('edit', 'badge-icon')} Modifica oggetto e descrizione</button>
+                <button type="button" id="editToggleBtn" class="btn btn-ghost btn-sm">${icon('edit', 'badge-icon')} ${t('edit_subject_desc')}</button>
               </div>
               <form id="editForm" class="form-grid" style="max-width:none" hidden>
                 <div class="field">
-                  <label for="editSubject">Oggetto</label>
+                  <label for="editSubject">${t('field_subject')}</label>
                   <input id="editSubject" type="text" value="${escapeHtml(ticket.subject)}" />
                 </div>
                 <div class="field">
-                  <label for="editDescription">Descrizione</label>
+                  <label for="editDescription">${t('field_description')}</label>
                   <textarea id="editDescription">${escapeHtml(ticket.description)}</textarea>
                 </div>
                 <div style="display:flex;gap:0.5rem">
-                  <button class="btn btn-sm" type="submit">Salva modifiche</button>
-                  <button type="button" id="editCancelBtn" class="btn btn-sm btn-ghost">Annulla</button>
+                  <button class="btn btn-sm" type="submit">${t('btn_save_changes')}</button>
+                  <button type="button" id="editCancelBtn" class="btn btn-sm btn-ghost">${t('btn_cancel')}</button>
                 </div>
               </form>
             ` : `<p style="white-space:pre-wrap">${escapeHtml(ticket.description)}</p>`}
             <p class="ticket-meta">
-              Creato da ${escapeHtml(ticket.creator_name)} il ${formatDate(ticket.created_at)}
-              ${ticket.assignee_name ? ` · Assegnato a ${escapeHtml(ticket.assignee_name)}` : ''}
-              ${groupLabel(ticket) ? ` · Gruppo ${escapeHtml(groupLabel(ticket))}` : ''}
-              ${ticket.asset_name ? ` · Asset ${escapeHtml(ticket.asset_name)}` : ''}
+              ${t('created_by')} ${escapeHtml(ticket.creator_name)} ${t('on_date')} ${formatDate(ticket.created_at)}
+              ${ticket.assignee_name ? ` · ${t('assigned_to_label')} ${escapeHtml(ticket.assignee_name)}` : ''}
+              ${groupLabel(ticket) ? ` · ${t('group_label_prefix')} ${escapeHtml(groupLabel(ticket))}` : ''}
+              ${ticket.asset_name ? ` · ${t('field_linked_asset')} ${escapeHtml(ticket.asset_name)}` : ''}
             </p>
-            ${canReopen ? `<button id="reopenBtn" class="btn btn-sm btn-ghost">${icon('refresh')} Riapri ticket</button>` : ''}
+            ${canReopen ? `<button id="reopenBtn" class="btn btn-sm btn-ghost">${icon('refresh')} ${t('reopen_ticket')}</button>` : ''}
           </div>
 
           <div class="card">
-            <h3 class="section-title" style="margin-top:0">Attività</h3>
+            <h3 class="section-title" style="margin-top:0">${t('activity_title')}</h3>
             <div id="activityList">
-              ${activity.length ? activity.map(renderActivityItem).join('') : '<p class="hint">Nessuna attività ancora.</p>'}
+              ${activity.length ? activity.map(renderActivityItem).join('') : `<p class="hint">${t('no_activity')}</p>`}
             </div>
-            ${readOnly ? '<p class="hint">Modalità sola lettura: non è possibile inviare commenti.</p>' : `
+            ${readOnly ? `<p class="hint">${t('readonly_no_comments')}</p>` : `
             <form id="commentForm" class="form-grid" style="max-width:none;margin-top:1rem">
               <div class="field">
-                <label for="commentMsg">Aggiungi un commento</label>
-                <textarea id="commentMsg" required placeholder="Scrivi una risposta..."></textarea>
+                <label for="commentMsg">${t('add_comment_label')}</label>
+                <textarea id="commentMsg" required placeholder="${t('comment_placeholder')}"></textarea>
               </div>
               ${isStaff() ? `
               <label class="checkbox-field">
                 <input type="checkbox" id="internalCheck" />
-                Nota interna (visibile solo allo staff)
+                ${t('internal_note_label')}
               </label>` : ''}
-              <div><button class="btn btn-sm" type="submit">Invia</button></div>
+              <div><button class="btn btn-sm" type="submit">${t('btn_send')}</button></div>
             </form>`}
           </div>
         </div>
@@ -1469,7 +1584,7 @@
         document.getElementById('activityList').innerHTML = updated.map(renderActivityItem).join('');
         msgEl.value = '';
         if (internalEl) internalEl.checked = false;
-        showToast('Commento aggiunto', 'success');
+        showToast(t('toast_comment_added'), 'success');
       } catch (err) {
         showToast(err.message, 'error');
       }
@@ -1501,7 +1616,7 @@
               description: document.getElementById('editDescription').value.trim(),
             },
           });
-          showToast('Ticket aggiornato', 'success');
+          showToast(t('toast_ticket_updated'), 'success');
           renderTicketDetail(id);
         } catch (err) {
           showToast(err.message, 'error');
@@ -1514,7 +1629,7 @@
       reopenBtn.addEventListener('click', async () => {
         try {
           await api(`/tickets/${ticket.id}`, { method: 'PATCH', body: { status: 'open' } });
-          showToast('Ticket riaperto', 'success');
+          showToast(t('toast_ticket_reopened'), 'success');
           renderTicketDetail(id);
         } catch (err) {
           showToast(err.message, 'error');
@@ -1540,7 +1655,7 @@
               asset_id: assetRaw ? Number(assetRaw) : null,
             },
           });
-          showToast('Ticket aggiornato', 'success');
+          showToast(t('toast_ticket_updated'), 'success');
           renderTicketDetail(id);
         } catch (err) {
           showToast(err.message, 'error');
@@ -1551,10 +1666,10 @@
     const deleteBtn = document.getElementById('deleteBtn');
     if (deleteBtn) {
       deleteBtn.addEventListener('click', async () => {
-        if (!confirm('Eliminare definitivamente questo ticket?')) return;
+        if (!confirm(t('confirm_delete_ticket'))) return;
         try {
           await api(`/tickets/${ticket.id}`, { method: 'DELETE' });
-          showToast('Ticket eliminato', 'success');
+          showToast(t('toast_ticket_deleted'), 'success');
           location.hash = '#/dashboard';
         } catch (err) {
           showToast(err.message, 'error');
@@ -1573,10 +1688,10 @@
       if (!banner) return;
       const parts = [];
       if (presence.staff.size && !isStaff()) {
-        parts.push(`${icon('shield')} Un tecnico sta seguendo questo ticket in questo momento`);
+        parts.push(`${icon('shield')} ${t('presence_staff')}`);
       }
       if (presence.customer.size && isStaff()) {
-        parts.push(`${icon('userCircle')} Il richiedente sta visualizzando questo ticket in questo momento`);
+        parts.push(`${icon('userCircle')} ${t('presence_customer')}`);
       }
       if (parts.length) {
         banner.hidden = false;
@@ -1595,7 +1710,7 @@
         if (list.querySelector('.hint')) list.innerHTML = '';
         list.insertAdjacentHTML('beforeend', renderActivityItem(item));
         if (item.kind === 'comment' && item.author_role !== state.user.role) {
-          showToast('Nuovo messaggio nel ticket', '');
+          showToast(t('new_message_toast'), '');
         }
       });
 
@@ -1656,7 +1771,7 @@
     }
     const isAdmin = state.user.role === 'admin';
     appEl.innerHTML = `
-      <div class="view-header"><h1>${icon('shield')} Amministrazione</h1></div>
+      <div class="view-header"><h1>${icon('shield')} ${t('admin_title')}</h1></div>
       ${isAdmin ? `
       <div class="admin-grid" style="margin-bottom:1.25rem">
         <div class="card">
@@ -2022,7 +2137,7 @@
 
   async function renderUserDetail(id) {
     if (!isStaff()) {
-      appEl.innerHTML = `<div class="card"><p class="error-text">Accesso non consentito.</p></div>`;
+      appEl.innerHTML = `<div class="card"><p class="error-text">${t('access_denied')}</p></div>`;
       return;
     }
     let user;
@@ -2046,8 +2161,8 @@
 
     appEl.innerHTML = `
       <div class="view-header">
-        <h1>${icon('userCircle')} Scheda persona</h1>
-        <a class="btn btn-ghost" href="#/admin">${icon('arrowLeft')} Torna alla lista</a>
+        <h1>${icon('userCircle')} ${t('person_card_title')}</h1>
+        <a class="btn btn-ghost" href="#/admin">${icon('arrowLeft')} ${t('back_to_list')}</a>
       </div>
       <div class="user-profile-grid">
         <div class="card user-profile-head">
@@ -2057,42 +2172,42 @@
             <p class="hint" style="margin:0">${escapeHtml(user.email)}</p>
             <span class="role-tag" style="margin-top:0.5rem;display:inline-block">${roleLabels()[user.role] || user.role}</span>
           </div>
-          ${state.user.is_super_admin && !isSelf ? `<button type="button" id="impersonateBtn" class="btn btn-sm" style="margin-left:auto">${icon('eye')} Immedesimati</button>` : ''}
+          ${state.user.is_super_admin && !isSelf ? `<button type="button" id="impersonateBtn" class="btn btn-sm" style="margin-left:auto">${icon('eye')} ${t('impersonate')}</button>` : ''}
         </div>
 
         <div class="card">
-          <h3 class="section-title" style="margin-top:0">Dettagli account</h3>
-          <div class="field"><label>Registrato il</label><p>${formatDate(user.created_at)}</p></div>
+          <h3 class="section-title" style="margin-top:0">${t('account_details_title')}</h3>
+          <div class="field"><label>${t('registered_on_label')}</label><p>${formatDate(user.created_at)}</p></div>
           ${isAdmin ? `
           <div class="field">
-            <label for="detailRole">Ruolo</label>
+            <label for="detailRole">${t('field_role')}</label>
             <select id="detailRole" ${isSelf ? 'disabled' : ''}>
               ${Object.entries(roleLabels()).map(([v, l]) => `<option value="${v}" ${user.role === v ? 'selected' : ''}>${l}</option>`).join('')}
             </select>
           </div>
           <div class="field">
-            <label for="detailGroup">Gruppo di assegnazione</label>
-            <select id="detailGroup">${groupOptionsHtml(groups, user.group_id, 'Nessun gruppo')}</select>
+            <label for="detailGroup">${t('field_group')}</label>
+            <select id="detailGroup">${groupOptionsHtml(groups, user.group_id, t('no_group_option'))}</select>
           </div>
           <div class="field">
-            <label for="detailLocale">Lingua</label>
+            <label for="detailLocale">${t('field_locale')}</label>
             <select id="detailLocale">
               ${Object.entries(LANG_LABELS).map(([v, l]) => `<option value="${v}" ${user.locale === v ? 'selected' : ''}>${l}</option>`).join('')}
             </select>
           </div>
-          <button type="button" id="detailResetPwBtn" class="btn btn-sm btn-outline-danger" style="margin-top:0.5rem">${icon('refresh')} Reimposta password</button>
+          <button type="button" id="detailResetPwBtn" class="btn btn-sm btn-outline-danger" style="margin-top:0.5rem">${icon('refresh')} ${t('reset_password_btn')}</button>
           <div id="detailResetPwBox"></div>
           ` : `
-          <div class="field"><label>Gruppo</label><p>${escapeHtml(groupLabel(user) || '—')}</p></div>
-          <div class="field"><label>Lingua</label><p>${escapeHtml(LANG_LABELS[user.locale] || user.locale || '—')}</p></div>
+          <div class="field"><label>${t('field_group')}</label><p>${escapeHtml(groupLabel(user) || '—')}</p></div>
+          <div class="field"><label>${t('field_locale')}</label><p>${escapeHtml(LANG_LABELS[user.locale] || user.locale || '—')}</p></div>
           `}
         </div>
 
         <div class="card">
-          <h3 class="section-title" style="margin-top:0">Attività ticket</h3>
+          <h3 class="section-title" style="margin-top:0">${t('ticket_activity_title')}</h3>
           <div class="stat-row" style="grid-template-columns:1fr 1fr">
-            <div class="stat-card"><div class="stat-value">${createdStats.length}</div><div class="stat-label">Aperti da questa persona</div></div>
-            ${user.role !== 'customer' ? `<div class="stat-card"><div class="stat-value">${assignedStats.length}</div><div class="stat-label">Assegnati a questa persona</div></div>` : ''}
+            <div class="stat-card"><div class="stat-value">${createdStats.length}</div><div class="stat-label">${t('opened_by_person')}</div></div>
+            ${user.role !== 'customer' ? `<div class="stat-card"><div class="stat-value">${assignedStats.length}</div><div class="stat-label">${t('assigned_to_person')}</div></div>` : ''}
           </div>
         </div>
       </div>`;
@@ -2101,7 +2216,7 @@
       document.getElementById('detailRole').addEventListener('change', async (e) => {
         try {
           await api(`/users/${user.id}/role`, { method: 'PATCH', body: { role: e.target.value } });
-          showToast('Ruolo aggiornato', 'success');
+          showToast(t('toast_role_updated'), 'success');
         } catch (err) {
           showToast(err.message, 'error');
           renderUserDetail(id);
@@ -2110,7 +2225,7 @@
       document.getElementById('detailGroup').addEventListener('change', async (e) => {
         try {
           await api(`/users/${user.id}/group`, { method: 'PATCH', body: { groupId: e.target.value || null } });
-          showToast('Gruppo aggiornato', 'success');
+          showToast(t('toast_group_updated'), 'success');
         } catch (err) {
           showToast(err.message, 'error');
           renderUserDetail(id);
@@ -2119,22 +2234,22 @@
       document.getElementById('detailLocale').addEventListener('change', async (e) => {
         try {
           await api(`/users/${user.id}/locale`, { method: 'PATCH', body: { locale: e.target.value } });
-          showToast('Lingua aggiornata', 'success');
+          showToast(t('toast_locale_updated'), 'success');
         } catch (err) {
           showToast(err.message, 'error');
           renderUserDetail(id);
         }
       });
       document.getElementById('detailResetPwBtn').addEventListener('click', async () => {
-        if (!confirm(`Generare una nuova password temporanea per ${user.name}?`)) return;
+        if (!confirm(`${t('confirm_reset_password_prefix')} ${user.name}${t('confirm_reset_password_suffix')}`)) return;
         try {
           const { tempPassword } = await api(`/users/${user.id}/reset-password`, { method: 'POST' });
           document.getElementById('detailResetPwBox').innerHTML = `
             <div class="divider"></div>
-            <p class="success-text">Password reimpostata.</p>
-            <p class="hint">Nuova password temporanea (comunicala in modo sicuro, non sarà più visibile):</p>
+            <p class="success-text">${t('password_reset_success_msg')}</p>
+            <p class="hint">${t('new_temp_password_hint')}</p>
             <p class="card" style="font-family:monospace;font-size:1rem;padding:0.6rem 0.9rem;display:inline-block">${escapeHtml(tempPassword)}</p>`;
-          showToast('Password reimpostata', 'success');
+          showToast(t('toast_password_reset'), 'success');
         } catch (err) {
           showToast(err.message, 'error');
         }
@@ -2154,7 +2269,7 @@
       <div class="view-header">
         <div>
           <h1>${icon('inbox')} Backlog</h1>
-          <p class="hint">Ticket non assegnati, in ordine di urgenza SLA.</p>
+          <p class="hint">${t('backlog_hint')}</p>
         </div>
       </div>
       <div id="ticketList" class="skeleton-grid">
@@ -2183,31 +2298,31 @@
     appEl.innerHTML = `
       <div class="view-header">
         <div>
-          <h1>${icon('ticket')} Asset</h1>
-          <p class="hint">Inventario dispositivi, assegnazioni permanenti e prestiti.</p>
+          <h1>${icon('ticket')} ${t('nav_assets')}</h1>
+          <p class="hint">${t('assets_hint')}</p>
         </div>
       </div>
       <div class="card" style="margin-bottom:1.25rem;max-width:640px">
-        <h3 class="section-title" style="margin-top:0">Nuovo asset</h3>
+        <h3 class="section-title" style="margin-top:0">${t('new_asset_title')}</h3>
         <form id="newAssetForm" class="form-grid" style="max-width:none">
-          <div class="field"><label for="assetName">Nome</label><input id="assetName" required placeholder="es. Laptop Dell XPS #12" /></div>
+          <div class="field"><label for="assetName">${t('field_name')}</label><input id="assetName" required placeholder="es. Laptop Dell XPS #12" /></div>
           <div style="display:flex;gap:0.75rem">
             <div class="field" style="flex:1">
-              <label for="assetType">Tipo</label>
+              <label for="assetType">${t('table_type')}</label>
               <select id="assetType">${Object.entries(assetTypeLabels()).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>
             </div>
-            <div class="field" style="flex:1"><label for="assetTag">Tag/matricola</label><input id="assetTag" placeholder="es. IT-0012" /></div>
+            <div class="field" style="flex:1"><label for="assetTag">${t('field_tag')}</label><input id="assetTag" placeholder="es. IT-0012" /></div>
           </div>
-          <div><button class="btn btn-sm" type="submit">Aggiungi asset</button></div>
+          <div><button class="btn btn-sm" type="submit">${t('btn_add_asset')}</button></div>
         </form>
       </div>
       <div class="filters">
         <select id="assetStatusFilter">
-          <option value="">Tutti gli stati</option>
+          <option value="">${t('filter_all_statuses')}</option>
           ${Object.entries(assetStatusLabels()).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
         </select>
       </div>
-      <div id="assetsWrap" class="card spinner-row">Caricamento...</div>`;
+      <div id="assetsWrap" class="card spinner-row">${t('loading')}</div>`;
 
     let usersCache = [];
     try {
@@ -2219,7 +2334,7 @@
     async function loadAssets() {
       const wrap = document.getElementById('assetsWrap');
       wrap.className = 'card spinner-row';
-      wrap.textContent = 'Caricamento...';
+      wrap.textContent = t('loading');
       try {
         const params = new URLSearchParams();
         if (statusFilter.value) params.set('status', statusFilter.value);
@@ -2228,7 +2343,7 @@
         wrap.innerHTML = assets.length ? `
           <div class="table-scroll">
             <table class="users-table">
-              <thead><tr><th>Nome</th><th>Tipo</th><th>Tag</th><th>Stato</th><th>Assegnazione</th><th>Assegnato a</th><th>Scadenza</th>${state.user.role === 'admin' ? '<th></th>' : ''}</tr></thead>
+              <thead><tr><th>${t('field_name')}</th><th>${t('table_type')}</th><th>${t('table_tag')}</th><th>${t('table_status')}</th><th>${t('table_assignment')}</th><th>${t('assigned_to_label')}</th><th>${t('table_due_date')}</th>${state.user.role === 'admin' ? '<th></th>' : ''}</tr></thead>
               <tbody>
                 ${assets.map((a) => `
                   <tr>
@@ -2242,54 +2357,54 @@
                     </td>
                     <td>
                       <select class="assetAssignTypeSel groupSel" data-id="${a.id}">
-                        <option value="permanente" ${a.assignment_type === 'permanente' ? 'selected' : ''}>Permanente</option>
-                        <option value="prestito" ${a.assignment_type === 'prestito' ? 'selected' : ''}>Prestito</option>
+                        <option value="permanente" ${a.assignment_type === 'permanente' ? 'selected' : ''}>${t('assignment_permanent')}</option>
+                        <option value="prestito" ${a.assignment_type === 'prestito' ? 'selected' : ''}>${t('assignment_loan')}</option>
                       </select>
                     </td>
                     <td>
                       <select class="assetAssigneeSel groupSel" data-id="${a.id}">
-                        <option value="">Nessuno</option>
+                        <option value="">${t('none_option')}</option>
                         ${usersCache.map((u) => `<option value="${u.id}" ${a.assigned_to === u.id ? 'selected' : ''}>${escapeHtml(u.name)}</option>`).join('')}
                       </select>
                     </td>
                     <td><input type="date" class="assetDueInput" data-id="${a.id}" value="${a.due_date || ''}" ${a.assignment_type !== 'prestito' ? 'disabled' : ''} /></td>
-                    ${state.user.role === 'admin' ? `<td><button type="button" class="icon-btn deleteAssetBtn" data-id="${a.id}" title="Elimina asset">${icon('trash')}</button></td>` : ''}
+                    ${state.user.role === 'admin' ? `<td><button type="button" class="icon-btn deleteAssetBtn" data-id="${a.id}" title="${t('delete_asset_title')}">${icon('trash')}</button></td>` : ''}
                   </tr>`).join('')}
               </tbody>
             </table>
-          </div>` : '<p class="hint">Nessun asset trovato.</p>';
+          </div>` : `<p class="hint">${t('no_assets_found')}</p>`;
 
         wrap.querySelectorAll('.assetStatusSel').forEach((sel) => sel.addEventListener('change', async () => {
           try {
             await api(`/assets/${sel.dataset.id}`, { method: 'PATCH', body: { status: sel.value } });
-            showToast('Stato asset aggiornato', 'success');
+            showToast(t('toast_asset_status_updated'), 'success');
           } catch (err) { showToast(err.message, 'error'); loadAssets(); }
         }));
         wrap.querySelectorAll('.assetAssignTypeSel').forEach((sel) => sel.addEventListener('change', async () => {
           try {
             await api(`/assets/${sel.dataset.id}`, { method: 'PATCH', body: { assignmentType: sel.value } });
-            showToast('Assegnazione aggiornata', 'success');
+            showToast(t('toast_assignment_updated'), 'success');
             loadAssets();
           } catch (err) { showToast(err.message, 'error'); }
         }));
         wrap.querySelectorAll('.assetAssigneeSel').forEach((sel) => sel.addEventListener('change', async () => {
           try {
             await api(`/assets/${sel.dataset.id}`, { method: 'PATCH', body: { assignedTo: sel.value ? Number(sel.value) : null } });
-            showToast('Assegnatario aggiornato', 'success');
+            showToast(t('toast_assignee_updated'), 'success');
             loadAssets();
           } catch (err) { showToast(err.message, 'error'); }
         }));
         wrap.querySelectorAll('.assetDueInput').forEach((input) => input.addEventListener('change', async () => {
           try {
             await api(`/assets/${input.dataset.id}`, { method: 'PATCH', body: { dueDate: input.value || null } });
-            showToast('Scadenza aggiornata', 'success');
+            showToast(t('toast_due_date_updated'), 'success');
           } catch (err) { showToast(err.message, 'error'); }
         }));
         wrap.querySelectorAll('.deleteAssetBtn').forEach((btn) => btn.addEventListener('click', async () => {
-          if (!confirm('Eliminare questo asset?')) return;
+          if (!confirm(t('confirm_delete_asset'))) return;
           try {
             await api(`/assets/${btn.dataset.id}`, { method: 'DELETE' });
-            showToast('Asset eliminato', 'success');
+            showToast(t('toast_asset_deleted'), 'success');
             loadAssets();
           } catch (err) { showToast(err.message, 'error'); }
         }));
@@ -2329,25 +2444,25 @@
     appEl.innerHTML = `
       <div class="view-header">
         <div>
-          <h1>${icon('inbox')} Ricerca</h1>
-          <p class="hint">Cerca per numero ticket, parola chiave o richiedente: i risultati compaiono mentre scrivi.</p>
+          <h1>${icon('inbox')} ${t('nav_search')}</h1>
+          <p class="hint">${t('search_hint')}</p>
         </div>
       </div>
       <div class="filters">
-        <input id="searchQuery" type="search" placeholder="Numero ticket, parola chiave, richiedente..." style="flex:2 1 260px" autofocus />
+        <input id="searchQuery" type="search" placeholder="${t('search_placeholder_full')}" style="flex:2 1 260px" autofocus />
         <select id="searchType">
-          <option value="">Tutti i tipi</option>
+          <option value="">${t('filter_all_types')}</option>
           ${Object.entries(typeLabels()).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
         </select>
         <select id="searchStatus">
-          <option value="">Tutti gli stati</option>
+          <option value="">${t('filter_all_statuses')}</option>
           ${Object.entries(statusLabels()).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
         </select>
         <select id="searchPriority">
-          <option value="">Tutte le priorità</option>
+          <option value="">${t('filter_all_priorities')}</option>
           ${Object.entries(priorityLabels()).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
         </select>
-        <select id="searchGroup">${groupOptionsHtml(groups, '', 'Tutti i gruppi')}</select>
+        <select id="searchGroup">${groupOptionsHtml(groups, '', t('all_groups_option'))}</select>
       </div>
       <div id="searchResults" class="ticket-grid"></div>`;
 
@@ -2388,29 +2503,30 @@
     appEl.innerHTML = `
       <div class="view-header">
         <div>
-          <h1>${icon('activity')} Report</h1>
-          <p class="hint">Volumi, tempi di risoluzione e rispetto SLA per gruppo e per agente.</p>
+          <h1>${icon('activity')} ${t('nav_report')}</h1>
+          <p class="hint">${t('report_hint')}</p>
         </div>
       </div>
-      <div id="reportCharts" class="charts-row spinner-row">Caricamento...</div>`;
+      <div id="reportCharts" class="charts-row spinner-row">${t('loading')}</div>`;
 
     const chartsEl = document.getElementById('reportCharts');
     try {
       const { tickets } = await api('/tickets');
+      const noGroupLabel = t('no_group_label');
 
       const groupCounts = new Map();
-      tickets.forEach((t) => {
-        const key = groupLabel(t) || 'Senza gruppo';
+      tickets.forEach((tk) => {
+        const key = groupLabel(tk) || noGroupLabel;
         groupCounts.set(key, (groupCounts.get(key) || 0) + 1);
       });
       const volumeRows = [...groupCounts.entries()].sort((a, b) => b[1] - a[1])
         .map(([label, value]) => ({ key: label, label, value, color: 'var(--primary)' }));
 
-      const resolved = tickets.filter((t) => t.resolved_at);
+      const resolved = tickets.filter((tk) => tk.resolved_at);
       const avgByGroup = new Map();
-      resolved.forEach((t) => {
-        const key = groupLabel(t) || 'Senza gruppo';
-        const hours = (new Date(t.resolved_at.replace(' ', 'T') + 'Z') - new Date(t.created_at.replace(' ', 'T') + 'Z')) / 3600000;
+      resolved.forEach((tk) => {
+        const key = groupLabel(tk) || noGroupLabel;
+        const hours = (new Date(tk.resolved_at.replace(' ', 'T') + 'Z') - new Date(tk.created_at.replace(' ', 'T') + 'Z')) / 3600000;
         if (!avgByGroup.has(key)) avgByGroup.set(key, []);
         avgByGroup.get(key).push(hours);
       });
@@ -2419,21 +2535,21 @@
       })).sort((a, b) => b.value - a.value);
 
       const slaByGroup = new Map();
-      resolved.filter((t) => t.sla_status).forEach((t) => {
-        const key = groupLabel(t) || 'Senza gruppo';
+      resolved.filter((tk) => tk.sla_status).forEach((tk) => {
+        const key = groupLabel(tk) || noGroupLabel;
         if (!slaByGroup.has(key)) slaByGroup.set(key, { met: 0, total: 0 });
         const entry = slaByGroup.get(key);
         entry.total += 1;
-        if (t.sla_status === 'on_track') entry.met += 1;
+        if (tk.sla_status === 'on_track') entry.met += 1;
       });
       const slaRows = [...slaByGroup.entries()].map(([label, { met, total }]) => ({
         key: label, label, value: Math.round((met / total) * 100), color: 'var(--success)',
       })).sort((a, b) => b.value - a.value);
 
       const agentCounts = new Map();
-      tickets.forEach((t) => {
-        if (!t.assignee_name) return;
-        agentCounts.set(t.assignee_name, (agentCounts.get(t.assignee_name) || 0) + 1);
+      tickets.forEach((tk) => {
+        if (!tk.assignee_name) return;
+        agentCounts.set(tk.assignee_name, (agentCounts.get(tk.assignee_name) || 0) + 1);
       });
       const agentRows = [...agentCounts.entries()].sort((a, b) => b[1] - a[1])
         .map(([label, value]) => ({ key: label, label, value, color: 'var(--primary)' }));
@@ -2441,20 +2557,20 @@
       chartsEl.className = 'charts-row';
       chartsEl.innerHTML = `
         <div class="card chart-card">
-          <h3 class="section-title" style="margin-top:0">Volume ticket per gruppo</h3>
-          ${volumeRows.length ? barChart(volumeRows, tickets.length) : '<p class="hint">Nessun dato.</p>'}
+          <h3 class="section-title" style="margin-top:0">${t('chart_volume_by_group')}</h3>
+          ${volumeRows.length ? barChart(volumeRows, tickets.length) : `<p class="hint">${t('no_data')}</p>`}
         </div>
         <div class="card chart-card">
-          <h3 class="section-title" style="margin-top:0">Tempo medio di risoluzione (ore) per gruppo</h3>
-          ${avgRows.length ? barChart(avgRows, 0, { showPct: false, suffix: ' h' }) : '<p class="hint">Nessun ticket risolto ancora.</p>'}
+          <h3 class="section-title" style="margin-top:0">${t('chart_avg_resolution')}</h3>
+          ${avgRows.length ? barChart(avgRows, 0, { showPct: false, suffix: ' h' }) : `<p class="hint">${t('no_resolved_yet')}</p>`}
         </div>
         <div class="card chart-card">
-          <h3 class="section-title" style="margin-top:0">SLA rispettata per gruppo (%)</h3>
-          ${slaRows.length ? barChart(slaRows, 0, { showPct: false, suffix: '%' }) : '<p class="hint">Nessun gruppo con SLA configurata.</p>'}
+          <h3 class="section-title" style="margin-top:0">${t('chart_sla_compliance')}</h3>
+          ${slaRows.length ? barChart(slaRows, 0, { showPct: false, suffix: '%' }) : `<p class="hint">${t('no_group_sla_configured')}</p>`}
         </div>
         <div class="card chart-card">
-          <h3 class="section-title" style="margin-top:0">Carico ticket per agente</h3>
-          ${agentRows.length ? barChart(agentRows, tickets.length) : '<p class="hint">Nessun ticket assegnato.</p>'}
+          <h3 class="section-title" style="margin-top:0">${t('chart_load_by_agent')}</h3>
+          ${agentRows.length ? barChart(agentRows, tickets.length) : `<p class="hint">${t('no_assigned_tickets')}</p>`}
         </div>`;
     } catch (err) {
       chartsEl.className = '';
@@ -2464,46 +2580,46 @@
 
   function renderProfile() {
     appEl.innerHTML = `
-      <div class="view-header"><h1>${icon('userCircle')} Profilo</h1></div>
+      <div class="view-header"><h1>${icon('userCircle')} ${t('nav_profile')}</h1></div>
       <div class="two-col">
         <div class="card">
-          <h3 class="section-title" style="margin-top:0">Il tuo account</h3>
+          <h3 class="section-title" style="margin-top:0">${t('your_account_title')}</h3>
           <p><strong>${escapeHtml(state.user.name)}</strong></p>
           <p class="hint">${escapeHtml(state.user.email)}</p>
           <p><span class="role-tag">${roleLabels()[state.user.role] || state.user.role}</span></p>
         </div>
         <div class="card">
-          <h3 class="section-title" style="margin-top:0">${icon('lock')} Cambia password</h3>
+          <h3 class="section-title" style="margin-top:0">${icon('lock')} ${t('change_password_title')}</h3>
           <form id="pwForm" class="form-grid" style="max-width:none">
             <div class="field">
-              <label for="currentPassword">Password attuale</label>
+              <label for="currentPassword">${t('current_password_label')}</label>
               <input id="currentPassword" type="password" required autocomplete="current-password" />
             </div>
             <div class="field">
-              <label for="newPassword">Nuova password</label>
+              <label for="newPassword">${t('new_password_label')}</label>
               <input id="newPassword" type="password" required minlength="8" autocomplete="new-password" />
             </div>
             <div class="field">
-              <label for="newPassword2">Conferma nuova password</label>
+              <label for="newPassword2">${t('confirm_new_password_label')}</label>
               <input id="newPassword2" type="password" required minlength="8" autocomplete="new-password" />
             </div>
             <p class="error-text" id="pwError"></p>
-            <div><button class="btn btn-sm" type="submit">Aggiorna password</button></div>
+            <div><button class="btn btn-sm" type="submit">${t('btn_update_password')}</button></div>
           </form>
         </div>
         <div class="card">
-          <h3 class="section-title" style="margin-top:0">${icon('userCircle')} Cambia email</h3>
+          <h3 class="section-title" style="margin-top:0">${icon('userCircle')} ${t('change_email_title')}</h3>
           <form id="emailForm" class="form-grid" style="max-width:none">
             <div class="field">
-              <label for="currentPasswordForEmail">Password attuale</label>
+              <label for="currentPasswordForEmail">${t('current_password_label')}</label>
               <input id="currentPasswordForEmail" type="password" required autocomplete="current-password" />
             </div>
             <div class="field">
-              <label for="newEmail">Nuova email</label>
+              <label for="newEmail">${t('new_email_label')}</label>
               <input id="newEmail" type="email" required autocomplete="email" />
             </div>
             <p class="error-text" id="emailError"></p>
-            <div><button class="btn btn-sm" type="submit">Aggiorna email</button></div>
+            <div><button class="btn btn-sm" type="submit">${t('btn_update_email')}</button></div>
           </form>
         </div>
       </div>`;
@@ -2515,12 +2631,12 @@
       const newPassword = document.getElementById('newPassword').value;
       const newPassword2 = document.getElementById('newPassword2').value;
       if (newPassword !== newPassword2) {
-        errEl.textContent = 'Le nuove password non coincidono';
+        errEl.textContent = t('passwords_dont_match');
         return;
       }
       try {
         await api('/auth/change-password', { method: 'POST', body: { currentPassword, newPassword } });
-        showToast('Password aggiornata', 'success');
+        showToast(t('toast_password_updated'), 'success');
         e.target.reset();
       } catch (err) {
         errEl.textContent = err.message;
@@ -2536,7 +2652,7 @@
         const { user } = await api('/auth/change-email', { method: 'POST', body: { currentPassword, newEmail } });
         state.user = user;
         updateChrome();
-        showToast('Email aggiornata', 'success');
+        showToast(t('toast_email_updated'), 'success');
         renderProfile();
       } catch (err) {
         errEl.textContent = err.message;
@@ -2549,21 +2665,21 @@
     const currentAccent = getAccent();
     const isAdmin = state.user && state.user.role === 'admin';
     appEl.innerHTML = `
-      <div class="view-header"><h1>${icon('plug')} Impostazioni</h1></div>
+      <div class="view-header"><h1>${icon('plug')} ${t('settings_title')}</h1></div>
       <div class="admin-grid">
         <div class="card">
-          <h3 class="section-title" style="margin-top:0">Lingua</h3>
-          <p class="hint">Scegli la lingua dell'interfaccia.</p>
+          <h3 class="section-title" style="margin-top:0">${t('settings_language_title')}</h3>
+          <p class="hint">${t('settings_lang_hint')}</p>
           <div class="field">
-            <label for="langSel">Lingua</label>
+            <label for="langSel">${t('settings_language_title')}</label>
             <select id="langSel">
               ${Object.entries(LANG_LABELS).map(([v, l]) => `<option value="${v}" ${currentLang === v ? 'selected' : ''}>${l}</option>`).join('')}
             </select>
           </div>
         </div>
         <div class="card">
-          <h3 class="section-title" style="margin-top:0">Personalizzazione</h3>
-          <p class="hint">Scegli il colore principale dell'interfaccia.</p>
+          <h3 class="section-title" style="margin-top:0">${t('personalization_title')}</h3>
+          <p class="hint">${t('personalization_hint')}</p>
           <div class="accent-swatches">
             ${Object.entries(ACCENT_PRESETS).map(([key, preset]) => `
               <button type="button" class="accent-swatch ${currentAccent === key ? 'active' : ''}" data-accent="${key}" style="background:${preset.primary}" title="${escapeHtml(preset.label)}"></button>
@@ -2571,7 +2687,7 @@
           </div>
           <label class="checkbox-field" style="margin-top:1rem">
             <input type="checkbox" id="motionToggle" ${getMotionPref() === 'full' ? 'checked' : ''} />
-            Animazioni fluide
+            ${t('motion_fluid_label')}
           </label>
         </div>
         ${isAdmin ? `
@@ -2613,13 +2729,13 @@
         setAccent(btn.dataset.accent);
         document.querySelectorAll('.accent-swatch').forEach((b) => b.classList.remove('active'));
         btn.classList.add('active');
-        showToast('Colore aggiornato', 'success');
+        showToast(t('toast_accent_updated'), 'success');
       });
     });
 
     document.getElementById('motionToggle').addEventListener('change', (e) => {
       setMotion(e.target.checked ? 'full' : 'reduced');
-      showToast('Preferenza animazioni aggiornata', 'success');
+      showToast(t('toast_motion_updated'), 'success');
     });
 
     if (isAdmin) {
