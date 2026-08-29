@@ -9,11 +9,11 @@ const { notifyUser } = require('../notifications');
 const router = express.Router();
 router.use(authenticate);
 
-const STATUSES = ['open', 'in_progress', 'resolved', 'closed'];
+const STATUSES = ['open', 'in_progress', 'waiting_customer', 'resolved', 'closed'];
 const PRIORITIES = ['low', 'medium', 'high', 'urgent'];
 const TYPES = ['incident', 'task'];
 
-const STATUS_LABELS = { open: 'Aperto', in_progress: 'In lavorazione', resolved: 'Risolto', closed: 'Chiuso' };
+const STATUS_LABELS = { open: 'Aperto', in_progress: 'In lavorazione', waiting_customer: 'In attesa del richiedente', resolved: 'Risolto', closed: 'Chiuso' };
 const PRIORITY_LABELS = { low: 'Bassa', medium: 'Media', high: 'Alta', urgent: 'Urgente' };
 const TYPE_LABELS = { incident: 'Incident', task: 'Task' };
 
@@ -60,6 +60,15 @@ function businessMillisBetween(startMs, endMs, startHour, endHour) {
   return total;
 }
 
+function pausedMillisSoFar(ticket, workStart, workEnd) {
+  let paused = ticket.sla_paused_ms || 0;
+  if (ticket.status === 'waiting_customer' && ticket.waiting_since) {
+    const since = new Date(ticket.waiting_since.replace(' ', 'T') + 'Z').getTime();
+    paused += businessMillisBetween(since, Date.now(), workStart, workEnd);
+  }
+  return paused;
+}
+
 function computeSlaStatus(ticket) {
   if (!ticket.sla_resolve_hours || !ticket.created_at) return null;
   const workStart = ticket.work_start_hour ?? 9;
@@ -69,10 +78,10 @@ function computeSlaStatus(ticket) {
   if (ticket.status === 'resolved' || ticket.status === 'closed') {
     if (!ticket.resolved_at) return null;
     const resolved = new Date(ticket.resolved_at.replace(' ', 'T') + 'Z').getTime();
-    const elapsed = businessMillisBetween(created, resolved, workStart, workEnd);
+    const elapsed = businessMillisBetween(created, resolved, workStart, workEnd) - (ticket.sla_paused_ms || 0);
     return elapsed > resolveMs ? 'breached' : 'on_track';
   }
-  const elapsed = businessMillisBetween(created, Date.now(), workStart, workEnd);
+  const elapsed = Math.max(0, businessMillisBetween(created, Date.now(), workStart, workEnd) - pausedMillisSoFar(ticket, workStart, workEnd));
   const ratio = elapsed / resolveMs;
   if (ratio >= 1) return 'breached';
   if (ratio >= 0.75) return 'at_risk';
@@ -86,7 +95,7 @@ function computeSlaRemaining(ticket) {
   const workEnd = ticket.work_end_hour ?? 18;
   const created = new Date(ticket.created_at.replace(' ', 'T') + 'Z').getTime();
   const resolveMs = ticket.sla_resolve_hours * 3600 * 1000;
-  const elapsed = businessMillisBetween(created, Date.now(), workStart, workEnd);
+  const elapsed = Math.max(0, businessMillisBetween(created, Date.now(), workStart, workEnd) - pausedMillisSoFar(ticket, workStart, workEnd));
   return resolveMs - elapsed;
 }
 
@@ -127,6 +136,17 @@ async function resolveCategory(requested) {
 async function defaultGroupForCategory(categoryName) {
   const row = await db.get('SELECT default_group_id FROM categories WHERE name = ?', [categoryName]);
   return row ? row.default_group_id : null;
+}
+
+async function notifyStaffOfNewTicket(ticket) {
+  const staff = await db.all("SELECT id, group_id, is_super_admin FROM users WHERE role IN ('agent', 'admin')");
+  const recipients = staff.filter((u) => u.id !== ticket.created_by && (u.is_super_admin || !ticket.group_id || u.group_id === ticket.group_id));
+  for (const u of recipients) {
+    notifyUser(u.id, ticket.id, {
+      it: `Nuovo ticket #${ticket.id}: ${ticket.subject}`,
+      en: `New ticket #${ticket.id}: ${ticket.subject}`,
+    }).catch(() => {});
+  }
 }
 
 async function logEvent(ticketId, actorId, message) {
@@ -263,6 +283,7 @@ router.post(
     await logEvent(ticketId, req.user.id, 'Ticket creato');
 
     const ticket = await db.get(`${TICKET_SELECT} WHERE t.id = ?`, [ticketId]);
+    notifyStaffOfNewTicket(ticket).catch(() => {});
     res.status(201).json({ ticket: withSla(ticket) });
   })
 );
@@ -289,6 +310,7 @@ router.patch(
     const body = req.body || {};
     const events = [];
     let justResolved = false;
+    let justSetWaiting = false;
 
     if (isStaff(req.user)) {
       if (body.status !== undefined) {
@@ -304,6 +326,18 @@ router.patch(
             updates.push("resolved_at = datetime('now')");
           } else if (ticket.resolved_at) {
             updates.push('resolved_at = NULL');
+          }
+          if (body.status === 'waiting_customer') {
+            updates.push("waiting_since = datetime('now')");
+            justSetWaiting = true;
+          } else if (ticket.status === 'waiting_customer' && ticket.waiting_since) {
+            const workStart = ticket.work_start_hour ?? 9;
+            const workEnd = ticket.work_end_hour ?? 18;
+            const since = new Date(ticket.waiting_since.replace(' ', 'T') + 'Z').getTime();
+            const pausedNow = businessMillisBetween(since, Date.now(), workStart, workEnd);
+            updates.push('sla_paused_ms = sla_paused_ms + ?');
+            params.push(pausedNow);
+            updates.push('waiting_since = NULL');
           }
         }
       }
@@ -353,7 +387,10 @@ router.patch(
             params.push(body.assigned_to);
             events.push(`Assegnato a ${assignee.name}`);
             if (assignee.id !== req.user.id) {
-              notifyUser(assignee.id, ticket.id, `Ti è stato assegnato il ticket #${ticket.id}: ${ticket.subject}`).catch(() => {});
+              notifyUser(assignee.id, ticket.id, {
+                it: `Ti è stato assegnato il ticket #${ticket.id}: ${ticket.subject}`,
+                en: `Ticket #${ticket.id} has been assigned to you: ${ticket.subject}`,
+              }).catch(() => {});
             }
           }
         }
@@ -438,8 +475,17 @@ router.patch(
     if (justResolved) {
       mailer.notifyTicketResolved(updated).catch((err) => console.error('Invio email fallito:', err.message));
       if (ticket.created_by !== req.user.id) {
-        notifyUser(ticket.created_by, ticket.id, `Il ticket #${ticket.id} è stato risolto: ${ticket.subject}`).catch(() => {});
+        notifyUser(ticket.created_by, ticket.id, {
+          it: `Il ticket #${ticket.id} è stato risolto: ${ticket.subject}`,
+          en: `Ticket #${ticket.id} has been resolved: ${ticket.subject}`,
+        }).catch(() => {});
       }
+    }
+    if (justSetWaiting && ticket.created_by !== req.user.id) {
+      notifyUser(ticket.created_by, ticket.id, {
+        it: `Il ticket #${ticket.id} è in attesa di una tua risposta: ${ticket.subject}`,
+        en: `Ticket #${ticket.id} is awaiting your reply: ${ticket.subject}`,
+      }).catch(() => {});
     }
     res.json({ ticket: updated });
   })
@@ -489,15 +535,39 @@ router.post(
     );
     realtime.broadcastActivityItem(ticket.id, { kind: 'comment', ...commentRow });
 
+    const autoReopened = !internal && ticket.status === 'waiting_customer' && ticket.created_by === req.user.id;
+    if (autoReopened) {
+      const workStart = ticket.work_start_hour ?? 9;
+      const workEnd = ticket.work_end_hour ?? 18;
+      const since = ticket.waiting_since ? new Date(ticket.waiting_since.replace(' ', 'T') + 'Z').getTime() : Date.now();
+      const pausedNow = businessMillisBetween(since, Date.now(), workStart, workEnd);
+      await db.run(
+        "UPDATE tickets SET status = 'in_progress', waiting_since = NULL, sla_paused_ms = sla_paused_ms + ? WHERE id = ?",
+        [pausedNow, ticket.id]
+      );
+      await logEvent(ticket.id, req.user.id, `Stato cambiato automaticamente da "${STATUS_LABELS.waiting_customer}" a "${STATUS_LABELS.in_progress}" (risposta del richiedente)`);
+      const updated = withSla(await db.get(`${TICKET_SELECT} WHERE t.id = ?`, [ticket.id]));
+      realtime.broadcastTicketUpdate(ticket.id, updated);
+    }
+
     const notifyTargets = new Set();
     if (!internal) {
       if (ticket.created_by !== req.user.id) notifyTargets.add(ticket.created_by);
-      if (ticket.assigned_to && ticket.assigned_to !== req.user.id) notifyTargets.add(ticket.assigned_to);
+      if (ticket.assigned_to && ticket.assigned_to !== req.user.id && !autoReopened) notifyTargets.add(ticket.assigned_to);
     } else if (ticket.assigned_to && ticket.assigned_to !== req.user.id) {
       notifyTargets.add(ticket.assigned_to);
     }
     for (const targetId of notifyTargets) {
-      notifyUser(targetId, ticket.id, `Nuovo messaggio sul ticket #${ticket.id}: ${ticket.subject}`).catch(() => {});
+      notifyUser(targetId, ticket.id, {
+        it: `Nuovo messaggio sul ticket #${ticket.id}: ${ticket.subject}`,
+        en: `New message on ticket #${ticket.id}: ${ticket.subject}`,
+      }).catch(() => {});
+    }
+    if (autoReopened && ticket.assigned_to && ticket.assigned_to !== req.user.id) {
+      notifyUser(ticket.assigned_to, ticket.id, {
+        it: `Il richiedente ha risposto: il ticket #${ticket.id} è tornato in lavorazione`,
+        en: `The requester replied: ticket #${ticket.id} is back in progress`,
+      }).catch(() => {});
     }
 
     const activity = await listActivity(ticket.id, isStaff(req.user));

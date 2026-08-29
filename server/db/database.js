@@ -56,7 +56,7 @@ async function setupSchema() {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         subject TEXT NOT NULL,
         description TEXT NOT NULL,
-        status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'in_progress', 'resolved', 'closed')),
+        status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'in_progress', 'waiting_customer', 'resolved', 'closed')),
         priority TEXT NOT NULL DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
         type TEXT NOT NULL DEFAULT 'incident' CHECK (type IN ('incident', 'task')),
         category TEXT NOT NULL DEFAULT 'generale',
@@ -182,6 +182,12 @@ async function migrate() {
   if (!ticketCols2.some((c) => c.name === 'asset_id')) {
     await run('ALTER TABLE tickets ADD COLUMN asset_id INTEGER REFERENCES assets(id) ON DELETE SET NULL');
   }
+  if (!ticketCols2.some((c) => c.name === 'waiting_since')) {
+    await run('ALTER TABLE tickets ADD COLUMN waiting_since TEXT');
+  }
+  if (!ticketCols2.some((c) => c.name === 'sla_paused_ms')) {
+    await run('ALTER TABLE tickets ADD COLUMN sla_paused_ms INTEGER NOT NULL DEFAULT 0');
+  }
 
   if (userCols.some((c) => c.name === 'team')) {
     const withTeam = await all("SELECT id, team FROM users WHERE team IS NOT NULL AND team != '' AND group_id IS NULL");
@@ -216,6 +222,32 @@ async function migrate() {
   }
   if (!categoryCols.some((c) => c.name === 'default_group_id')) {
     await run('ALTER TABLE categories ADD COLUMN default_group_id INTEGER REFERENCES groups(id) ON DELETE SET NULL');
+  }
+
+  const ticketsTable = await get("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'tickets'");
+  if (ticketsTable && ticketsTable.sql && !ticketsTable.sql.includes('waiting_customer')) {
+    await run('ALTER TABLE tickets RENAME TO tickets_old');
+    await run(`CREATE TABLE tickets (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      subject TEXT NOT NULL,
+      description TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'in_progress', 'waiting_customer', 'resolved', 'closed')),
+      priority TEXT NOT NULL DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
+      type TEXT NOT NULL DEFAULT 'incident' CHECK (type IN ('incident', 'task')),
+      category TEXT NOT NULL DEFAULT 'generale',
+      created_by INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      assigned_to INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      group_id INTEGER REFERENCES groups(id) ON DELETE SET NULL,
+      resolved_at TEXT,
+      asset_id INTEGER REFERENCES assets(id) ON DELETE SET NULL,
+      waiting_since TEXT,
+      sla_paused_ms INTEGER NOT NULL DEFAULT 0
+    )`);
+    await run(`INSERT INTO tickets (id, subject, description, status, priority, type, category, created_by, assigned_to, created_at, updated_at, group_id, resolved_at, asset_id, waiting_since, sla_paused_ms)
+      SELECT id, subject, description, status, priority, type, category, created_by, assigned_to, created_at, updated_at, group_id, resolved_at, asset_id, waiting_since, sla_paused_ms FROM tickets_old`);
+    await run('DROP TABLE tickets_old');
   }
 }
 
