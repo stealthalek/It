@@ -227,6 +227,8 @@
       no_data: 'Nessun dato.', no_resolved_yet: 'Nessun ticket risolto ancora.',
       no_group_sla_configured: 'Nessun gruppo con SLA configurata.', no_assigned_tickets: 'Nessun ticket assegnato.',
       no_group_label: 'Senza gruppo',
+      filter_all_teams: 'Tutti i team', filter_all_members: 'Tutti i membri', report_chart_type_label: 'Tipo di grafico',
+      chart_type_bar: 'A barre', chart_type_donut: 'A ciambella',
       your_account_title: 'Il tuo account', change_password_title: 'Cambia password',
       current_password_label: 'Password attuale', new_password_label: 'Nuova password',
       confirm_new_password_label: 'Conferma nuova password', btn_update_password: 'Aggiorna password',
@@ -238,6 +240,30 @@
       cold_start_hint: 'Il server si sta risvegliando dopo un periodo di inattività, un momento...',
       admin_title: 'Amministrazione', access_denied: 'Accesso non consentito.', person_card_title: 'Scheda persona',
       org_open_tickets: 'aperti', org_sla_breach: 'in ritardo', org_node_hint: 'Clic per vedere i ticket del team',
+      admin_create_staff_title: 'Crea account staff', admin_group_optional_label: 'Gruppo di assegnazione (opzionale)',
+      admin_group_hint: 'I membri dello stesso gruppo si vedono a vicenda nell\'assegnazione dei ticket',
+      account_locale_label: 'Lingua account', account_locale_hint: 'Le email inviate a questo account useranno questa lingua',
+      btn_create_account: 'Crea account', role_agent_option: 'Agente', role_admin_option: 'Amministratore',
+      admin_categories_title: 'Categorie ticket', admin_categories_hint: 'Personalizza le categorie disponibili nel modulo di apertura ticket, la loro icona e il team a cui vengono assegnate di default.',
+      field_category_name: 'Nome categoria', field_icon: 'Icona', field_default_team: 'Team predefinito', option_none: 'Nessuno', btn_add: 'Aggiungi',
+      admin_groups_title: 'Gruppi di assegnazione', admin_groups_hint: 'Ogni gruppo ha un proprio SLA (ore per risposta/risoluzione) e orario di lavoro: fuori da quella fascia, e nel weekend, l\'SLA resta in pausa e riprende al turno successivo.',
+      field_group_name: 'Nome gruppo', field_parent_group: 'Gruppo padre', option_no_parent: 'Nessuno (primo livello)',
+      field_response_hours: 'Risposta (h)', field_resolve_hours: 'Risoluzione (h)', field_shift_start: 'Inizio turno', field_shift_end: 'Fine turno',
+      btn_create_group: 'Crea gruppo', delete_group_title: 'Elimina gruppo', shift_from_label: 'Turno dalle', shift_to_label: 'alle',
+      confirm_delete_group: 'Eliminare questo gruppo?', toast_sla_updated: 'SLA aggiornata', toast_work_hours_updated: 'Orario di lavoro aggiornato',
+      toast_group_deleted: 'Gruppo eliminato', toast_group_created: 'Gruppo creato', toast_default_team_updated: 'Team predefinito aggiornato',
+      toast_category_deleted: 'Categoria eliminata', toast_category_added: 'Categoria aggiunta', delete_category_title: 'Elimina categoria',
+      no_categories_hint: 'Nessuna categoria.', no_groups_hint: 'Nessun gruppo.', account_created_for: 'Account creato per',
+      temp_password_hint: 'Password temporanea (comunicala in modo sicuro, non sarà più visibile):', toast_staff_created: 'Account staff creato',
+      search_person_label: 'Cerca persona', search_person_placeholder: 'Nome o email...', no_people_found: 'Nessuna persona trovata.',
+      th_name: 'Nome', th_email: 'Email', th_role: 'Ruolo', th_group: 'Gruppo', th_registered: 'Registrato',
+      org_section_title: 'Organizzazione', org_section_hint: 'Il nome scelto compare nell\'intestazione e nelle email inviate agli utenti.',
+      field_org_name: 'Nome organizzazione', btn_save: 'Salva', toast_org_updated: 'Nome organizzazione aggiornato',
+      invite_email_title: 'Email di invito account',
+      invite_email_hint: 'Personalizza l\'oggetto e il testo dell\'email automatica inviata quando crei un nuovo account staff. Lasciala vuota per usare il testo predefinito. Segnaposto disponibili:',
+      field_subject: 'Oggetto', field_email_body: 'Testo email', btn_save_template: 'Salva modello', toast_template_updated: 'Modello email aggiornato',
+      not_found_text: 'Pagina non trovata.', back_to_dashboard: 'Torna alla dashboard', placeholder_default: '(predefinito)',
+      impersonate_search_label: 'Cerca una persona da vedere in sola lettura',
       account_details_title: 'Dettagli account', registered_on_label: 'Registrato il', field_role: 'Ruolo', field_locale: 'Lingua',
       reset_password_btn: 'Reimposta password', ticket_activity_title: 'Attività ticket',
       opened_by_person: 'Aperti da questa persona', assigned_to_person: 'Assegnati a questa persona',
@@ -311,6 +337,8 @@
       no_data: 'No data.', no_resolved_yet: 'No resolved tickets yet.',
       no_group_sla_configured: 'No group with SLA configured.', no_assigned_tickets: 'No assigned tickets.',
       no_group_label: 'No group',
+      filter_all_teams: 'All teams', filter_all_members: 'All members', report_chart_type_label: 'Chart type',
+      chart_type_bar: 'Bar', chart_type_donut: 'Donut',
       your_account_title: 'Your account', change_password_title: 'Change password',
       current_password_label: 'Current password', new_password_label: 'New password',
       confirm_new_password_label: 'Confirm new password', btn_update_password: 'Update password',
@@ -322,6 +350,30 @@
       cold_start_hint: 'The server is waking up after a period of inactivity, one moment...',
       admin_title: 'Administration', access_denied: 'Access not allowed.', person_card_title: 'Person profile',
       org_open_tickets: 'open', org_sla_breach: 'overdue', org_node_hint: 'Click to see the team\'s tickets',
+      admin_create_staff_title: 'Create staff account', admin_group_optional_label: 'Assignment group (optional)',
+      admin_group_hint: 'Members of the same group can see each other for ticket assignment',
+      account_locale_label: 'Account language', account_locale_hint: 'Emails sent to this account will use this language',
+      btn_create_account: 'Create account', role_agent_option: 'Agent', role_admin_option: 'Administrator',
+      admin_categories_title: 'Ticket categories', admin_categories_hint: 'Customize the categories available in the ticket form, their icon, and the team they are assigned to by default.',
+      field_category_name: 'Category name', field_icon: 'Icon', field_default_team: 'Default team', option_none: 'None', btn_add: 'Add',
+      admin_groups_title: 'Assignment groups', admin_groups_hint: 'Each group has its own SLA (response/resolution hours) and working hours: outside that window, and on weekends, the SLA pauses and resumes on the next shift.',
+      field_group_name: 'Group name', field_parent_group: 'Parent group', option_no_parent: 'None (top level)',
+      field_response_hours: 'Response (h)', field_resolve_hours: 'Resolution (h)', field_shift_start: 'Shift start', field_shift_end: 'Shift end',
+      btn_create_group: 'Create group', delete_group_title: 'Delete group', shift_from_label: 'Shift from', shift_to_label: 'to',
+      confirm_delete_group: 'Delete this group?', toast_sla_updated: 'SLA updated', toast_work_hours_updated: 'Work hours updated',
+      toast_group_deleted: 'Group deleted', toast_group_created: 'Group created', toast_default_team_updated: 'Default team updated',
+      toast_category_deleted: 'Category deleted', toast_category_added: 'Category added', delete_category_title: 'Delete category',
+      no_categories_hint: 'No categories.', no_groups_hint: 'No groups.', account_created_for: 'Account created for',
+      temp_password_hint: 'Temporary password (share it securely, it won\'t be shown again):', toast_staff_created: 'Staff account created',
+      search_person_label: 'Search person', search_person_placeholder: 'Name or email...', no_people_found: 'No people found.',
+      th_name: 'Name', th_email: 'Email', th_role: 'Role', th_group: 'Group', th_registered: 'Registered',
+      org_section_title: 'Organization', org_section_hint: 'The chosen name appears in the header and in emails sent to users.',
+      field_org_name: 'Organization name', btn_save: 'Save', toast_org_updated: 'Organization name updated',
+      invite_email_title: 'Account invite email',
+      invite_email_hint: 'Customize the subject and text of the automatic email sent when you create a new staff account. Leave it empty to use the default text. Available placeholders:',
+      field_subject: 'Subject', field_email_body: 'Email text', btn_save_template: 'Save template', toast_template_updated: 'Template updated',
+      not_found_text: 'Page not found.', back_to_dashboard: 'Back to dashboard', placeholder_default: '(default)',
+      impersonate_search_label: 'Search for a person to view read-only',
       account_details_title: 'Account details', registered_on_label: 'Registered on', field_role: 'Role', field_locale: 'Language',
       reset_password_btn: 'Reset password', ticket_activity_title: 'Ticket activity',
       opened_by_person: 'Opened by this person', assigned_to_person: 'Assigned to this person',
@@ -1026,7 +1078,7 @@
 
   function groupOptionsHtml(groups, selectedId, emptyLabel) {
     const flat = flattenGroupTree(buildGroupTree(groups));
-    const emptyOption = emptyLabel !== null ? `<option value="">${escapeHtml(emptyLabel || 'Nessun gruppo')}</option>` : '';
+    const emptyOption = emptyLabel !== null ? `<option value="">${escapeHtml(emptyLabel || t('no_group_option'))}</option>` : '';
     return emptyOption + flat.map((g) => `
       <option value="${g.id}" ${Number(selectedId) === g.id ? 'selected' : ''}>${'  '.repeat(g.depth)}${g.depth ? '– ' : ''}${escapeHtml(g.name)}</option>
     `).join('');
@@ -1088,8 +1140,8 @@
         panel.hidden = false;
         panel.innerHTML = `
           <div class="card" style="margin-bottom:1.25rem">
-            <div class="field"><label for="impersonateSearch">Cerca una persona da vedere in sola lettura</label>
-              <input id="impersonateSearch" type="search" placeholder="Nome o email..." /></div>
+            <div class="field"><label for="impersonateSearch">${t('impersonate_search_label')}</label>
+              <input id="impersonateSearch" type="search" placeholder="${t('search_person_placeholder')}" /></div>
             <div id="impersonateResults" class="impersonate-results"></div>
           </div>`;
         const { users } = await api('/users');
@@ -1100,7 +1152,7 @@
             <button type="button" class="impersonate-result" data-user-id="${u.id}">
               <span>${escapeHtml(u.name)}</span>
               <span class="hint">${escapeHtml(u.email)} · ${roleLabels()[u.role] || u.role}</span>
-            </button>`).join('') : '<p class="hint">Nessuna persona trovata.</p>';
+            </button>`).join('') : `<p class="hint">${t('no_people_found')}</p>`;
           resultsEl.querySelectorAll('.impersonate-result').forEach((btn) => {
             btn.addEventListener('click', () => {
               const target = list.find((u) => u.id === Number(btn.dataset.userId));
@@ -1843,66 +1895,66 @@
       ${isAdmin ? `
       <div class="admin-grid" style="margin-bottom:1.25rem">
         <div class="card">
-          <h3 class="section-title" style="margin-top:0">${icon('plus')} Crea account staff</h3>
+          <h3 class="section-title" style="margin-top:0">${icon('plus')} ${t('admin_create_staff_title')}</h3>
           <form id="createStaffForm" class="form-grid" style="max-width:none">
-            <div class="field"><label for="newName">Nome</label><input id="newName" required /></div>
+            <div class="field"><label for="newName">${t('field_name')}</label><input id="newName" required /></div>
             <div class="field"><label for="newEmail">Email</label><input id="newEmail" type="email" required /></div>
             <div class="field">
-              <label for="newRole">Ruolo</label>
+              <label for="newRole">${t('field_role')}</label>
               <select id="newRole">
-                <option value="agent">Agente</option>
-                <option value="admin">Amministratore</option>
+                <option value="agent">${t('role_agent_option')}</option>
+                <option value="admin">${t('role_admin_option')}</option>
               </select>
             </div>
             <div class="field">
-              <label for="newGroup">Gruppo di assegnazione (opzionale)</label>
-              <select id="newGroup"><option value="">Nessun gruppo</option></select>
-              <span class="hint">I membri dello stesso gruppo si vedono a vicenda nell'assegnazione dei ticket</span>
+              <label for="newGroup">${t('admin_group_optional_label')}</label>
+              <select id="newGroup"><option value="">${t('no_group_option')}</option></select>
+              <span class="hint">${t('admin_group_hint')}</span>
             </div>
             <div class="field">
-              <label for="newLocale">Lingua account</label>
+              <label for="newLocale">${t('account_locale_label')}</label>
               <select id="newLocale">
                 ${Object.entries(LANG_LABELS).map(([v, l]) => `<option value="${v}" ${v === 'it' ? 'selected' : ''}>${l}</option>`).join('')}
               </select>
-              <span class="hint">Le email inviate a questo account useranno questa lingua</span>
+              <span class="hint">${t('account_locale_hint')}</span>
             </div>
             <p class="error-text" id="createStaffError"></p>
-            <div><button class="btn btn-sm" type="submit">Crea account</button></div>
+            <div><button class="btn btn-sm" type="submit">${t('btn_create_account')}</button></div>
           </form>
           <div id="tempPasswordBox"></div>
         </div>
         <div class="card admin-grid-full">
-          <h3 class="section-title" style="margin-top:0">${icon('ticket')} Categorie ticket</h3>
-          <p class="hint">Personalizza le categorie disponibili nel modulo di apertura ticket, la loro icona e il team a cui vengono assegnate di default.</p>
+          <h3 class="section-title" style="margin-top:0">${icon('ticket')} ${t('admin_categories_title')}</h3>
+          <p class="hint">${t('admin_categories_hint')}</p>
           <form id="newCategoryForm" style="display:flex;flex-wrap:wrap;gap:0.6rem;align-items:flex-end;margin:0.75rem 0">
-            <div class="field" style="flex:1 1 12rem"><label for="newCategoryName">Nome categoria</label><input id="newCategoryName" /></div>
+            <div class="field" style="flex:1 1 12rem"><label for="newCategoryName">${t('field_category_name')}</label><input id="newCategoryName" /></div>
             <div class="field" style="flex:0 0 auto">
-              <label>Icona</label>
+              <label>${t('field_icon')}</label>
               <div id="newCategoryIconPicker" class="icon-picker"></div>
             </div>
-            <div class="field" style="flex:1 1 12rem"><label for="newCategoryGroup">Team predefinito</label><select id="newCategoryGroup"><option value="">Nessuno</option></select></div>
-            <button class="btn btn-sm" type="submit">Aggiungi</button>
+            <div class="field" style="flex:1 1 12rem"><label for="newCategoryGroup">${t('field_default_team')}</label><select id="newCategoryGroup"><option value="">${t('option_none')}</option></select></div>
+            <button class="btn btn-sm" type="submit">${t('btn_add')}</button>
           </form>
           <p class="error-text" id="categoryError"></p>
-          <div id="categoriesList" class="spinner-row">Caricamento...</div>
+          <div id="categoriesList" class="spinner-row">${t('loading')}</div>
         </div>
         <div class="card admin-grid-full">
-          <h3 class="section-title" style="margin-top:0">${icon('users')} Gruppi di assegnazione</h3>
-          <p class="hint">Ogni gruppo ha un proprio SLA (ore per risposta/risoluzione) e orario di lavoro: fuori da quella fascia, e nel weekend, l'SLA resta in pausa e riprende al turno successivo.</p>
+          <h3 class="section-title" style="margin-top:0">${icon('users')} ${t('admin_groups_title')}</h3>
+          <p class="hint">${t('admin_groups_hint')}</p>
           <form id="newGroupForm" style="display:flex;flex-wrap:wrap;gap:0.6rem;align-items:flex-end;margin:0.75rem 0">
-            <div class="field" style="flex:1 1 12rem"><label for="newGroupName">Nome gruppo</label><input id="newGroupName" /></div>
-            <div class="field" style="flex:1 1 12rem"><label for="newGroupParent">Gruppo padre</label><select id="newGroupParent"><option value="">Nessuno (primo livello)</option></select></div>
-            <div class="field" style="flex:0 0 7rem"><label for="newGroupResponse">Risposta (h)</label><input id="newGroupResponse" type="number" min="1" /></div>
-            <div class="field" style="flex:0 0 7rem"><label for="newGroupResolve">Risoluzione (h)</label><input id="newGroupResolve" type="number" min="1" /></div>
-            <div class="field" style="flex:0 0 6rem"><label for="newGroupWorkStart">Inizio turno</label><input id="newGroupWorkStart" type="number" min="0" max="24" value="9" /></div>
-            <div class="field" style="flex:0 0 6rem"><label for="newGroupWorkEnd">Fine turno</label><input id="newGroupWorkEnd" type="number" min="0" max="24" value="18" /></div>
-            <button class="btn btn-sm" type="submit">Crea gruppo</button>
+            <div class="field" style="flex:1 1 12rem"><label for="newGroupName">${t('field_group_name')}</label><input id="newGroupName" /></div>
+            <div class="field" style="flex:1 1 12rem"><label for="newGroupParent">${t('field_parent_group')}</label><select id="newGroupParent"><option value="">${t('option_no_parent')}</option></select></div>
+            <div class="field" style="flex:0 0 7rem"><label for="newGroupResponse">${t('field_response_hours')}</label><input id="newGroupResponse" type="number" min="1" /></div>
+            <div class="field" style="flex:0 0 7rem"><label for="newGroupResolve">${t('field_resolve_hours')}</label><input id="newGroupResolve" type="number" min="1" /></div>
+            <div class="field" style="flex:0 0 6rem"><label for="newGroupWorkStart">${t('field_shift_start')}</label><input id="newGroupWorkStart" type="number" min="0" max="24" value="9" /></div>
+            <div class="field" style="flex:0 0 6rem"><label for="newGroupWorkEnd">${t('field_shift_end')}</label><input id="newGroupWorkEnd" type="number" min="0" max="24" value="18" /></div>
+            <button class="btn btn-sm" type="submit">${t('btn_create_group')}</button>
           </form>
           <p class="error-text" id="groupError"></p>
-          <div id="groupsList" class="spinner-row">Caricamento...</div>
+          <div id="groupsList" class="spinner-row">${t('loading')}</div>
         </div>
       </div>` : ''}
-      <div id="usersWrap" class="card spinner-row">Caricamento...</div>`;
+      <div id="usersWrap" class="card spinner-row">${t('loading')}</div>`;
 
     if (isAdmin) {
       let groupOptionsCache = [];
@@ -1912,9 +1964,9 @@
           const { groups } = await api('/groups');
           groupOptionsCache = groups;
           const select = document.getElementById('newGroup');
-          if (select) select.innerHTML = groupOptionsHtml(groups, '', 'Nessun gruppo');
+          if (select) select.innerHTML = groupOptionsHtml(groups, '', t('no_group_option'));
           const parentSelect = document.getElementById('newGroupParent');
-          if (parentSelect) parentSelect.innerHTML = groupOptionsHtml(groups, '', 'Nessuno (gruppo di primo livello)');
+          if (parentSelect) parentSelect.innerHTML = groupOptionsHtml(groups, '', t('option_no_parent'));
         } catch { groupOptionsCache = []; }
       }
 
@@ -1925,17 +1977,17 @@
             <div class="org-node" data-group-id="${node.id}" data-group-name="${escapeHtml(node.name)}" title="${t('org_node_hint')}">
               <div class="org-node-head">
                 <span class="org-node-name">${escapeHtml(node.name)}</span>
-                <button type="button" class="icon-btn deleteGroupBtn" data-id="${node.id}" title="Elimina gruppo">${icon('trash')}</button>
+                <button type="button" class="icon-btn deleteGroupBtn" data-id="${node.id}" title="${t('delete_group_title')}">${icon('trash')}</button>
               </div>
               <div class="org-node-stats">
                 <span class="org-node-badge ${stats.breached > 0 ? 'org-node-badge-danger' : 'org-node-badge-ok'}">${stats.open} ${t('org_open_tickets')}</span>
                 ${stats.breached > 0 ? `<span class="org-node-badge org-node-badge-danger">${stats.breached} ${t('org_sla_breach')}</span>` : ''}
               </div>
               <div class="org-node-sla">
-                <label>Risposta (h) <input type="number" min="1" class="slaInput" data-group-id="${node.id}" data-field="slaResponseHours" value="${node.sla_response_hours ?? ''}" /></label>
-                <label>Risoluzione (h) <input type="number" min="1" class="slaInput" data-group-id="${node.id}" data-field="slaResolveHours" value="${node.sla_resolve_hours ?? ''}" /></label>
-                <label>Turno dalle <input type="number" min="0" max="24" class="workHourInput" data-group-id="${node.id}" data-field="workStartHour" value="${node.work_start_hour ?? 9}" /></label>
-                <label>alle <input type="number" min="0" max="24" class="workHourInput" data-group-id="${node.id}" data-field="workEndHour" value="${node.work_end_hour ?? 18}" /></label>
+                <label>${t('field_response_hours')} <input type="number" min="1" class="slaInput" data-group-id="${node.id}" data-field="slaResponseHours" value="${node.sla_response_hours ?? ''}" /></label>
+                <label>${t('field_resolve_hours')} <input type="number" min="1" class="slaInput" data-group-id="${node.id}" data-field="slaResolveHours" value="${node.sla_resolve_hours ?? ''}" /></label>
+                <label>${t('shift_from_label')} <input type="number" min="0" max="24" class="workHourInput" data-group-id="${node.id}" data-field="workStartHour" value="${node.work_start_hour ?? 9}" /></label>
+                <label>${t('shift_to_label')} <input type="number" min="0" max="24" class="workHourInput" data-group-id="${node.id}" data-field="workEndHour" value="${node.work_end_hour ?? 18}" /></label>
               </div>
             </div>
             ${node.children.length ? `<div class="org-children">${node.children.map((child) => renderOrgNode(child, statsById)).join('')}</div>` : ''}
@@ -1945,7 +1997,7 @@
       async function loadGroups() {
         const listEl = document.getElementById('groupsList');
         listEl.className = 'spinner-row';
-        listEl.textContent = 'Caricamento...';
+        listEl.textContent = t('loading');
         try {
           const [{ groups }, { tickets }] = await Promise.all([
             api('/groups'),
@@ -1962,7 +2014,7 @@
           });
           const tree = buildGroupTree(groups);
           listEl.className = '';
-          listEl.innerHTML = tree.length ? `<div class="org-chart">${tree.map((node) => renderOrgNode(node, statsById)).join('')}</div>` : '<p class="hint">Nessun gruppo.</p>';
+          listEl.innerHTML = tree.length ? `<div class="org-chart">${tree.map((node) => renderOrgNode(node, statsById)).join('')}</div>` : `<p class="hint">${t('no_groups_hint')}</p>`;
 
           listEl.querySelectorAll('.org-node').forEach((nodeEl) => {
             nodeEl.addEventListener('click', (e) => {
@@ -1982,7 +2034,7 @@
                   method: 'PATCH',
                   body: { slaResponseHours: row.value || null, slaResolveHours: row2.value || null },
                 });
-                showToast('SLA aggiornata', 'success');
+                showToast(t('toast_sla_updated'), 'success');
                 loadGroupOptions();
               } catch (err) {
                 showToast(err.message, 'error');
@@ -2000,7 +2052,7 @@
                   method: 'PATCH',
                   body: { workStartHour: startInput.value, workEndHour: endInput.value },
                 });
-                showToast('Orario di lavoro aggiornato', 'success');
+                showToast(t('toast_work_hours_updated'), 'success');
               } catch (err) {
                 showToast(err.message, 'error');
               }
@@ -2009,10 +2061,10 @@
 
           listEl.querySelectorAll('.deleteGroupBtn').forEach((btn) => {
             btn.addEventListener('click', async () => {
-              if (!confirm('Eliminare questo gruppo?')) return;
+              if (!confirm(t('confirm_delete_group'))) return;
               try {
                 await api(`/groups/${btn.dataset.id}`, { method: 'DELETE' });
-                showToast('Gruppo eliminato', 'success');
+                showToast(t('toast_group_deleted'), 'success');
                 loadGroups();
                 loadGroupOptions();
               } catch (err) {
@@ -2044,7 +2096,7 @@
             },
           });
           document.getElementById('newGroupForm').reset();
-          showToast('Gruppo creato', 'success');
+          showToast(t('toast_group_created'), 'success');
           loadGroups();
           loadGroupOptions();
         } catch (err) {
@@ -2069,11 +2121,11 @@
           const { user, tempPassword } = await api('/users', { method: 'POST', body });
           document.getElementById('tempPasswordBox').innerHTML = `
             <div class="divider"></div>
-            <p class="success-text">Account creato per ${escapeHtml(user.name)}.</p>
-            <p class="hint">Password temporanea (comunicala in modo sicuro, non sarà più visibile):</p>
+            <p class="success-text">${t('account_created_for')} ${escapeHtml(user.name)}.</p>
+            <p class="hint">${t('temp_password_hint')}</p>
             <p class="card" style="font-family:monospace;font-size:1rem;padding:0.6rem 0.9rem;display:inline-block">${escapeHtml(tempPassword)}</p>`;
           e.target.reset();
-          showToast('Account staff creato', 'success');
+          showToast(t('toast_staff_created'), 'success');
           loadUsersTable();
         } catch (err) {
           errEl.textContent = err.message;
@@ -2099,27 +2151,27 @@
       async function loadCategories() {
         const listEl = document.getElementById('categoriesList');
         listEl.className = 'spinner-row';
-        listEl.textContent = 'Caricamento...';
+        listEl.textContent = t('loading');
         try {
           const { categories } = await api('/categories');
           const { groups } = await api('/groups');
           const groupSelect = document.getElementById('newCategoryGroup');
-          groupSelect.innerHTML = groupOptionsHtml(groups, '', 'Nessuno');
+          groupSelect.innerHTML = groupOptionsHtml(groups, '', t('option_none'));
 
           listEl.className = '';
           listEl.innerHTML = categories.length ? categories.map((c) => `
             <div class="category-row">
               <span class="category-row-icon">${icon(c.icon || 'ticket')}</span>
               <span class="category-row-name">${escapeHtml(c.name)}</span>
-              <select class="categoryGroupSel" data-id="${c.id}">${groupOptionsHtml(groups, c.default_group_id, 'Nessun team predefinito')}</select>
-              <button type="button" class="icon-btn deleteCategoryBtn" data-id="${c.id}" title="Elimina categoria">${icon('trash')}</button>
-            </div>`).join('') : '<p class="hint">Nessuna categoria.</p>';
+              <select class="categoryGroupSel" data-id="${c.id}">${groupOptionsHtml(groups, c.default_group_id, t('option_none'))}</select>
+              <button type="button" class="icon-btn deleteCategoryBtn" data-id="${c.id}" title="${t('delete_category_title')}">${icon('trash')}</button>
+            </div>`).join('') : `<p class="hint">${t('no_categories_hint')}</p>`;
 
           listEl.querySelectorAll('.categoryGroupSel').forEach((sel) => {
             sel.addEventListener('change', async () => {
               try {
                 await api(`/categories/${sel.dataset.id}`, { method: 'PATCH', body: { defaultGroupId: sel.value || null } });
-                showToast('Team predefinito aggiornato', 'success');
+                showToast(t('toast_default_team_updated'), 'success');
               } catch (err) {
                 showToast(err.message, 'error');
                 loadCategories();
@@ -2131,7 +2183,7 @@
             btn.addEventListener('click', async () => {
               try {
                 await api(`/categories/${btn.dataset.id}`, { method: 'DELETE' });
-                showToast('Categoria eliminata', 'success');
+                showToast(t('toast_category_deleted'), 'success');
                 loadCategories();
               } catch (err) {
                 showToast(err.message, 'error');
@@ -2159,7 +2211,7 @@
             },
           });
           input.value = '';
-          showToast('Categoria aggiunta', 'success');
+          showToast(t('toast_category_added'), 'success');
           loadCategories();
         } catch (err) {
           errEl.textContent = err.message;
@@ -2173,7 +2225,7 @@
     async function loadUsersTable() {
       const wrap = document.getElementById('usersWrap');
       wrap.className = 'card spinner-row';
-      wrap.textContent = 'Caricamento...';
+      wrap.textContent = t('loading');
       try {
         const { users } = await api('/users');
         allUsersCache = users;
@@ -2189,12 +2241,12 @@
       wrap.className = 'card';
       wrap.innerHTML = `
         <div class="field" style="max-width:320px;margin-bottom:1rem">
-          <label for="userSearchInput">Cerca persona</label>
-          <input id="userSearchInput" type="search" placeholder="Nome o email..." />
+          <label for="userSearchInput">${t('search_person_label')}</label>
+          <input id="userSearchInput" type="search" placeholder="${t('search_person_placeholder')}" />
         </div>
         <div class="table-scroll">
           <table class="users-table">
-            <thead><tr><th>Nome</th><th>Email</th><th>Ruolo</th><th>Gruppo</th><th>Registrato</th></tr></thead>
+            <thead><tr><th>${t('th_name')}</th><th>${t('th_email')}</th><th>${t('th_role')}</th><th>${t('th_group')}</th><th>${t('th_registered')}</th></tr></thead>
             <tbody>
               ${users.length ? users.map((u) => `
                 <tr class="user-row" data-user-id="${u.id}" tabindex="0" role="link">
@@ -2203,7 +2255,7 @@
                   <td><span class="role-tag">${roleLabels()[u.role] || u.role}</span></td>
                   <td>${escapeHtml(groupLabel(u) || '—')}</td>
                   <td>${formatDate(u.created_at)}</td>
-                </tr>`).join('') : `<tr><td colspan="5"><p class="hint">Nessuna persona trovata.</p></td></tr>`}
+                </tr>`).join('') : `<tr><td colspan="5"><p class="hint">${t('no_people_found')}</p></td></tr>`}
             </tbody>
           </table>
         </div>`;
@@ -2605,11 +2657,61 @@
           <p class="hint">${t('report_hint')}</p>
         </div>
       </div>
+      <div class="filters">
+        <select id="reportTeam"><option value="">${t('filter_all_teams')}</option></select>
+        <select id="reportMember"><option value="">${t('filter_all_members')}</option></select>
+        <select id="reportChartType">
+          <option value="bar">${t('chart_type_bar')}</option>
+          <option value="donut">${t('chart_type_donut')}</option>
+        </select>
+      </div>
       <div id="reportCharts" class="charts-row spinner-row">${t('loading')}</div>`;
 
     const chartsEl = document.getElementById('reportCharts');
+    const teamSel = document.getElementById('reportTeam');
+    const memberSel = document.getElementById('reportMember');
+    const chartTypeSel = document.getElementById('reportChartType');
+
+    let allTickets = [];
+    let groups = [];
+    let staffUsers = [];
     try {
-      const { tickets } = await api('/tickets');
+      const [ticketsRes, groupsRes, usersRes] = await Promise.all([api('/tickets'), api('/groups'), api('/users')]);
+      allTickets = ticketsRes.tickets;
+      groups = groupsRes.groups;
+      staffUsers = usersRes.users.filter((u) => u.role === 'agent' || u.role === 'admin');
+    } catch (err) {
+      chartsEl.className = '';
+      chartsEl.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
+      return;
+    }
+
+    teamSel.innerHTML = `<option value="">${t('filter_all_teams')}</option>` + groupOptionsHtml(groups, '', null);
+
+    function populateMemberOptions() {
+      const teamId = teamSel.value ? Number(teamSel.value) : null;
+      const members = teamId ? staffUsers.filter((u) => u.group_id === teamId) : staffUsers;
+      const prev = memberSel.value;
+      memberSel.innerHTML = `<option value="">${t('filter_all_members')}</option>` +
+        members.map((u) => `<option value="${u.id}">${escapeHtml(u.name)}</option>`).join('');
+      if (members.some((u) => String(u.id) === prev)) memberSel.value = prev;
+    }
+    populateMemberOptions();
+
+    function renderChart(container, dim, rows, total, emptyHint, opts = {}) {
+      if (!rows.length) { container.innerHTML = `<p class="hint">${emptyHint}</p>`; return; }
+      if (chartTypeSel.value === 'donut') {
+        container.innerHTML = donutChart(rows, opts.donutTotal ?? total, { dim });
+      } else {
+        container.innerHTML = barChart(rows, total, opts.barOpts || {});
+      }
+    }
+
+    function renderAll() {
+      const teamId = teamSel.value ? Number(teamSel.value) : null;
+      const memberId = memberSel.value ? Number(memberSel.value) : null;
+      const tickets = allTickets.filter((tk) =>
+        (!teamId || tk.group_id === teamId) && (!memberId || tk.assigned_to === memberId));
       const noGroupLabel = t('no_group_label');
 
       const groupCounts = new Map();
@@ -2654,26 +2756,22 @@
 
       chartsEl.className = 'charts-row';
       chartsEl.innerHTML = `
-        <div class="card chart-card">
-          <h3 class="section-title" style="margin-top:0">${t('chart_volume_by_group')}</h3>
-          ${volumeRows.length ? barChart(volumeRows, tickets.length) : `<p class="hint">${t('no_data')}</p>`}
-        </div>
-        <div class="card chart-card">
-          <h3 class="section-title" style="margin-top:0">${t('chart_avg_resolution')}</h3>
-          ${avgRows.length ? barChart(avgRows, 0, { showPct: false, suffix: ' h' }) : `<p class="hint">${t('no_resolved_yet')}</p>`}
-        </div>
-        <div class="card chart-card">
-          <h3 class="section-title" style="margin-top:0">${t('chart_sla_compliance')}</h3>
-          ${slaRows.length ? barChart(slaRows, 0, { showPct: false, suffix: '%' }) : `<p class="hint">${t('no_group_sla_configured')}</p>`}
-        </div>
-        <div class="card chart-card">
-          <h3 class="section-title" style="margin-top:0">${t('chart_load_by_agent')}</h3>
-          ${agentRows.length ? barChart(agentRows, tickets.length) : `<p class="hint">${t('no_assigned_tickets')}</p>`}
-        </div>`;
-    } catch (err) {
-      chartsEl.className = '';
-      chartsEl.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
+        <div class="card chart-card"><h3 class="section-title" style="margin-top:0">${t('chart_volume_by_group')}</h3><div id="reportChartVolume"></div></div>
+        <div class="card chart-card"><h3 class="section-title" style="margin-top:0">${t('chart_avg_resolution')}</h3><div id="reportChartAvg"></div></div>
+        <div class="card chart-card"><h3 class="section-title" style="margin-top:0">${t('chart_sla_compliance')}</h3><div id="reportChartSla"></div></div>
+        <div class="card chart-card"><h3 class="section-title" style="margin-top:0">${t('chart_load_by_agent')}</h3><div id="reportChartAgent"></div></div>`;
+
+      renderChart(document.getElementById('reportChartVolume'), 'report_volume', volumeRows, tickets.length, t('no_data'));
+      renderChart(document.getElementById('reportChartAvg'), 'report_avg', avgRows, 0, t('no_resolved_yet'), { barOpts: { showPct: false, suffix: ' h' }, donutTotal: avgRows.reduce((a, r) => a + r.value, 0) });
+      renderChart(document.getElementById('reportChartSla'), 'report_sla', slaRows, 0, t('no_group_sla_configured'), { barOpts: { showPct: false, suffix: '%' }, donutTotal: slaRows.reduce((a, r) => a + r.value, 0) });
+      renderChart(document.getElementById('reportChartAgent'), 'report_agent', agentRows, tickets.length, t('no_assigned_tickets'));
     }
+
+    teamSel.addEventListener('change', () => { populateMemberOptions(); renderAll(); });
+    memberSel.addEventListener('change', renderAll);
+    chartTypeSel.addEventListener('change', renderAll);
+
+    renderAll();
   }
 
   function renderProfile() {
@@ -2790,25 +2888,25 @@
         </div>
         ${isAdmin ? `
         <div class="card">
-          <h3 class="section-title" style="margin-top:0">${icon('shield')} Organizzazione</h3>
-          <p class="hint">Il nome scelto compare nell'intestazione e nelle email inviate agli utenti.</p>
+          <h3 class="section-title" style="margin-top:0">${icon('shield')} ${t('org_section_title')}</h3>
+          <p class="hint">${t('org_section_hint')}</p>
           <form id="orgForm" class="form-grid" style="max-width:none">
-            <div class="field"><label for="orgName">Nome organizzazione</label><input id="orgName" required /></div>
-            <div><button class="btn btn-sm" type="submit">Salva</button></div>
+            <div class="field"><label for="orgName">${t('field_org_name')}</label><input id="orgName" required /></div>
+            <div><button class="btn btn-sm" type="submit">${t('btn_save')}</button></div>
           </form>
           <p class="error-text" id="orgError"></p>
         </div>
         <div class="card admin-grid-full">
-          <h3 class="section-title" style="margin-top:0">${icon('mail')} Email di invito account</h3>
-          <p class="hint">Personalizza l'oggetto e il testo dell'email automatica inviata quando crei un nuovo account staff. Lasciala vuota per usare il testo predefinito. Segnaposto disponibili: <code>{{name}}</code>, <code>{{email}}</code>, <code>{{password}}</code>, <code>{{org}}</code>.</p>
+          <h3 class="section-title" style="margin-top:0">${icon('mail')} ${t('invite_email_title')}</h3>
+          <p class="hint">${t('invite_email_hint')} <code>{{name}}</code>, <code>{{email}}</code>, <code>{{password}}</code>, <code>{{org}}</code>.</p>
           <div class="tab-row" id="inviteTemplateTabs">
-            <button type="button" class="tab-btn active" data-locale="it">Italiano</button>
-            <button type="button" class="tab-btn" data-locale="en">English</button>
+            <button type="button" class="tab-btn active" data-locale="it">${LANG_LABELS.it}</button>
+            <button type="button" class="tab-btn" data-locale="en">${LANG_LABELS.en}</button>
           </div>
           <form id="inviteTemplateForm" class="form-grid" style="max-width:none">
-            <div class="field"><label for="inviteSubject">Oggetto</label><input id="inviteSubject" placeholder="(predefinito)" /></div>
-            <div class="field"><label for="inviteBody">Testo email</label><textarea id="inviteBody" rows="6" placeholder="(predefinito)"></textarea></div>
-            <div><button class="btn btn-sm" type="submit">Salva modello</button></div>
+            <div class="field"><label for="inviteSubject">${t('field_subject')}</label><input id="inviteSubject" placeholder="${t('placeholder_default')}" /></div>
+            <div class="field"><label for="inviteBody">${t('field_email_body')}</label><textarea id="inviteBody" rows="6" placeholder="${t('placeholder_default')}"></textarea></div>
+            <div><button class="btn btn-sm" type="submit">${t('btn_save_template')}</button></div>
           </form>
           <p class="error-text" id="inviteTemplateError"></p>
         </div>` : ''}
@@ -2850,7 +2948,7 @@
           const { orgName } = await api('/settings', { method: 'PATCH', body: { orgName: name } });
           applyOrgName(orgName);
           localStorage.setItem('ticketing_org_name', orgName);
-          showToast('Nome organizzazione aggiornato', 'success');
+          showToast(t('toast_org_updated'), 'success');
         } catch (err) {
           errEl.textContent = err.message;
         }
@@ -2882,7 +2980,7 @@
         try {
           await api('/settings/invite-template', { method: 'PATCH', body: { locale: inviteTemplateLocale, subject, body } });
           inviteTemplates[inviteTemplateLocale] = { subject, body };
-          showToast('Modello email aggiornato', 'success');
+          showToast(t('toast_template_updated'), 'success');
         } catch (err) {
           errEl.textContent = err.message;
         }
@@ -2891,7 +2989,7 @@
   }
 
   function renderNotFound() {
-    appEl.innerHTML = `<div class="card"><p>Pagina non trovata. <a href="#/dashboard">Torna alla dashboard</a></p></div>`;
+    appEl.innerHTML = `<div class="card"><p>${t('not_found_text')} <a href="#/dashboard">${t('back_to_dashboard')}</a></p></div>`;
   }
 
   if ('serviceWorker' in navigator) {
