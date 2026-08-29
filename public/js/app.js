@@ -256,6 +256,8 @@
       confirm_delete_group: 'Eliminare questo gruppo?', toast_sla_updated: 'SLA aggiornata', toast_work_hours_updated: 'Orario di lavoro aggiornato',
       toast_group_deleted: 'Gruppo eliminato', toast_group_created: 'Gruppo creato', toast_default_team_updated: 'Team predefinito aggiornato',
       org_drop_root_hint: 'Trascina qui un gruppo per renderlo di primo livello', toast_group_reparented: 'Gruppo riorganizzato',
+      assign_to_me_btn: 'Assegna a me', toast_ticket_assigned_to_you: 'Ticket assegnato a te',
+      group_by_team_label: 'Raggruppa per team',
       toast_category_deleted: 'Categoria eliminata', toast_category_added: 'Categoria aggiunta', delete_category_title: 'Elimina categoria',
       no_categories_hint: 'Nessuna categoria.', no_groups_hint: 'Nessun gruppo.', account_created_for: 'Account creato per',
       temp_password_hint: 'Password temporanea (comunicala in modo sicuro, non sarà più visibile):', toast_staff_created: 'Account staff creato',
@@ -378,6 +380,8 @@
       confirm_delete_group: 'Delete this group?', toast_sla_updated: 'SLA updated', toast_work_hours_updated: 'Work hours updated',
       toast_group_deleted: 'Group deleted', toast_group_created: 'Group created', toast_default_team_updated: 'Default team updated',
       org_drop_root_hint: 'Drag a group here to make it top-level', toast_group_reparented: 'Group reorganized',
+      assign_to_me_btn: 'Assign to me', toast_ticket_assigned_to_you: 'Ticket assigned to you',
+      group_by_team_label: 'Group by team',
       toast_category_deleted: 'Category deleted', toast_category_added: 'Category added', delete_category_title: 'Delete category',
       no_categories_hint: 'No categories.', no_groups_hint: 'No groups.', account_created_for: 'Account created for',
       temp_password_hint: 'Temporary password (share it securely, it won\'t be shown again):', toast_staff_created: 'Staff account created',
@@ -1148,6 +1152,7 @@
           </button>
           <a class="btn" href="#/new">${icon('plus')} ${t('new_ticket_btn')}</a>` : ''}
           ${state.user.is_super_admin && !viewingAs ? `<button type="button" id="dashImpersonateBtn" class="btn btn-ghost">${icon('eye')} ${t('impersonate')}</button>` : ''}
+          ${state.user.is_super_admin && !viewingAs ? `<button type="button" id="groupByTeamBtn" class="btn btn-ghost">${icon('users')} ${t('group_by_team_label')}</button>` : ''}
         </div>
       </div>
       <div id="dashImpersonatePanel" hidden></div>
@@ -1435,6 +1440,34 @@
       });
     }
 
+    let groupByTeam = false;
+    function renderGroupedTicketList(container, tickets) {
+      if (!tickets.length) {
+        container.className = '';
+        container.innerHTML = `<div class="empty-state">${icon('inbox')}<span>${t('no_tickets_found')}</span></div>`;
+        return;
+      }
+      const groups = new Map();
+      tickets.forEach((tk) => {
+        const key = groupLabel(tk) || t('no_group_label');
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(tk);
+      });
+      const noGroupKey = t('no_group_label');
+      const sortedKeys = [...groups.keys()].sort((a, b) => {
+        if (a === noGroupKey) return 1;
+        if (b === noGroupKey) return -1;
+        return a.localeCompare(b);
+      });
+      container.className = '';
+      container.innerHTML = sortedKeys.map((key) => `
+        <div class="group-section">
+          <h3 class="group-section-title">${escapeHtml(key)} <span class="group-section-count">${groups.get(key).length}</span></h3>
+          <div class="ticket-grid">${groups.get(key).map(ticketCardHtml).join('')}</div>
+        </div>`).join('');
+      wireTicketCardActions(container);
+    }
+
     let debounceTimer;
     async function load() {
       const params = new URLSearchParams();
@@ -1454,11 +1487,21 @@
         renderPersonalCounter(tickets);
         renderCharts(tickets);
         renderScopedCharts();
-        renderTicketList(listEl, tickets);
+        if (groupByTeam) renderGroupedTicketList(listEl, tickets);
+        else renderTicketList(listEl, tickets);
       } catch (err) {
         listEl.className = '';
         listEl.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
       }
+    }
+
+    const groupByTeamBtn = document.getElementById('groupByTeamBtn');
+    if (groupByTeamBtn) {
+      groupByTeamBtn.addEventListener('click', () => {
+        groupByTeam = !groupByTeam;
+        groupByTeamBtn.classList.toggle('active', groupByTeam);
+        load();
+      });
     }
 
     [fType, fStatus, fPriority, fAssigned].forEach((el) => el && el.addEventListener('change', load));
@@ -1485,20 +1528,23 @@
     load();
   }
 
-  function renderTicketList(container, tickets) {
-    if (!tickets.length) {
-      container.className = '';
-      container.innerHTML = `<div class="empty-state">${icon('inbox')}<span>${t('no_tickets_found')}</span></div>`;
-      return;
-    }
-    container.className = 'ticket-grid';
-    container.innerHTML = tickets.map((tk) => `
+  function formatSlaCountdown(ms) {
+    if (ms === null || ms === undefined || ms < 0) return null;
+    const hours = Math.floor(ms / 3600000);
+    const mins = Math.floor((ms % 3600000) / 60000);
+    return `${hours}h ${mins}m`;
+  }
+
+  function ticketCardHtml(tk) {
+    const countdown = formatSlaCountdown(tk.sla_remaining_ms);
+    return `
       <a class="ticket-card prio-${tk.priority}" href="#/ticket/${tk.id}">
         <div class="badges">
           <span class="badge badge-type-${tk.type}">${icon(tk.type, 'badge-icon')}${typeLabels()[tk.type] || tk.type}</span>
           <span class="badge badge-${tk.status}">${statusLabels()[tk.status]}</span>
           <span class="badge badge-${tk.priority}">${priorityLabels()[tk.priority]}</span>
           ${tk.sla_status && tk.sla_status !== 'on_track' ? `<span class="badge badge-sla-${tk.sla_status}">${slaLabels()[tk.sla_status]}</span>` : ''}
+          ${countdown ? `<span class="badge badge-sla-countdown">${icon('activity', 'badge-icon')}${countdown}</span>` : ''}
         </div>
         <h3>#${tk.id} ${escapeHtml(tk.subject)}</h3>
         <p class="ticket-desc">${escapeHtml(tk.description)}</p>
@@ -1507,7 +1553,35 @@
           ${tk.assignee_name ? ` · ${t('assigned_to_label')} ${escapeHtml(tk.assignee_name)}` : ''}
           ${groupLabel(tk) ? ` · ${escapeHtml(groupLabel(tk))}` : ''}
         </div>
-      </a>`).join('');
+        ${!tk.assignee_name && isStaff() ? `<button type="button" class="btn btn-sm assignMeBtn" data-id="${tk.id}">${icon('userCircle', 'badge-icon')} ${t('assign_to_me_btn')}</button>` : ''}
+      </a>`;
+  }
+
+  function wireTicketCardActions(container) {
+    container.querySelectorAll('.assignMeBtn').forEach((btn) => {
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        try {
+          await api(`/tickets/${btn.dataset.id}`, { method: 'PATCH', body: { assigned_to: state.user.id } });
+          showToast(t('toast_ticket_assigned_to_you'), 'success');
+          route();
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      });
+    });
+  }
+
+  function renderTicketList(container, tickets) {
+    if (!tickets.length) {
+      container.className = '';
+      container.innerHTML = `<div class="empty-state">${icon('inbox')}<span>${t('no_tickets_found')}</span></div>`;
+      return;
+    }
+    container.className = 'ticket-grid';
+    container.innerHTML = tickets.map(ticketCardHtml).join('');
+    wireTicketCardActions(container);
   }
 
   async function renderNewTicket() {
