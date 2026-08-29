@@ -20,6 +20,7 @@
     closed: 'Chiuso',
   };
   const PRIORITY_LABELS = { low: 'Bassa', medium: 'Media', high: 'Alta', urgent: 'Urgente' };
+  const TYPE_LABELS = { incident: 'Incident', task: 'Task' };
   const ROLE_LABELS = { customer: 'Cliente', agent: 'Agente', admin: 'Amministratore' };
 
   const ICON_PATHS = {
@@ -42,6 +43,8 @@
     arrowLeft: '<line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>',
     settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
     plug: '<path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v3a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8z"/>',
+    incident: '<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+    task: '<polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
   };
 
   function icon(name, cls = '') {
@@ -429,8 +432,14 @@
         </div>
         <a class="btn" href="#/new">${icon('plus')} Nuovo ticket</a>
       </div>
+      <div id="personalCounter"></div>
       <div id="statsRow" class="stat-row"></div>
+      <div id="chartsRow" class="charts-row"></div>
       <div class="filters">
+        <select id="fType">
+          <option value="">Tutti i tipi</option>
+          ${Object.entries(TYPE_LABELS).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
+        </select>
         <select id="fStatus">
           <option value="">Tutti gli stati</option>
           ${Object.entries(STATUS_LABELS).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
@@ -453,6 +462,9 @@
 
     const listEl = document.getElementById('ticketList');
     const statsEl = document.getElementById('statsRow');
+    const personalEl = document.getElementById('personalCounter');
+    const chartsEl = document.getElementById('chartsRow');
+    const fType = document.getElementById('fType');
     const fStatus = document.getElementById('fStatus');
     const fPriority = document.getElementById('fPriority');
     const fAssigned = document.getElementById('fAssigned');
@@ -471,9 +483,75 @@
         <div class="stat-card accent-urgent"><div class="stat-value">${counts.urgent}</div><div class="stat-label">Urgenti aperti</div></div>`;
     }
 
+    function renderPersonalCounter(tickets) {
+      let value, label;
+      if (isStaff()) {
+        value = tickets.filter((t) => t.assigned_to === state.user.id && t.status !== 'resolved' && t.status !== 'closed').length;
+        label = 'Assegnati a te, ancora aperti';
+      } else {
+        value = tickets.filter((t) => t.status === 'open' || t.status === 'in_progress').length;
+        label = 'Tuoi ticket in corso';
+      }
+      personalEl.innerHTML = `
+        <div class="personal-counter">
+          ${icon('userCircle', 'personal-counter-icon')}
+          <div>
+            <div class="personal-counter-value">${value}</div>
+            <div class="personal-counter-label">${label}</div>
+          </div>
+        </div>`;
+    }
+
+    function renderCharts(tickets) {
+      chartsEl.innerHTML = '';
+      if (!tickets.length) return;
+
+      const statusOrder = ['open', 'in_progress', 'resolved', 'closed'];
+      const statusColors = { open: 'var(--primary)', in_progress: 'var(--warning)', resolved: 'var(--success)', closed: 'var(--muted)' };
+      const statusCounts = statusOrder.map((s) => ({
+        key: s, label: STATUS_LABELS[s], value: tickets.filter((t) => t.status === s).length, color: statusColors[s],
+      }));
+
+      const typeOrder = ['incident', 'task'];
+      const typeColors = { incident: 'var(--type-incident)', task: 'var(--type-task)' };
+      const typeCounts = typeOrder.map((tp) => ({
+        key: tp, label: TYPE_LABELS[tp], value: tickets.filter((t) => t.type === tp).length, color: typeColors[tp],
+      }));
+
+      chartsEl.innerHTML = `
+        <div class="card chart-card">
+          <h3 class="section-title" style="margin-top:0">Per stato</h3>
+          ${barChart(statusCounts, tickets.length)}
+        </div>
+        <div class="card chart-card">
+          <h3 class="section-title" style="margin-top:0">Incident vs Task</h3>
+          ${barChart(typeCounts, tickets.length)}
+        </div>`;
+    }
+
+    function barChart(rows, total) {
+      const max = Math.max(1, ...rows.map((r) => r.value));
+      return `
+        <div class="bar-chart" role="img" aria-label="${rows.map((r) => `${r.label}: ${r.value}`).join(', ')}">
+          ${rows.map((r) => {
+            const pct = total ? Math.round((r.value / total) * 100) : 0;
+            const width = Math.round((r.value / max) * 100);
+            return `
+              <div class="bar-row">
+                <span class="bar-label">${escapeHtml(r.label)}</span>
+                <div class="bar-track">
+                  <div class="bar-fill" style="width:${width}%;background:${r.color}"></div>
+                </div>
+                <span class="bar-value">${r.value} <span class="bar-pct">(${pct}%)</span></span>
+              </div>`;
+          }).join('')}
+        </div>`;
+    }
+
     let debounceTimer;
     async function load() {
       const params = new URLSearchParams();
+      if (fType && fType.value) params.set('type', fType.value);
       if (fStatus.value) params.set('status', fStatus.value);
       if (fPriority.value) params.set('priority', fPriority.value);
       if (fAssigned && fAssigned.value) params.set('assigned', fAssigned.value);
@@ -482,6 +560,8 @@
       try {
         const { tickets } = await api(`/tickets?${params.toString()}`);
         renderStats(tickets);
+        renderPersonalCounter(tickets);
+        renderCharts(tickets);
         renderTicketList(listEl, tickets);
       } catch (err) {
         listEl.className = '';
@@ -489,7 +569,7 @@
       }
     }
 
-    [fStatus, fPriority, fAssigned].forEach((el) => el && el.addEventListener('change', load));
+    [fType, fStatus, fPriority, fAssigned].forEach((el) => el && el.addEventListener('change', load));
     fQuery.addEventListener('input', () => {
       clearTimeout(debounceTimer);
       debounceTimer = setTimeout(load, 300);
@@ -508,6 +588,7 @@
     container.innerHTML = tickets.map((t) => `
       <a class="ticket-card prio-${t.priority}" href="#/ticket/${t.id}">
         <div class="badges">
+          <span class="badge badge-type-${t.type}">${icon(t.type, 'badge-icon')}${TYPE_LABELS[t.type] || t.type}</span>
           <span class="badge badge-${t.status}">${STATUS_LABELS[t.status]}</span>
           <span class="badge badge-${t.priority}">${PRIORITY_LABELS[t.priority]}</span>
         </div>
@@ -536,6 +617,13 @@
       </div>
       <div class="card" style="max-width:560px">
         <form id="newTicketForm" class="form-grid">
+          <div class="field">
+            <label for="type">Tipo di richiesta</label>
+            <select id="type">
+              <option value="incident">${TYPE_LABELS.incident} — qualcosa non funziona</option>
+              <option value="task">${TYPE_LABELS.task} — richiesta pianificabile</option>
+            </select>
+          </div>
           <div class="field">
             <label for="category">Categoria</label>
             <select id="category">
@@ -571,6 +659,7 @@
         subject: document.getElementById('subject').value.trim(),
         category: document.getElementById('category').value,
         priority: document.getElementById('priority').value,
+        type: document.getElementById('type').value,
         description: document.getElementById('description').value.trim(),
       };
       try {
@@ -624,6 +713,12 @@
             </select>
           </div>
           <div class="side-field">
+            <label for="typeSel">Tipo</label>
+            <select id="typeSel">
+              ${Object.entries(TYPE_LABELS).map(([v, l]) => `<option value="${v}" ${ticket.type === v ? 'selected' : ''}>${l}</option>`).join('')}
+            </select>
+          </div>
+          <div class="side-field">
             <label for="assignedSel">Assegnato a</label>
             <select id="assignedSel">${assigneesOptions}</select>
           </div>
@@ -641,6 +736,7 @@
         <div>
           <div class="card" style="margin-bottom:1rem">
             <div class="badges" style="margin-bottom:0.75rem">
+              <span class="badge badge-type-${ticket.type}">${icon(ticket.type, 'badge-icon')}${TYPE_LABELS[ticket.type] || ticket.type}</span>
               <span class="badge badge-${ticket.status}">${STATUS_LABELS[ticket.status]}</span>
               <span class="badge badge-${ticket.priority}">${PRIORITY_LABELS[ticket.priority]}</span>
               <span class="badge">${escapeHtml(ticket.category)}</span>
@@ -748,6 +844,7 @@
             body: {
               status: document.getElementById('statusSel').value,
               priority: document.getElementById('prioritySel').value,
+              type: document.getElementById('typeSel').value,
               assigned_to: assignedRaw ? Number(assignedRaw) : null,
             },
           });

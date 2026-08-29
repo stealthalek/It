@@ -8,9 +8,11 @@ router.use(authenticate);
 
 const STATUSES = ['open', 'in_progress', 'resolved', 'closed'];
 const PRIORITIES = ['low', 'medium', 'high', 'urgent'];
+const TYPES = ['incident', 'task'];
 
 const STATUS_LABELS = { open: 'Aperto', in_progress: 'In lavorazione', resolved: 'Risolto', closed: 'Chiuso' };
 const PRIORITY_LABELS = { low: 'Bassa', medium: 'Media', high: 'Alta', urgent: 'Urgente' };
+const TYPE_LABELS = { incident: 'Incident', task: 'Task' };
 
 const TICKET_SELECT = `
   SELECT
@@ -80,7 +82,7 @@ async function listActivity(ticketId, includeInternal) {
 router.get(
   '/',
   asyncHandler(async (req, res) => {
-    const { status, priority, q, assigned } = req.query;
+    const { status, priority, type, q, assigned } = req.query;
     const clauses = [];
     const params = [];
 
@@ -102,6 +104,10 @@ router.get(
       clauses.push('t.priority = ?');
       params.push(priority);
     }
+    if (type && TYPES.includes(type)) {
+      clauses.push('t.type = ?');
+      params.push(type);
+    }
     if (q && q.trim()) {
       clauses.push('(t.subject LIKE ? OR t.description LIKE ?)');
       params.push(`%${q.trim()}%`, `%${q.trim()}%`);
@@ -117,7 +123,7 @@ router.get(
 router.post(
   '/',
   asyncHandler(async (req, res) => {
-    const { subject, description, priority, category } = req.body || {};
+    const { subject, description, priority, category, type } = req.body || {};
 
     if (!subject || !subject.trim()) {
       return res.status(400).json({ error: 'L\'oggetto è obbligatorio' });
@@ -126,11 +132,12 @@ router.post(
       return res.status(400).json({ error: 'La descrizione è obbligatoria' });
     }
     const finalPriority = PRIORITIES.includes(priority) ? priority : 'medium';
+    const finalType = TYPES.includes(type) ? type : 'incident';
     const finalCategory = await resolveCategory(category && category.trim());
 
     const info = await db.run(
-      'INSERT INTO tickets (subject, description, priority, category, created_by) VALUES (?, ?, ?, ?, ?)',
-      [subject.trim(), description.trim(), finalPriority, finalCategory, req.user.id]
+      'INSERT INTO tickets (subject, description, priority, type, category, created_by) VALUES (?, ?, ?, ?, ?, ?)',
+      [subject.trim(), description.trim(), finalPriority, finalType, finalCategory, req.user.id]
     );
 
     const ticketId = Number(info.lastInsertRowid);
@@ -182,6 +189,16 @@ router.patch(
           updates.push('priority = ?');
           params.push(body.priority);
           events.push(`Priorità cambiata da "${PRIORITY_LABELS[ticket.priority]}" a "${PRIORITY_LABELS[body.priority]}"`);
+        }
+      }
+      if (body.type !== undefined) {
+        if (!TYPES.includes(body.type)) {
+          return res.status(400).json({ error: 'Tipo non valido' });
+        }
+        if (body.type !== ticket.type) {
+          updates.push('type = ?');
+          params.push(body.type);
+          events.push(`Tipo cambiato da "${TYPE_LABELS[ticket.type]}" a "${TYPE_LABELS[body.type]}"`);
         }
       }
       if (body.category !== undefined && body.category.trim()) {
