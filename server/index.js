@@ -8,10 +8,13 @@ const rateLimit = require('express-rate-limit');
 
 const db = require('./db/database');
 const { initRealtime } = require('./realtime');
+const { startAutoCloseScheduler } = require('./scheduler');
 const authRoutes = require('./routes/auth');
 const ticketRoutes = require('./routes/tickets');
 const userRoutes = require('./routes/users');
 const categoryRoutes = require('./routes/categories');
+const groupRoutes = require('./routes/groups');
+const assetRoutes = require('./routes/assets');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -32,6 +35,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/tickets', ticketRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/categories', categoryRoutes);
+app.use('/api/groups', groupRoutes);
+app.use('/api/assets', assetRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() });
@@ -61,6 +66,7 @@ async function main() {
     console.warn('ATTENZIONE: JWT_SECRET non impostato in produzione, viene usato un valore di default non sicuro.');
   }
   await db.initDb();
+  startAutoCloseScheduler();
   httpServer.listen(PORT, '0.0.0.0', () => {
     console.log(`Piattaforma di ticketing in ascolto su http://0.0.0.0:${PORT}`);
     console.log('Raggiungibile da qualsiasi dispositivo sulla stessa rete tramite l\'IP di questa macchina.');

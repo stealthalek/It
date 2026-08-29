@@ -48,6 +48,7 @@ async function setupSchema() {
         password TEXT NOT NULL,
         role TEXT NOT NULL DEFAULT 'customer' CHECK (role IN ('customer', 'agent', 'admin')),
         team TEXT,
+        is_super_admin INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL DEFAULT (datetime('now'))
       )`,
       `CREATE TABLE IF NOT EXISTS tickets (
@@ -83,16 +84,43 @@ async function setupSchema() {
         message TEXT NOT NULL,
         created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now'))
       )`,
+      `CREATE TABLE IF NOT EXISTS groups (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL UNIQUE,
+        parent_id INTEGER REFERENCES groups(id) ON DELETE SET NULL,
+        sla_response_hours INTEGER,
+        sla_resolve_hours INTEGER,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS assets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        asset_type TEXT NOT NULL DEFAULT 'altro' CHECK (asset_type IN ('laptop', 'desktop', 'monitor', 'telefono', 'altro')),
+        tag TEXT,
+        status TEXT NOT NULL DEFAULT 'disponibile' CHECK (status IN ('disponibile', 'in_uso', 'in_riparazione', 'dismesso')),
+        assignment_type TEXT NOT NULL DEFAULT 'permanente' CHECK (assignment_type IN ('permanente', 'prestito')),
+        assigned_to INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        due_date TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`,
       'CREATE INDEX IF NOT EXISTS idx_tickets_created_by ON tickets(created_by)',
       'CREATE INDEX IF NOT EXISTS idx_tickets_assigned_to ON tickets(assigned_to)',
       'CREATE INDEX IF NOT EXISTS idx_comments_ticket_id ON comments(ticket_id)',
       'CREATE INDEX IF NOT EXISTS idx_events_ticket_id ON ticket_events(ticket_id)',
+      'CREATE INDEX IF NOT EXISTS idx_assets_assigned_to ON assets(assigned_to)',
     ],
     'write'
   );
 }
 
 async function migrate() {
+  const groupCols = await all('PRAGMA table_info(groups)');
+  if (groupCols.length && !groupCols.some((c) => c.name === 'parent_id')) {
+    await run('ALTER TABLE groups ADD COLUMN parent_id INTEGER REFERENCES groups(id) ON DELETE SET NULL');
+  }
+
+  await seedDefaultGroups();
+
   const commentCols = await all('PRAGMA table_info(comments)');
   if (!commentCols.some((c) => c.name === 'is_internal')) {
     await run('ALTER TABLE comments ADD COLUMN is_internal INTEGER NOT NULL DEFAULT 0');
@@ -106,6 +134,61 @@ async function migrate() {
   const userCols = await all('PRAGMA table_info(users)');
   if (!userCols.some((c) => c.name === 'team')) {
     await run('ALTER TABLE users ADD COLUMN team TEXT');
+  }
+  if (!userCols.some((c) => c.name === 'group_id')) {
+    await run('ALTER TABLE users ADD COLUMN group_id INTEGER REFERENCES groups(id) ON DELETE SET NULL');
+  }
+  if (!userCols.some((c) => c.name === 'is_super_admin')) {
+    await run('ALTER TABLE users ADD COLUMN is_super_admin INTEGER NOT NULL DEFAULT 0');
+  }
+  const superAdminRow = await get("SELECT COUNT(*) AS n FROM users WHERE is_super_admin = 1");
+  if (superAdminRow.n === 0) {
+    const earliestAdmin = await get("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1");
+    if (earliestAdmin) {
+      await run('UPDATE users SET is_super_admin = 1 WHERE id = ?', [earliestAdmin.id]);
+    }
+  }
+
+  const ticketCols2 = await all('PRAGMA table_info(tickets)');
+  if (!ticketCols2.some((c) => c.name === 'group_id')) {
+    await run('ALTER TABLE tickets ADD COLUMN group_id INTEGER REFERENCES groups(id) ON DELETE SET NULL');
+  }
+  if (!ticketCols2.some((c) => c.name === 'resolved_at')) {
+    await run('ALTER TABLE tickets ADD COLUMN resolved_at TEXT');
+  }
+  if (!ticketCols2.some((c) => c.name === 'asset_id')) {
+    await run('ALTER TABLE tickets ADD COLUMN asset_id INTEGER REFERENCES assets(id) ON DELETE SET NULL');
+  }
+
+  if (userCols.some((c) => c.name === 'team')) {
+    const withTeam = await all("SELECT id, team FROM users WHERE team IS NOT NULL AND team != '' AND group_id IS NULL");
+    for (const u of withTeam) {
+      let g = await get('SELECT id FROM groups WHERE name = ?', [u.team]);
+      if (!g) {
+        const info = await run('INSERT INTO groups (name) VALUES (?)', [u.team]);
+        g = { id: Number(info.lastInsertRowid) };
+      }
+      await run('UPDATE users SET group_id = ? WHERE id = ?', [g.id, u.id]);
+    }
+  }
+}
+
+async function seedDefaultGroups() {
+  const row = await get('SELECT COUNT(*) AS n FROM groups');
+  if (row.n > 0) return;
+
+  const itInfo = await run('INSERT INTO groups (name) VALUES (?)', ['IT']);
+  const itId = Number(itInfo.lastInsertRowid);
+
+  const defaults = [
+    ['Service Desk', 4, 24],
+    ['Presidio', 8, 48],
+    ['Endpoint', 4, 24],
+    ['Network', 2, 16],
+    ['Security', 1, 8],
+  ];
+  for (const [name, responseHours, resolveHours] of defaults) {
+    await run('INSERT INTO groups (name, parent_id, sla_response_hours, sla_resolve_hours) VALUES (?, ?, ?, ?)', [name, itId, responseHours, resolveHours]);
   }
 }
 
@@ -126,7 +209,7 @@ async function seedDefaultAdmin() {
   const password = process.env.DEFAULT_ADMIN_PASSWORD || 'Admin123!';
   const hash = bcrypt.hashSync(password, 10);
 
-  await run('INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)', [
+  await run('INSERT INTO users (name, email, password, role, is_super_admin) VALUES (?, ?, ?, ?, 1)', [
     'Amministratore',
     email,
     hash,

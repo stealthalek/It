@@ -21,11 +21,38 @@ const TICKET_SELECT = `
     t.*,
     creator.name AS creator_name,
     creator.email AS creator_email,
-    assignee.name AS assignee_name
+    assignee.name AS assignee_name,
+    grp.name AS group_name,
+    grpParent.name AS group_parent_name,
+    grp.sla_response_hours AS sla_response_hours,
+    grp.sla_resolve_hours AS sla_resolve_hours,
+    asset.name AS asset_name
   FROM tickets t
   JOIN users creator ON creator.id = t.created_by
   LEFT JOIN users assignee ON assignee.id = t.assigned_to
+  LEFT JOIN groups grp ON grp.id = t.group_id
+  LEFT JOIN groups grpParent ON grpParent.id = grp.parent_id
+  LEFT JOIN assets asset ON asset.id = t.asset_id
 `;
+
+function computeSlaStatus(ticket) {
+  if (!ticket.sla_resolve_hours || !ticket.created_at) return null;
+  const created = new Date(ticket.created_at.replace(' ', 'T') + 'Z').getTime();
+  const resolveMs = ticket.sla_resolve_hours * 3600 * 1000;
+  if (ticket.status === 'resolved' || ticket.status === 'closed') {
+    if (!ticket.resolved_at) return null;
+    const resolved = new Date(ticket.resolved_at.replace(' ', 'T') + 'Z').getTime();
+    return resolved - created > resolveMs ? 'breached' : 'on_track';
+  }
+  const ratio = (Date.now() - created) / resolveMs;
+  if (ratio >= 1) return 'breached';
+  if (ratio >= 0.75) return 'at_risk';
+  return 'on_track';
+}
+
+function withSla(ticket) {
+  return { ...ticket, sla_status: computeSlaStatus(ticket) };
+}
 
 function isStaff(user) {
   return user.role === 'agent' || user.role === 'admin';
@@ -91,7 +118,7 @@ async function listActivity(ticketId, includeInternal) {
 router.get(
   '/',
   asyncHandler(async (req, res) => {
-    const { status, priority, type, q, assigned } = req.query;
+    const { status, priority, type, q, assigned, group } = req.query;
     const clauses = [];
     const params = [];
 
@@ -120,6 +147,12 @@ router.get(
       clauses.push('t.type = ?');
       params.push(type);
     }
+    if (group === 'unassigned') {
+      clauses.push('t.group_id IS NULL');
+    } else if (group && /^\d+$/.test(group)) {
+      clauses.push('t.group_id = ?');
+      params.push(Number(group));
+    }
     if (q && q.trim()) {
       const trimmed = q.trim();
       const asId = /^\d+$/.test(trimmed) ? Number(trimmed) : null;
@@ -139,7 +172,7 @@ router.get(
     const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
     const tickets = await db.all(`${TICKET_SELECT} ${where} ORDER BY t.updated_at DESC`, params);
 
-    res.json({ tickets });
+    res.json({ tickets: tickets.map(withSla) });
   })
 );
 
@@ -167,7 +200,7 @@ router.post(
     await logEvent(ticketId, req.user.id, 'Ticket creato');
 
     const ticket = await db.get(`${TICKET_SELECT} WHERE t.id = ?`, [ticketId]);
-    res.status(201).json({ ticket });
+    res.status(201).json({ ticket: withSla(ticket) });
   })
 );
 
@@ -178,7 +211,7 @@ router.get(
     if (!ticket) return;
 
     const activity = await listActivity(ticket.id, isStaff(req.user));
-    res.json({ ticket, activity });
+    res.json({ ticket: withSla(ticket), activity });
   })
 );
 
@@ -204,6 +237,11 @@ router.patch(
           params.push(body.status);
           events.push(`Stato cambiato da "${STATUS_LABELS[ticket.status]}" a "${STATUS_LABELS[body.status]}"`);
           justResolved = body.status === 'resolved';
+          if (justResolved) {
+            updates.push("resolved_at = datetime('now')");
+          } else if (ticket.resolved_at) {
+            updates.push('resolved_at = NULL');
+          }
         }
       }
       if (body.priority !== undefined) {
@@ -254,6 +292,42 @@ router.patch(
           }
         }
       }
+      if (body.group_id !== undefined) {
+        if (body.group_id === null) {
+          if (ticket.group_id !== null) {
+            updates.push('group_id = NULL');
+            events.push('Rimosso il gruppo di assegnazione');
+          }
+        } else {
+          const targetGroup = await db.get('SELECT id, name FROM groups WHERE id = ?', [body.group_id]);
+          if (!targetGroup) {
+            return res.status(400).json({ error: 'Gruppo non valido' });
+          }
+          if (targetGroup.id !== ticket.group_id) {
+            updates.push('group_id = ?');
+            params.push(body.group_id);
+            events.push(`Gruppo di assegnazione impostato a "${targetGroup.name}"`);
+          }
+        }
+      }
+      if (body.asset_id !== undefined) {
+        if (body.asset_id === null) {
+          if (ticket.asset_id !== null) {
+            updates.push('asset_id = NULL');
+            events.push('Rimosso l\'asset collegato');
+          }
+        } else {
+          const targetAsset = await db.get('SELECT id, name FROM assets WHERE id = ?', [body.asset_id]);
+          if (!targetAsset) {
+            return res.status(400).json({ error: 'Asset non valido' });
+          }
+          if (targetAsset.id !== ticket.asset_id) {
+            updates.push('asset_id = ?');
+            params.push(body.asset_id);
+            events.push(`Collegato all'asset "${targetAsset.name}"`);
+          }
+        }
+      }
     }
 
     const isOwner = ticket.created_by === req.user.id;
@@ -262,6 +336,7 @@ router.patch(
       if (wantsReopen) {
         updates.push('status = ?');
         params.push('open');
+        if (ticket.resolved_at) updates.push('resolved_at = NULL');
         events.push('Ticket riaperto dal richiedente');
       } else if (body.status !== undefined) {
         return res.status(403).json({ error: 'Non puoi impostare questo stato' });
@@ -293,7 +368,7 @@ router.patch(
       await logEvent(ticket.id, req.user.id, message);
     }
 
-    const updated = await db.get(`${TICKET_SELECT} WHERE t.id = ?`, [ticket.id]);
+    const updated = withSla(await db.get(`${TICKET_SELECT} WHERE t.id = ?`, [ticket.id]));
     realtime.broadcastTicketUpdate(ticket.id, updated);
     if (justResolved) {
       mailer.notifyTicketResolved(updated).catch((err) => console.error('Invio email fallito:', err.message));

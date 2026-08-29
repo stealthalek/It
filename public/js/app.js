@@ -50,6 +50,9 @@
   };
   const PRIORITY_LABELS = { low: 'Bassa', medium: 'Media', high: 'Alta', urgent: 'Urgente' };
   const TYPE_LABELS = { incident: 'Incident', task: 'Task' };
+  const SLA_LABELS = { on_track: 'SLA in linea', at_risk: 'SLA a rischio', breached: 'SLA superata' };
+  const ASSET_TYPE_LABELS = { laptop: 'Laptop', desktop: 'Desktop', monitor: 'Monitor', telefono: 'Telefono', altro: 'Altro' };
+  const ASSET_STATUS_LABELS = { disponibile: 'Disponibile', in_uso: 'In uso', in_riparazione: 'In riparazione', dismesso: 'Dismesso' };
   const ROLE_LABELS = { customer: 'Cliente', agent: 'Agente', admin: 'Amministratore' };
 
   const ICON_PATHS = {
@@ -125,6 +128,84 @@
     });
   }
 
+  const TRANSLATIONS = {
+    it: {
+      nav_dashboard: 'Ticket', nav_new: 'Nuovo ticket', nav_search: 'Ricerca', nav_backlog: 'Backlog',
+      nav_assets: 'Asset', nav_report: 'Report', nav_admin: 'Amministrazione', nav_profile: 'Profilo', logout: 'Esci',
+      login_title: 'Accedi', login_hint: 'Entra nella piattaforma di ticketing.', login_email: 'Email', login_password: 'Password',
+      login_submit: 'Accedi', login_no_account: 'Non hai un account?', login_register_link: 'Registrati',
+      register_title: 'Crea un account', register_submit: 'Registrati',
+      register_has_account: 'Hai già un account?', register_login_link: 'Accedi',
+      dashboard_title_staff: 'Tutti i ticket', dashboard_title_customer: 'I miei ticket',
+      dashboard_hint_staff: 'Gestisci e rispondi alle richieste di assistenza.',
+      dashboard_hint_customer: 'Consulta lo stato delle tue richieste.',
+      new_ticket_btn: 'Nuovo ticket',
+    },
+    en: {
+      nav_dashboard: 'Tickets', nav_new: 'New ticket', nav_search: 'Search', nav_backlog: 'Backlog',
+      nav_assets: 'Assets', nav_report: 'Report', nav_admin: 'Administration', nav_profile: 'Profile', logout: 'Log out',
+      login_title: 'Sign in', login_hint: 'Enter the ticketing platform.', login_email: 'Email', login_password: 'Password',
+      login_submit: 'Sign in', login_no_account: "Don't have an account?", login_register_link: 'Register',
+      register_title: 'Create an account', register_submit: 'Register',
+      register_has_account: 'Already have an account?', register_login_link: 'Sign in',
+      dashboard_title_staff: 'All tickets', dashboard_title_customer: 'My tickets',
+      dashboard_hint_staff: 'Manage and respond to support requests.',
+      dashboard_hint_customer: 'Check the status of your requests.',
+      new_ticket_btn: 'New ticket',
+    },
+  };
+  const LANG_LABELS = { it: 'Italiano', en: 'English' };
+
+  function getLang() {
+    return localStorage.getItem('ticketing_lang') || 'it';
+  }
+
+  function setLang(lang) {
+    localStorage.setItem('ticketing_lang', lang);
+  }
+
+  function t(key) {
+    const lang = getLang();
+    return (TRANSLATIONS[lang] && TRANSLATIONS[lang][key]) || TRANSLATIONS.it[key] || key;
+  }
+
+  const NAV_KEY_BY_ROUTE = {
+    dashboard: 'nav_dashboard', new: 'nav_new', search: 'nav_search', backlog: 'nav_backlog',
+    assets: 'nav_assets', report: 'nav_report', admin: 'nav_admin', profile: 'nav_profile',
+  };
+
+  function applyChromeTranslations() {
+    document.querySelectorAll('.main-nav a[data-nav]').forEach((a) => {
+      const key = NAV_KEY_BY_ROUTE[a.dataset.nav];
+      if (key) a.textContent = t(key);
+    });
+    logoutBtn.innerHTML = `${icon('logout')} ${t('logout')}`;
+  }
+
+  const ACCENT_PRESETS = {
+    bordeaux: { primary: '#8f2436', primaryDark: '#711c2b', primarySoft: '#f7e6e6', label: 'Bordeaux' },
+    blu: { primary: '#1868a8', primaryDark: '#124e80', primarySoft: '#e1ecf5', label: 'Blu' },
+    verde: { primary: '#1f7a4d', primaryDark: '#175c3a', primarySoft: '#e1f0e6', label: 'Verde' },
+    viola: { primary: '#6a3fa0', primaryDark: '#52317d', primarySoft: '#ece3f7', label: 'Viola' },
+  };
+
+  function getAccent() {
+    return localStorage.getItem('ticketing_accent') || 'bordeaux';
+  }
+
+  function applyAccent(key) {
+    const preset = ACCENT_PRESETS[key] || ACCENT_PRESETS.bordeaux;
+    const root = document.documentElement.style;
+    root.setProperty('--primary', preset.primary);
+    root.setProperty('--primary-dark', preset.primaryDark);
+    root.setProperty('--primary-soft', preset.primarySoft);
+  }
+
+  function setAccent(key) {
+    localStorage.setItem('ticketing_accent', key);
+    applyAccent(key);
+  }
+
   const HOSTED_DEFAULT_API_BASE = 'https://it-ticketing-api-2g68.onrender.com';
 
   function getApiBase() {
@@ -132,11 +213,6 @@
     if (stored) return stored.replace(/\/+$/, '');
     if (location.hostname.endsWith('github.io')) return HOSTED_DEFAULT_API_BASE;
     return '';
-  }
-
-  function setApiBase(url) {
-    if (url) localStorage.setItem('ticketing_api_base', url.replace(/\/+$/, ''));
-    else localStorage.removeItem('ticketing_api_base');
   }
 
   async function api(path, { method = 'GET', body } = {}) {
@@ -293,7 +369,6 @@
     if (e.target.closest('a')) mainNav.classList.remove('open');
   });
 
-  logoutBtn.innerHTML = `${icon('logout')} Esci`;
   logoutBtn.addEventListener('click', () => {
     setSession(null, null);
     location.hash = '#/login';
@@ -345,6 +420,10 @@
         case 'admin': return renderAdmin();
         case 'profile': return renderProfile();
         case 'settings': return renderSettings();
+        case 'backlog': return renderBacklog();
+        case 'assets': return renderAssets();
+        case 'search': return renderSearch();
+        case 'report': return renderReport();
         default: return renderNotFound();
       }
     } catch (err) {
@@ -358,25 +437,25 @@
     appEl.innerHTML = `
       <div class="auth-wrap">
         <div class="card auth-card">
-          <h1>${icon('lock')} Accedi</h1>
-          <p class="hint">Entra nella piattaforma di ticketing.</p>
+          <h1>${icon('lock')} ${t('login_title')}</h1>
+          <p class="hint">${t('login_hint')}</p>
           <form id="loginForm" class="form-grid">
             <div class="field">
-              <label for="email">Email</label>
+              <label for="email">${t('login_email')}</label>
               <input id="email" type="email" required autocomplete="email" />
             </div>
             <div class="field">
-              <label for="password">Password</label>
+              <label for="password">${t('login_password')}</label>
               <div class="password-field">
                 <input id="password" type="password" required autocomplete="current-password" />
                 <button type="button" id="pwToggle" class="icon-btn password-toggle" aria-label="Mostra password"></button>
               </div>
             </div>
             <p class="error-text" id="loginError"></p>
-            <button class="btn btn-block" type="submit">Accedi</button>
+            <button class="btn btn-block" type="submit">${t('login_submit')}</button>
           </form>
           <div id="ssoContainer"></div>
-          <p class="hint">Non hai un account? <a href="#/register">Registrati</a></p>
+          <p class="hint">${t('login_no_account')} <a href="#/register">${t('login_register_link')}</a></p>
         </div>
       </div>`;
 
@@ -404,7 +483,7 @@
     appEl.innerHTML = `
       <div class="auth-wrap">
         <div class="card auth-card">
-          <h1>${icon('userCircle')} Crea un account</h1>
+          <h1>${icon('userCircle')} ${t('register_title')}</h1>
           <form id="registerForm" class="form-grid">
             <div class="field">
               <label for="name">Nome</label>
@@ -430,10 +509,10 @@
               </div>
             </div>
             <p class="error-text" id="registerError"></p>
-            <button class="btn btn-block" type="submit">Registrati</button>
+            <button class="btn btn-block" type="submit">${t('register_submit')}</button>
           </form>
           <div id="ssoContainer"></div>
-          <p class="hint">Hai già un account? <a href="#/login">Accedi</a></p>
+          <p class="hint">${t('register_has_account')} <a href="#/login">${t('register_login_link')}</a></p>
         </div>
       </div>`;
 
@@ -468,30 +547,87 @@
     return state.user && (state.user.role === 'agent' || state.user.role === 'admin');
   }
 
-  function groupStaffByTeam(users) {
+  function barChart(rows, total, opts = {}) {
+    const suffix = opts.suffix || '';
+    const showPct = opts.showPct !== false && total > 0;
+    const max = Math.max(1, ...rows.map((r) => r.value));
+    return `
+      <div class="bar-chart" role="img" aria-label="${rows.map((r) => `${r.label}: ${r.value}`).join(', ')}">
+        ${rows.map((r) => {
+          const pct = total ? Math.round((r.value / total) * 100) : 0;
+          const width = Math.round((r.value / max) * 100);
+          return `
+            <div class="bar-row">
+              <span class="bar-label" title="${escapeHtml(r.label)}">${escapeHtml(r.label)}</span>
+              <div class="bar-track">
+                <div class="bar-fill" style="width:${width}%;background:${r.color}"></div>
+              </div>
+              <span class="bar-value">${r.value}${suffix} ${showPct ? `<span class="bar-pct">(${pct}%)</span>` : ''}</span>
+            </div>`;
+        }).join('')}
+      </div>`;
+  }
+
+  function groupStaffByGroup(users) {
     const staffUsers = users.filter((u) => u.role === 'agent' || u.role === 'admin');
     const groups = new Map();
     staffUsers.forEach((u) => {
-      const key = u.team || 'Senza team';
+      const key = u.group_name ? (u.group_parent_name ? `${u.group_parent_name} / ${u.group_name}` : u.group_name) : 'Senza gruppo';
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key).push(u);
     });
-    const sortedTeams = [...groups.keys()].sort((a, b) => {
-      if (a === 'Senza team') return 1;
-      if (b === 'Senza team') return -1;
+    const sortedGroups = [...groups.keys()].sort((a, b) => {
+      if (a === 'Senza gruppo') return 1;
+      if (b === 'Senza gruppo') return -1;
       return a.localeCompare(b);
     });
-    return sortedTeams.map((team) => ({ team, members: groups.get(team) }));
+    return sortedGroups.map((group) => ({ group, members: groups.get(group) }));
+  }
+
+  function buildGroupTree(groups) {
+    const byParent = new Map();
+    groups.forEach((g) => {
+      const key = g.parent_id || 0;
+      if (!byParent.has(key)) byParent.set(key, []);
+      byParent.get(key).push(g);
+    });
+    byParent.forEach((list) => list.sort((a, b) => a.name.localeCompare(b.name)));
+    function attach(parentId) {
+      return (byParent.get(parentId) || []).map((g) => ({ ...g, children: attach(g.id) }));
+    }
+    return attach(0);
+  }
+
+  function flattenGroupTree(tree, depth = 0) {
+    const out = [];
+    tree.forEach((node) => {
+      out.push({ ...node, depth });
+      out.push(...flattenGroupTree(node.children, depth + 1));
+    });
+    return out;
+  }
+
+  function groupLabel(obj) {
+    if (!obj.group_name) return null;
+    return obj.group_parent_name ? `${obj.group_parent_name} / ${obj.group_name}` : obj.group_name;
+  }
+
+  function groupOptionsHtml(groups, selectedId, emptyLabel) {
+    const flat = flattenGroupTree(buildGroupTree(groups));
+    const emptyOption = emptyLabel !== null ? `<option value="">${escapeHtml(emptyLabel || 'Nessun gruppo')}</option>` : '';
+    return emptyOption + flat.map((g) => `
+      <option value="${g.id}" ${Number(selectedId) === g.id ? 'selected' : ''}>${'  '.repeat(g.depth)}${g.depth ? '– ' : ''}${escapeHtml(g.name)}</option>
+    `).join('');
   }
 
   async function renderDashboard() {
     appEl.innerHTML = `
       <div class="view-header">
         <div>
-          <h1>${isStaff() ? 'Tutti i ticket' : 'I miei ticket'}</h1>
-          <p class="hint">${isStaff() ? 'Gestisci e rispondi alle richieste di assistenza.' : 'Consulta lo stato delle tue richieste.'}</p>
+          <h1>${isStaff() ? t('dashboard_title_staff') : t('dashboard_title_customer')}</h1>
+          <p class="hint">${isStaff() ? t('dashboard_hint_staff') : t('dashboard_hint_customer')}</p>
         </div>
-        <a class="btn" href="#/new">${icon('plus')} Nuovo ticket</a>
+        <a class="btn" href="#/new">${icon('plus')} ${t('new_ticket_btn')}</a>
       </div>
       <div id="personalCounter"></div>
       <div id="statsRow" class="stat-row"></div>
@@ -533,12 +669,12 @@
 
     if (fAssigned) {
       api('/users').then(({ users }) => {
-        const teamGroups = groupStaffByTeam(users).map(({ team, members }) => ({
-          team,
+        const staffGroups = groupStaffByGroup(users).map(({ group, members }) => ({
+          group,
           members: members.filter((u) => u.id !== state.user.id),
         })).filter((g) => g.members.length);
-        fAssigned.insertAdjacentHTML('beforeend', teamGroups.map(({ team, members }) => `
-          <optgroup label="${escapeHtml(team)}">
+        fAssigned.insertAdjacentHTML('beforeend', staffGroups.map(({ group, members }) => `
+          <optgroup label="${escapeHtml(group)}">
             ${members.map((u) => `<option value="${u.id}">${escapeHtml(u.name)}</option>`).join('')}
           </optgroup>`).join(''));
       }).catch(() => {});
@@ -633,25 +769,6 @@
       });
     }
 
-    function barChart(rows, total) {
-      const max = Math.max(1, ...rows.map((r) => r.value));
-      return `
-        <div class="bar-chart" role="img" aria-label="${rows.map((r) => `${r.label}: ${r.value}`).join(', ')}">
-          ${rows.map((r) => {
-            const pct = total ? Math.round((r.value / total) * 100) : 0;
-            const width = Math.round((r.value / max) * 100);
-            return `
-              <div class="bar-row">
-                <span class="bar-label" title="${escapeHtml(r.label)}">${escapeHtml(r.label)}</span>
-                <div class="bar-track">
-                  <div class="bar-fill" style="width:${width}%;background:${r.color}"></div>
-                </div>
-                <span class="bar-value">${r.value} <span class="bar-pct">(${pct}%)</span></span>
-              </div>`;
-          }).join('')}
-        </div>`;
-    }
-
     let debounceTimer;
     async function load() {
       const params = new URLSearchParams();
@@ -695,12 +812,14 @@
           <span class="badge badge-type-${t.type}">${icon(t.type, 'badge-icon')}${TYPE_LABELS[t.type] || t.type}</span>
           <span class="badge badge-${t.status}">${STATUS_LABELS[t.status]}</span>
           <span class="badge badge-${t.priority}">${PRIORITY_LABELS[t.priority]}</span>
+          ${t.sla_status && t.sla_status !== 'on_track' ? `<span class="badge badge-sla-${t.sla_status}">${SLA_LABELS[t.sla_status]}</span>` : ''}
         </div>
         <h3>#${t.id} ${escapeHtml(t.subject)}</h3>
         <p class="ticket-desc">${escapeHtml(t.description)}</p>
         <div class="ticket-meta">
           Di ${escapeHtml(t.creator_name)} · ${formatDate(t.updated_at)}
           ${t.assignee_name ? ` · Assegnato a ${escapeHtml(t.assignee_name)}` : ''}
+          ${groupLabel(t) ? ` · ${escapeHtml(groupLabel(t))}` : ''}
         </div>
       </a>`).join('');
   }
@@ -792,16 +911,29 @@
 
     let staffPanel = '';
     let assigneesOptions = '';
+    let groupOptions = '';
+    let assetOptions = '';
     if (isStaff()) {
       try {
         const { users } = await api('/users');
-        const teamGroups = groupStaffByTeam(users);
+        const staffGroups = groupStaffByGroup(users);
         assigneesOptions = `<option value="">Non assegnato</option>` +
-          teamGroups.map(({ team, members }) => `
-            <optgroup label="${escapeHtml(team)}">
+          staffGroups.map(({ group, members }) => `
+            <optgroup label="${escapeHtml(group)}">
               ${members.map((u) => `<option value="${u.id}" ${ticket.assigned_to === u.id ? 'selected' : ''}>${escapeHtml(u.name)}</option>`).join('')}
             </optgroup>`).join('');
       } catch { assigneesOptions = ''; }
+
+      try {
+        const { groups } = await api('/groups');
+        groupOptions = groupOptionsHtml(groups, ticket.group_id, 'Nessun gruppo');
+      } catch { groupOptions = ''; }
+
+      try {
+        const { assets } = await api('/assets');
+        assetOptions = `<option value="">Nessun asset</option>` +
+          assets.map((a) => `<option value="${a.id}" ${ticket.asset_id === a.id ? 'selected' : ''}>${escapeHtml(a.name)}${a.tag ? ` (${escapeHtml(a.tag)})` : ''}</option>`).join('');
+      } catch { assetOptions = ''; }
 
       staffPanel = `
         <div class="card">
@@ -825,8 +957,16 @@
             </select>
           </div>
           <div class="side-field">
+            <label for="groupSel">Gruppo di assegnazione</label>
+            <select id="groupSel">${groupOptions}</select>
+          </div>
+          <div class="side-field">
             <label for="assignedSel">Assegnato a</label>
             <select id="assignedSel">${assigneesOptions}</select>
+          </div>
+          <div class="side-field">
+            <label for="assetSel">Asset collegato</label>
+            <select id="assetSel">${assetOptions}</select>
           </div>
           <button id="saveMgmtBtn" class="btn btn-sm btn-block">Salva modifiche</button>
           ${state.user.role === 'admin' ? `<button id="deleteBtn" class="btn btn-sm btn-outline-danger btn-block" style="margin-top:0.5rem">Elimina ticket</button>` : ''}
@@ -847,6 +987,7 @@
               <span class="badge badge-${ticket.status}">${STATUS_LABELS[ticket.status]}</span>
               <span class="badge badge-${ticket.priority}">${PRIORITY_LABELS[ticket.priority]}</span>
               <span class="badge">${escapeHtml(ticket.category)}</span>
+              ${ticket.sla_status ? `<span class="badge badge-sla-${ticket.sla_status}">${SLA_LABELS[ticket.sla_status]}</span>` : ''}
             </div>
             ${canEditFields ? `
               <form id="editForm" class="form-grid" style="max-width:none">
@@ -864,6 +1005,8 @@
             <p class="ticket-meta">
               Creato da ${escapeHtml(ticket.creator_name)} il ${formatDate(ticket.created_at)}
               ${ticket.assignee_name ? ` · Assegnato a ${escapeHtml(ticket.assignee_name)}` : ''}
+              ${groupLabel(ticket) ? ` · Gruppo ${escapeHtml(groupLabel(ticket))}` : ''}
+              ${ticket.asset_name ? ` · Asset ${escapeHtml(ticket.asset_name)}` : ''}
             </p>
             ${canReopen ? `<button id="reopenBtn" class="btn btn-sm btn-ghost">${icon('refresh')} Riapri ticket</button>` : ''}
           </div>
@@ -943,6 +1086,8 @@
     if (saveMgmtBtn) {
       saveMgmtBtn.addEventListener('click', async () => {
         const assignedRaw = document.getElementById('assignedSel').value;
+        const groupRaw = document.getElementById('groupSel').value;
+        const assetRaw = document.getElementById('assetSel').value;
         try {
           await api(`/tickets/${ticket.id}`, {
             method: 'PATCH',
@@ -951,6 +1096,8 @@
               priority: document.getElementById('prioritySel').value,
               type: document.getElementById('typeSel').value,
               assigned_to: assignedRaw ? Number(assignedRaw) : null,
+              group_id: groupRaw ? Number(groupRaw) : null,
+              asset_id: assetRaw ? Number(assetRaw) : null,
             },
           });
           showToast('Ticket aggiornato', 'success');
@@ -1019,7 +1166,8 @@
             <span class="badge badge-type-${updated.type}">${icon(updated.type, 'badge-icon')}${TYPE_LABELS[updated.type] || updated.type}</span>
             <span class="badge badge-${updated.status}">${STATUS_LABELS[updated.status]}</span>
             <span class="badge badge-${updated.priority}">${PRIORITY_LABELS[updated.priority]}</span>
-            <span class="badge">${escapeHtml(updated.category)}</span>`;
+            <span class="badge">${escapeHtml(updated.category)}</span>
+            ${updated.sla_status ? `<span class="badge badge-sla-${updated.sla_status}">${SLA_LABELS[updated.sla_status]}</span>` : ''}`;
         }
         const statusSel = document.getElementById('statusSel');
         if (statusSel) statusSel.value = updated.status;
@@ -1029,6 +1177,10 @@
         if (typeSel) typeSel.value = updated.type;
         const assignedSel = document.getElementById('assignedSel');
         if (assignedSel) assignedSel.value = updated.assigned_to || '';
+        const groupSel = document.getElementById('groupSel');
+        if (groupSel) groupSel.value = updated.group_id || '';
+        const assetSel = document.getElementById('assetSel');
+        if (assetSel) assetSel.value = updated.asset_id || '';
       });
 
       socket.on('presence:staff-joined', ({ name }) => { presence.staff.add(name); updatePresenceBanner(); });
@@ -1066,7 +1218,7 @@
     appEl.innerHTML = `
       <div class="view-header"><h1>${icon('shield')} Amministrazione</h1></div>
       ${isAdmin ? `
-      <div class="two-col" style="margin-bottom:1.25rem">
+      <div class="admin-grid" style="margin-bottom:1.25rem">
         <div class="card">
           <h3 class="section-title" style="margin-top:0">${icon('plus')} Crea account staff</h3>
           <form id="createStaffForm" class="form-grid" style="max-width:none">
@@ -1080,9 +1232,9 @@
               </select>
             </div>
             <div class="field">
-              <label for="newTeam">Team (opzionale)</label>
-              <input id="newTeam" placeholder="es. Hardware, Rete..." />
-              <span class="hint">I membri dello stesso team si vedono a vicenda nell'assegnazione dei ticket</span>
+              <label for="newGroup">Gruppo di assegnazione (opzionale)</label>
+              <select id="newGroup"><option value="">Nessun gruppo</option></select>
+              <span class="hint">I membri dello stesso gruppo si vedono a vicenda nell'assegnazione dei ticket</span>
             </div>
             <p class="error-text" id="createStaffError"></p>
             <div><button class="btn btn-sm" type="submit">Crea account</button></div>
@@ -1099,10 +1251,119 @@
           <p class="error-text" id="categoryError"></p>
           <div id="categoriesList" class="spinner-row">Caricamento...</div>
         </div>
+        <div class="card">
+          <h3 class="section-title" style="margin-top:0">${icon('users')} Gruppi di assegnazione</h3>
+          <p class="hint">Ogni gruppo ha un proprio SLA (ore per risposta/risoluzione), usato per calcolare lo stato SLA dei ticket.</p>
+          <form id="newGroupForm" class="form-grid" style="max-width:none;margin:0.75rem 0">
+            <input id="newGroupName" placeholder="Nome gruppo" />
+            <select id="newGroupParent"><option value="">Nessuno (gruppo di primo livello)</option></select>
+            <div style="display:flex;gap:0.5rem">
+              <input id="newGroupResponse" type="number" min="1" placeholder="SLA risposta (ore)" style="flex:1" />
+              <input id="newGroupResolve" type="number" min="1" placeholder="SLA risoluzione (ore)" style="flex:1" />
+            </div>
+            <button class="btn btn-sm" type="submit">Crea gruppo</button>
+          </form>
+          <p class="error-text" id="groupError"></p>
+          <div id="groupsList" class="spinner-row">Caricamento...</div>
+        </div>
       </div>` : ''}
       <div id="usersWrap" class="card spinner-row">Caricamento...</div>`;
 
     if (isAdmin) {
+      let groupOptionsCache = [];
+
+      async function loadGroupOptions() {
+        try {
+          const { groups } = await api('/groups');
+          groupOptionsCache = groups;
+          const select = document.getElementById('newGroup');
+          if (select) select.innerHTML = groupOptionsHtml(groups, '', 'Nessun gruppo');
+          const parentSelect = document.getElementById('newGroupParent');
+          if (parentSelect) parentSelect.innerHTML = groupOptionsHtml(groups, '', 'Nessuno (gruppo di primo livello)');
+        } catch { groupOptionsCache = []; }
+      }
+
+      async function loadGroups() {
+        const listEl = document.getElementById('groupsList');
+        listEl.className = 'spinner-row';
+        listEl.textContent = 'Caricamento...';
+        try {
+          const { groups } = await api('/groups');
+          groupOptionsCache = groups;
+          const flat = flattenGroupTree(buildGroupTree(groups));
+          listEl.className = '';
+          listEl.innerHTML = flat.length ? flat.map((g) => `
+            <div class="group-row" style="padding-left:${g.depth * 1.25}rem">
+              <span class="group-row-name">${g.depth ? '– ' : ''}${escapeHtml(g.name)}</span>
+              <input type="number" min="1" class="slaInput" data-group-id="${g.id}" data-field="slaResponseHours" value="${g.sla_response_hours ?? ''}" placeholder="Risposta (h)" />
+              <input type="number" min="1" class="slaInput" data-group-id="${g.id}" data-field="slaResolveHours" value="${g.sla_resolve_hours ?? ''}" placeholder="Risoluzione (h)" />
+              <button type="button" class="icon-btn deleteGroupBtn" data-id="${g.id}" title="Elimina gruppo">${icon('trash')}</button>
+            </div>`).join('') : '<p class="hint">Nessun gruppo.</p>';
+
+          listEl.querySelectorAll('.slaInput').forEach((input) => {
+            input.addEventListener('change', async () => {
+              const groupId = input.dataset.groupId;
+              const row = listEl.querySelector(`[data-group-id="${groupId}"][data-field="slaResponseHours"]`);
+              const row2 = listEl.querySelector(`[data-group-id="${groupId}"][data-field="slaResolveHours"]`);
+              try {
+                await api(`/groups/${groupId}`, {
+                  method: 'PATCH',
+                  body: { slaResponseHours: row.value || null, slaResolveHours: row2.value || null },
+                });
+                showToast('SLA aggiornata', 'success');
+                loadGroupOptions();
+              } catch (err) {
+                showToast(err.message, 'error');
+              }
+            });
+          });
+
+          listEl.querySelectorAll('.deleteGroupBtn').forEach((btn) => {
+            btn.addEventListener('click', async () => {
+              if (!confirm('Eliminare questo gruppo?')) return;
+              try {
+                await api(`/groups/${btn.dataset.id}`, { method: 'DELETE' });
+                showToast('Gruppo eliminato', 'success');
+                loadGroups();
+                loadGroupOptions();
+              } catch (err) {
+                showToast(err.message, 'error');
+              }
+            });
+          });
+        } catch (err) {
+          listEl.className = '';
+          listEl.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
+        }
+      }
+
+      guardForm(document.getElementById('newGroupForm'), async () => {
+        const errEl = document.getElementById('groupError');
+        errEl.textContent = '';
+        const name = document.getElementById('newGroupName').value.trim();
+        if (!name) return;
+        try {
+          await api('/groups', {
+            method: 'POST',
+            body: {
+              name,
+              parentId: document.getElementById('newGroupParent').value || null,
+              slaResponseHours: document.getElementById('newGroupResponse').value || null,
+              slaResolveHours: document.getElementById('newGroupResolve').value || null,
+            },
+          });
+          document.getElementById('newGroupForm').reset();
+          showToast('Gruppo creato', 'success');
+          loadGroups();
+          loadGroupOptions();
+        } catch (err) {
+          errEl.textContent = err.message;
+        }
+      });
+
+      loadGroupOptions();
+      loadGroups();
+
       guardForm(document.getElementById('createStaffForm'), async (e) => {
         const errEl = document.getElementById('createStaffError');
         errEl.textContent = '';
@@ -1110,7 +1371,7 @@
           name: document.getElementById('newName').value.trim(),
           email: document.getElementById('newEmail').value.trim(),
           role: document.getElementById('newRole').value,
-          team: document.getElementById('newTeam').value.trim(),
+          groupId: document.getElementById('newGroup').value || null,
         };
         try {
           const { user, tempPassword } = await api('/users', { method: 'POST', body });
@@ -1181,11 +1442,12 @@
       wrap.textContent = 'Caricamento...';
       try {
         const { users } = await api('/users');
+        const groups = isAdmin ? (await api('/groups')).groups : [];
         wrap.className = 'card';
         wrap.innerHTML = `
           <div class="table-scroll">
             <table class="users-table">
-              <thead><tr><th>Nome</th><th>Email</th><th>Ruolo</th><th>Team</th><th>Registrato</th>${isAdmin ? '<th></th>' : ''}</tr></thead>
+              <thead><tr><th>Nome</th><th>Email</th><th>Ruolo</th><th>Gruppo</th><th>Registrato</th>${isAdmin ? '<th></th>' : ''}</tr></thead>
               <tbody>
                 ${users.map((u) => `
                   <tr>
@@ -1194,8 +1456,8 @@
                     <td><span class="role-tag">${ROLE_LABELS[u.role] || u.role}</span></td>
                     <td>
                       ${isAdmin && u.role !== 'customer' ? `
-                        <input type="text" class="teamInput" data-user-id="${u.id}" value="${escapeHtml(u.team || '')}" placeholder="Nessun team" />
-                      ` : escapeHtml(u.team || '—')}
+                        <select class="groupSel" data-user-id="${u.id}">${groupOptionsHtml(groups, u.group_id, 'Nessun gruppo')}</select>
+                      ` : escapeHtml(u.group_name ? (u.group_parent_name ? `${u.group_parent_name} / ${u.group_name}` : u.group_name) : '—')}
                     </td>
                     <td>${formatDate(u.created_at)}</td>
                     ${isAdmin ? `
@@ -1210,11 +1472,11 @@
             </table>
           </div>`;
 
-        wrap.querySelectorAll('.teamInput').forEach((input) => {
-          input.addEventListener('change', async () => {
+        wrap.querySelectorAll('.groupSel').forEach((select) => {
+          select.addEventListener('change', async () => {
             try {
-              await api(`/users/${input.dataset.userId}/team`, { method: 'PATCH', body: { team: input.value.trim() } });
-              showToast('Team aggiornato', 'success');
+              await api(`/users/${select.dataset.userId}/group`, { method: 'PATCH', body: { groupId: select.value || null } });
+              showToast('Gruppo aggiornato', 'success');
             } catch (err) {
               showToast(err.message, 'error');
               loadUsersTable();
@@ -1240,6 +1502,319 @@
     }
 
     loadUsersTable();
+  }
+
+  async function renderBacklog() {
+    appEl.innerHTML = `
+      <div class="view-header">
+        <div>
+          <h1>${icon('inbox')} Backlog</h1>
+          <p class="hint">Ticket non assegnati, in ordine di urgenza SLA.</p>
+        </div>
+      </div>
+      <div id="ticketList" class="skeleton-grid">
+        ${Array(4).fill('<div class="skeleton-card"></div>').join('')}
+      </div>`;
+
+    const listEl = document.getElementById('ticketList');
+    try {
+      const { tickets } = await api('/tickets?assigned=unassigned');
+      const open = tickets.filter((t) => t.status === 'open' || t.status === 'in_progress');
+      const order = { breached: 0, at_risk: 1, on_track: 2 };
+      open.sort((a, b) => {
+        const sa = order[a.sla_status] ?? 3;
+        const sb = order[b.sla_status] ?? 3;
+        if (sa !== sb) return sa - sb;
+        return a.created_at < b.created_at ? -1 : a.created_at > b.created_at ? 1 : 0;
+      });
+      renderTicketList(listEl, open);
+    } catch (err) {
+      listEl.className = '';
+      listEl.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
+    }
+  }
+
+  async function renderAssets() {
+    appEl.innerHTML = `
+      <div class="view-header">
+        <div>
+          <h1>${icon('ticket')} Asset</h1>
+          <p class="hint">Inventario dispositivi, assegnazioni permanenti e prestiti.</p>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:1.25rem;max-width:640px">
+        <h3 class="section-title" style="margin-top:0">Nuovo asset</h3>
+        <form id="newAssetForm" class="form-grid" style="max-width:none">
+          <div class="field"><label for="assetName">Nome</label><input id="assetName" required placeholder="es. Laptop Dell XPS #12" /></div>
+          <div style="display:flex;gap:0.75rem">
+            <div class="field" style="flex:1">
+              <label for="assetType">Tipo</label>
+              <select id="assetType">${Object.entries(ASSET_TYPE_LABELS).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>
+            </div>
+            <div class="field" style="flex:1"><label for="assetTag">Tag/matricola</label><input id="assetTag" placeholder="es. IT-0012" /></div>
+          </div>
+          <div><button class="btn btn-sm" type="submit">Aggiungi asset</button></div>
+        </form>
+      </div>
+      <div class="filters">
+        <select id="assetStatusFilter">
+          <option value="">Tutti gli stati</option>
+          ${Object.entries(ASSET_STATUS_LABELS).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
+        </select>
+      </div>
+      <div id="assetsWrap" class="card spinner-row">Caricamento...</div>`;
+
+    let usersCache = [];
+    try {
+      usersCache = (await api('/users')).users.filter((u) => u.role !== 'customer');
+    } catch { usersCache = []; }
+
+    const statusFilter = document.getElementById('assetStatusFilter');
+
+    async function loadAssets() {
+      const wrap = document.getElementById('assetsWrap');
+      wrap.className = 'card spinner-row';
+      wrap.textContent = 'Caricamento...';
+      try {
+        const params = new URLSearchParams();
+        if (statusFilter.value) params.set('status', statusFilter.value);
+        const { assets } = await api(`/assets?${params.toString()}`);
+        wrap.className = 'card';
+        wrap.innerHTML = assets.length ? `
+          <div class="table-scroll">
+            <table class="users-table">
+              <thead><tr><th>Nome</th><th>Tipo</th><th>Tag</th><th>Stato</th><th>Assegnazione</th><th>Assegnato a</th><th>Scadenza</th>${state.user.role === 'admin' ? '<th></th>' : ''}</tr></thead>
+              <tbody>
+                ${assets.map((a) => `
+                  <tr>
+                    <td>${escapeHtml(a.name)}</td>
+                    <td>${ASSET_TYPE_LABELS[a.asset_type] || a.asset_type}</td>
+                    <td>${escapeHtml(a.tag || '—')}</td>
+                    <td>
+                      <select class="assetStatusSel groupSel" data-id="${a.id}">
+                        ${Object.entries(ASSET_STATUS_LABELS).map(([v, l]) => `<option value="${v}" ${a.status === v ? 'selected' : ''}>${l}</option>`).join('')}
+                      </select>
+                    </td>
+                    <td>
+                      <select class="assetAssignTypeSel groupSel" data-id="${a.id}">
+                        <option value="permanente" ${a.assignment_type === 'permanente' ? 'selected' : ''}>Permanente</option>
+                        <option value="prestito" ${a.assignment_type === 'prestito' ? 'selected' : ''}>Prestito</option>
+                      </select>
+                    </td>
+                    <td>
+                      <select class="assetAssigneeSel groupSel" data-id="${a.id}">
+                        <option value="">Nessuno</option>
+                        ${usersCache.map((u) => `<option value="${u.id}" ${a.assigned_to === u.id ? 'selected' : ''}>${escapeHtml(u.name)}</option>`).join('')}
+                      </select>
+                    </td>
+                    <td><input type="date" class="assetDueInput" data-id="${a.id}" value="${a.due_date || ''}" ${a.assignment_type !== 'prestito' ? 'disabled' : ''} /></td>
+                    ${state.user.role === 'admin' ? `<td><button type="button" class="icon-btn deleteAssetBtn" data-id="${a.id}" title="Elimina asset">${icon('trash')}</button></td>` : ''}
+                  </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>` : '<p class="hint">Nessun asset trovato.</p>';
+
+        wrap.querySelectorAll('.assetStatusSel').forEach((sel) => sel.addEventListener('change', async () => {
+          try {
+            await api(`/assets/${sel.dataset.id}`, { method: 'PATCH', body: { status: sel.value } });
+            showToast('Stato asset aggiornato', 'success');
+          } catch (err) { showToast(err.message, 'error'); loadAssets(); }
+        }));
+        wrap.querySelectorAll('.assetAssignTypeSel').forEach((sel) => sel.addEventListener('change', async () => {
+          try {
+            await api(`/assets/${sel.dataset.id}`, { method: 'PATCH', body: { assignmentType: sel.value } });
+            showToast('Assegnazione aggiornata', 'success');
+            loadAssets();
+          } catch (err) { showToast(err.message, 'error'); }
+        }));
+        wrap.querySelectorAll('.assetAssigneeSel').forEach((sel) => sel.addEventListener('change', async () => {
+          try {
+            await api(`/assets/${sel.dataset.id}`, { method: 'PATCH', body: { assignedTo: sel.value ? Number(sel.value) : null } });
+            showToast('Assegnatario aggiornato', 'success');
+            loadAssets();
+          } catch (err) { showToast(err.message, 'error'); }
+        }));
+        wrap.querySelectorAll('.assetDueInput').forEach((input) => input.addEventListener('change', async () => {
+          try {
+            await api(`/assets/${input.dataset.id}`, { method: 'PATCH', body: { dueDate: input.value || null } });
+            showToast('Scadenza aggiornata', 'success');
+          } catch (err) { showToast(err.message, 'error'); }
+        }));
+        wrap.querySelectorAll('.deleteAssetBtn').forEach((btn) => btn.addEventListener('click', async () => {
+          if (!confirm('Eliminare questo asset?')) return;
+          try {
+            await api(`/assets/${btn.dataset.id}`, { method: 'DELETE' });
+            showToast('Asset eliminato', 'success');
+            loadAssets();
+          } catch (err) { showToast(err.message, 'error'); }
+        }));
+      } catch (err) {
+        wrap.className = '';
+        wrap.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
+      }
+    }
+
+    statusFilter.addEventListener('change', loadAssets);
+
+    guardForm(document.getElementById('newAssetForm'), async () => {
+      try {
+        await api('/assets', {
+          method: 'POST',
+          body: {
+            name: document.getElementById('assetName').value.trim(),
+            assetType: document.getElementById('assetType').value,
+            tag: document.getElementById('assetTag').value.trim(),
+          },
+        });
+        document.getElementById('newAssetForm').reset();
+        showToast('Asset creato', 'success');
+        loadAssets();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+
+    loadAssets();
+  }
+
+  async function renderSearch() {
+    let groups = [];
+    try { groups = (await api('/groups')).groups; } catch { groups = []; }
+
+    appEl.innerHTML = `
+      <div class="view-header">
+        <div>
+          <h1>${icon('inbox')} Ricerca</h1>
+          <p class="hint">Cerca per numero ticket, parola chiave o richiedente: i risultati compaiono mentre scrivi.</p>
+        </div>
+      </div>
+      <div class="filters">
+        <input id="searchQuery" type="search" placeholder="Numero ticket, parola chiave, richiedente..." style="flex:2 1 260px" autofocus />
+        <select id="searchType">
+          <option value="">Tutti i tipi</option>
+          ${Object.entries(TYPE_LABELS).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
+        </select>
+        <select id="searchStatus">
+          <option value="">Tutti gli stati</option>
+          ${Object.entries(STATUS_LABELS).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
+        </select>
+        <select id="searchPriority">
+          <option value="">Tutte le priorità</option>
+          ${Object.entries(PRIORITY_LABELS).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
+        </select>
+        <select id="searchGroup">${groupOptionsHtml(groups, '', 'Tutti i gruppi')}</select>
+      </div>
+      <div id="searchResults" class="ticket-grid"></div>`;
+
+    const resultsEl = document.getElementById('searchResults');
+    const qEl = document.getElementById('searchQuery');
+    const typeEl = document.getElementById('searchType');
+    const statusEl = document.getElementById('searchStatus');
+    const priorityEl = document.getElementById('searchPriority');
+    const groupEl = document.getElementById('searchGroup');
+
+    let debounceTimer;
+    async function runSearch() {
+      const params = new URLSearchParams();
+      if (qEl.value.trim()) params.set('q', qEl.value.trim());
+      if (typeEl.value) params.set('type', typeEl.value);
+      if (statusEl.value) params.set('status', statusEl.value);
+      if (priorityEl.value) params.set('priority', priorityEl.value);
+      if (groupEl.value) params.set('group', groupEl.value);
+      try {
+        const { tickets } = await api(`/tickets?${params.toString()}`);
+        renderTicketList(resultsEl, tickets);
+      } catch (err) {
+        resultsEl.className = '';
+        resultsEl.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
+      }
+    }
+
+    qEl.addEventListener('input', () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(runSearch, 200);
+    });
+    [typeEl, statusEl, priorityEl, groupEl].forEach((el) => el.addEventListener('change', runSearch));
+
+    runSearch();
+  }
+
+  async function renderReport() {
+    appEl.innerHTML = `
+      <div class="view-header">
+        <div>
+          <h1>${icon('activity')} Report</h1>
+          <p class="hint">Volumi, tempi di risoluzione e rispetto SLA per gruppo e per agente.</p>
+        </div>
+      </div>
+      <div id="reportCharts" class="charts-row spinner-row">Caricamento...</div>`;
+
+    const chartsEl = document.getElementById('reportCharts');
+    try {
+      const { tickets } = await api('/tickets');
+
+      const groupCounts = new Map();
+      tickets.forEach((t) => {
+        const key = groupLabel(t) || 'Senza gruppo';
+        groupCounts.set(key, (groupCounts.get(key) || 0) + 1);
+      });
+      const volumeRows = [...groupCounts.entries()].sort((a, b) => b[1] - a[1])
+        .map(([label, value]) => ({ key: label, label, value, color: 'var(--primary)' }));
+
+      const resolved = tickets.filter((t) => t.resolved_at);
+      const avgByGroup = new Map();
+      resolved.forEach((t) => {
+        const key = groupLabel(t) || 'Senza gruppo';
+        const hours = (new Date(t.resolved_at.replace(' ', 'T') + 'Z') - new Date(t.created_at.replace(' ', 'T') + 'Z')) / 3600000;
+        if (!avgByGroup.has(key)) avgByGroup.set(key, []);
+        avgByGroup.get(key).push(hours);
+      });
+      const avgRows = [...avgByGroup.entries()].map(([label, values]) => ({
+        key: label, label, value: Math.round((values.reduce((a, b) => a + b, 0) / values.length) * 10) / 10, color: 'var(--warning)',
+      })).sort((a, b) => b.value - a.value);
+
+      const slaByGroup = new Map();
+      resolved.filter((t) => t.sla_status).forEach((t) => {
+        const key = groupLabel(t) || 'Senza gruppo';
+        if (!slaByGroup.has(key)) slaByGroup.set(key, { met: 0, total: 0 });
+        const entry = slaByGroup.get(key);
+        entry.total += 1;
+        if (t.sla_status === 'on_track') entry.met += 1;
+      });
+      const slaRows = [...slaByGroup.entries()].map(([label, { met, total }]) => ({
+        key: label, label, value: Math.round((met / total) * 100), color: 'var(--success)',
+      })).sort((a, b) => b.value - a.value);
+
+      const agentCounts = new Map();
+      tickets.forEach((t) => {
+        if (!t.assignee_name) return;
+        agentCounts.set(t.assignee_name, (agentCounts.get(t.assignee_name) || 0) + 1);
+      });
+      const agentRows = [...agentCounts.entries()].sort((a, b) => b[1] - a[1])
+        .map(([label, value]) => ({ key: label, label, value, color: 'var(--primary)' }));
+
+      chartsEl.className = 'charts-row';
+      chartsEl.innerHTML = `
+        <div class="card chart-card">
+          <h3 class="section-title" style="margin-top:0">Volume ticket per gruppo</h3>
+          ${volumeRows.length ? barChart(volumeRows, tickets.length) : '<p class="hint">Nessun dato.</p>'}
+        </div>
+        <div class="card chart-card">
+          <h3 class="section-title" style="margin-top:0">Tempo medio di risoluzione (ore) per gruppo</h3>
+          ${avgRows.length ? barChart(avgRows, 0, { showPct: false, suffix: ' h' }) : '<p class="hint">Nessun ticket risolto ancora.</p>'}
+        </div>
+        <div class="card chart-card">
+          <h3 class="section-title" style="margin-top:0">SLA rispettata per gruppo (%)</h3>
+          ${slaRows.length ? barChart(slaRows, 0, { showPct: false, suffix: '%' }) : '<p class="hint">Nessun gruppo con SLA configurata.</p>'}
+        </div>
+        <div class="card chart-card">
+          <h3 class="section-title" style="margin-top:0">Carico ticket per agente</h3>
+          ${agentRows.length ? barChart(agentRows, tickets.length) : '<p class="hint">Nessun ticket assegnato.</p>'}
+        </div>`;
+    } catch (err) {
+      chartsEl.className = '';
+      chartsEl.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
+    }
   }
 
   function renderProfile() {
@@ -1271,6 +1846,21 @@
             <div><button class="btn btn-sm" type="submit">Aggiorna password</button></div>
           </form>
         </div>
+        <div class="card">
+          <h3 class="section-title" style="margin-top:0">${icon('userCircle')} Cambia email</h3>
+          <form id="emailForm" class="form-grid" style="max-width:none">
+            <div class="field">
+              <label for="currentPasswordForEmail">Password attuale</label>
+              <input id="currentPasswordForEmail" type="password" required autocomplete="current-password" />
+            </div>
+            <div class="field">
+              <label for="newEmail">Nuova email</label>
+              <input id="newEmail" type="email" required autocomplete="email" />
+            </div>
+            <p class="error-text" id="emailError"></p>
+            <div><button class="btn btn-sm" type="submit">Aggiorna email</button></div>
+          </form>
+        </div>
       </div>`;
 
     guardForm(document.getElementById('pwForm'), async (e) => {
@@ -1291,64 +1881,65 @@
         errEl.textContent = err.message;
       }
     });
+
+    guardForm(document.getElementById('emailForm'), async () => {
+      const errEl = document.getElementById('emailError');
+      errEl.textContent = '';
+      const currentPassword = document.getElementById('currentPasswordForEmail').value;
+      const newEmail = document.getElementById('newEmail').value.trim();
+      try {
+        const { user } = await api('/auth/change-email', { method: 'POST', body: { currentPassword, newEmail } });
+        state.user = user;
+        updateChrome();
+        showToast('Email aggiornata', 'success');
+        renderProfile();
+      } catch (err) {
+        errEl.textContent = err.message;
+      }
+    });
   }
 
   function renderSettings() {
-    const current = getApiBase();
+    const currentLang = getLang();
+    const currentAccent = getAccent();
     appEl.innerHTML = `
-      <div class="view-header"><h1>${icon('plug')} Impostazioni connessione</h1></div>
-      <div class="card" style="max-width:560px">
-        <p class="hint">
-          Questa pagina statica deve sapere a quale server API parlare. Sul sito pubblico è già
-          impostato un indirizzo predefinito che funziona automaticamente su ogni dispositivo,
-          senza bisogno di configurare nulla. Cambia questo campo solo se vuoi collegarti a un
-          backend diverso (es. un tuo ambiente locale, Docker, o un'altra istanza).
-        </p>
-        <form id="settingsForm" class="form-grid" style="max-width:none">
+      <div class="view-header"><h1>${icon('plug')} Impostazioni</h1></div>
+      <div class="two-col">
+        <div class="card">
+          <h3 class="section-title" style="margin-top:0">Lingua</h3>
+          <p class="hint">Scegli la lingua dell'interfaccia.</p>
           <div class="field">
-            <label for="apiBaseInput">Indirizzo server API</label>
-            <input id="apiBaseInput" type="url" placeholder="https://tuo-backend.onrender.com" value="${escapeHtml(current)}" />
-            <span class="hint">Esempio: https://it-ticketing-api.onrender.com (senza slash finale, senza /api)</span>
+            <label for="langSel">Lingua</label>
+            <select id="langSel">
+              ${Object.entries(LANG_LABELS).map(([v, l]) => `<option value="${v}" ${currentLang === v ? 'selected' : ''}>${l}</option>`).join('')}
+            </select>
           </div>
-          <p id="settingsMsg" class="hint"></p>
-          <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
-            <button class="btn btn-sm" type="submit">Salva</button>
-            <button class="btn btn-sm btn-ghost" type="button" id="testConnBtn">Verifica connessione</button>
-            <button class="btn btn-sm btn-ghost" type="button" id="clearBaseBtn">Usa stesso dominio</button>
+        </div>
+        <div class="card">
+          <h3 class="section-title" style="margin-top:0">Personalizzazione</h3>
+          <p class="hint">Scegli il colore principale dell'interfaccia.</p>
+          <div class="accent-swatches">
+            ${Object.entries(ACCENT_PRESETS).map(([key, preset]) => `
+              <button type="button" class="accent-swatch ${currentAccent === key ? 'active' : ''}" data-accent="${key}" style="background:${preset.primary}" title="${escapeHtml(preset.label)}"></button>
+            `).join('')}
           </div>
-        </form>
+        </div>
       </div>`;
 
-    const input = document.getElementById('apiBaseInput');
-    const msgEl = document.getElementById('settingsMsg');
-
-    async function testConnection(base) {
-      msgEl.className = 'hint';
-      msgEl.textContent = 'Verifica in corso...';
-      try {
-        const res = await fetch(`${base}/api/health`);
-        if (!res.ok) throw new Error(`Risposta HTTP ${res.status}`);
-        const data = await res.json();
-        msgEl.className = 'success-text';
-        msgEl.textContent = `Connesso correttamente (server: ${data.time}).`;
-      } catch (err) {
-        msgEl.className = 'error-text';
-        msgEl.textContent = `Impossibile raggiungere il server: ${err.message}`;
-      }
-    }
-
-    document.getElementById('testConnBtn').addEventListener('click', () => {
-      testConnection(input.value.trim().replace(/\/+$/, ''));
+    document.getElementById('langSel').addEventListener('change', (e) => {
+      setLang(e.target.value);
+      applyChromeTranslations();
+      showToast('Lingua aggiornata', 'success');
+      route();
     });
 
-    document.getElementById('clearBaseBtn').addEventListener('click', () => {
-      input.value = '';
-    });
-
-    guardForm(document.getElementById('settingsForm'), async () => {
-      setApiBase(input.value.trim());
-      showToast('Indirizzo server salvato', 'success');
-      await testConnection(getApiBase());
+    document.querySelectorAll('.accent-swatch').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        setAccent(btn.dataset.accent);
+        document.querySelectorAll('.accent-swatch').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        showToast('Colore aggiornato', 'success');
+      });
     });
   }
 
@@ -1410,6 +2001,8 @@
     }
   });
 
+  applyAccent(getAccent());
+  applyChromeTranslations();
   updateChrome();
   route();
 })();

@@ -169,4 +169,33 @@ router.post(
   })
 );
 
+router.post(
+  '/change-email',
+  authenticate,
+  makeAuthLimiter(),
+  asyncHandler(async (req, res) => {
+    const { currentPassword, newEmail } = req.body || {};
+    if (!currentPassword || !newEmail) {
+      return res.status(400).json({ error: 'Password attuale e nuova email sono obbligatorie' });
+    }
+    if (!EMAIL_RE.test(newEmail)) {
+      return res.status(400).json({ error: 'Email non valida' });
+    }
+
+    const user = await db.get('SELECT * FROM users WHERE id = ?', [req.user.id]);
+    if (!bcrypt.compareSync(currentPassword, user.password)) {
+      return res.status(401).json({ error: 'Password attuale non corretta' });
+    }
+
+    const existing = await db.get('SELECT id FROM users WHERE email = ? AND id != ?', [newEmail.toLowerCase(), user.id]);
+    if (existing) {
+      return res.status(409).json({ error: 'Email già in uso' });
+    }
+
+    await db.run('UPDATE users SET email = ? WHERE id = ?', [newEmail.toLowerCase(), user.id]);
+    const updated = await db.get('SELECT id, name, email, role, is_super_admin FROM users WHERE id = ?', [user.id]);
+    res.json({ user: updated });
+  })
+);
+
 module.exports = router;
