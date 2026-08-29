@@ -30,6 +30,22 @@ router.get(
   })
 );
 
+router.get(
+  '/:id',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const user = await db.get(`${USER_SELECT} WHERE u.id = ?`, [req.params.id]);
+    if (!user) {
+      return res.status(404).json({ error: 'Utente non trovato' });
+    }
+    const full = await db.get('SELECT is_super_admin FROM users WHERE id = ?', [req.params.id]);
+    if (full.is_super_admin && !req.user.is_super_admin) {
+      return res.status(404).json({ error: 'Utente non trovato' });
+    }
+    res.json({ user: { ...user, is_super_admin: !!full.is_super_admin } });
+  })
+);
+
 router.post(
   '/',
   requireRole('admin'),

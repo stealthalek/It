@@ -27,7 +27,7 @@ function issueToken(user) {
 }
 
 function publicUser(user) {
-  return { id: user.id, name: user.name, email: user.email, role: user.role };
+  return { id: user.id, name: user.name, email: user.email, role: user.role, is_super_admin: !!user.is_super_admin };
 }
 
 async function findOrCreateSsoUser(email, name) {
