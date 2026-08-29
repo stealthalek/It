@@ -137,6 +137,11 @@ router.get(
       params.push(Number(assigned));
     }
 
+    if (isStaff(req.user) && req.query.createdBy && /^\d+$/.test(req.query.createdBy)) {
+      clauses.push('t.created_by = ?');
+      params.push(Number(req.query.createdBy));
+    }
+
     if (status && STATUSES.includes(status)) {
       clauses.push('t.status = ?');
       params.push(status);

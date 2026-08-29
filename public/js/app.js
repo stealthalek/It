@@ -4,6 +4,7 @@
   const state = {
     token: localStorage.getItem('ticketing_token') || null,
     user: null,
+    viewAs: null,
   };
 
   let dashboardAutoTimer = null;
@@ -295,6 +296,32 @@
     } catch {}
   }
 
+  const viewAsBanner = document.getElementById('viewAsBanner');
+  function renderViewAsBanner() {
+    if (state.viewAs) {
+      viewAsBanner.hidden = false;
+      viewAsBanner.innerHTML = `${icon('eye')} <span>Stai vedendo la piattaforma come <strong>${escapeHtml(state.viewAs.name)}</strong> · sola lettura</span> <button type="button" id="stopImpersonateBtn" class="btn btn-sm">Esci dalla modalità</button>`;
+      document.getElementById('stopImpersonateBtn').addEventListener('click', stopImpersonation);
+    } else {
+      viewAsBanner.hidden = true;
+      viewAsBanner.innerHTML = '';
+    }
+  }
+
+  function startImpersonation(user) {
+    state.viewAs = { id: user.id, name: user.name, role: user.role };
+    renderViewAsBanner();
+    showToast(`Stai vedendo la piattaforma come ${user.name}`, '');
+    location.hash = '#/dashboard';
+    route();
+  }
+
+  function stopImpersonation() {
+    state.viewAs = null;
+    renderViewAsBanner();
+    route();
+  }
+
   let ssoConfigPromise = null;
   function fetchSsoConfig() {
     if (!ssoConfigPromise) {
@@ -406,6 +433,8 @@
   });
 
   logoutBtn.addEventListener('click', () => {
+    state.viewAs = null;
+    renderViewAsBanner();
     setSession(null, null);
     location.hash = '#/login';
   });
@@ -557,6 +586,7 @@
         case 'new': return renderNewTicket();
         case 'ticket': return renderTicketDetail(param);
         case 'admin': return renderAdmin();
+        case 'users': return renderUserDetail(param);
         case 'profile': return renderProfile();
         case 'settings': return renderSettings();
         case 'backlog': return renderBacklog();
@@ -786,20 +816,24 @@
   }
 
   async function renderDashboard() {
+    const viewingAs = state.viewAs;
     appEl.innerHTML = `
       <div class="view-header">
         <div>
-          <h1>${isStaff() ? t('dashboard_title_staff') : t('dashboard_title_customer')}</h1>
-          <p class="hint">${isStaff() ? t('dashboard_hint_staff') : t('dashboard_hint_customer')}</p>
+          <h1>${viewingAs ? `Vista di ${escapeHtml(viewingAs.name)}` : (isStaff() ? t('dashboard_title_staff') : t('dashboard_title_customer'))}</h1>
+          <p class="hint">${viewingAs ? 'Stai visualizzando i ticket di questa persona in sola lettura.' : (isStaff() ? t('dashboard_hint_staff') : t('dashboard_hint_customer'))}</p>
         </div>
         <div style="display:flex;gap:0.6rem;align-items:center">
+          ${!viewingAs ? `
           <button type="button" id="autoUpdateBtn" class="btn btn-ghost">
             <span id="autoUpdateDot" class="live-dot"></span>
             <span id="autoUpdateLabel">Aggiornamento automatico</span>
           </button>
-          <a class="btn" href="#/new">${icon('plus')} ${t('new_ticket_btn')}</a>
+          <a class="btn" href="#/new">${icon('plus')} ${t('new_ticket_btn')}</a>` : ''}
+          ${state.user.is_super_admin && !viewingAs ? `<button type="button" id="dashImpersonateBtn" class="btn btn-ghost">${icon('eye')} Immedesimati</button>` : ''}
         </div>
       </div>
+      <div id="dashImpersonatePanel" hidden></div>
       <div id="personalCounter"></div>
       <div id="statsRow" class="stat-row"></div>
       <div id="chartsRow" class="charts-row"></div>
@@ -816,7 +850,7 @@
           <option value="">Tutte le priorità</option>
           ${Object.entries(PRIORITY_LABELS).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
         </select>
-        ${isStaff() ? `
+        ${isStaff() && !viewingAs ? `
         <select id="fAssigned">
           <option value="">Tutti gli assegnatari</option>
           <option value="me">Assegnati a me</option>
@@ -827,6 +861,44 @@
       <div id="ticketList" class="skeleton-grid">
         ${Array(4).fill('<div class="skeleton-card"></div>').join('')}
       </div>`;
+
+    const dashImpersonateBtn = document.getElementById('dashImpersonateBtn');
+    if (dashImpersonateBtn) {
+      dashImpersonateBtn.addEventListener('click', async () => {
+        const panel = document.getElementById('dashImpersonatePanel');
+        if (!panel.hidden) { panel.hidden = true; return; }
+        panel.hidden = false;
+        panel.innerHTML = `
+          <div class="card" style="margin-bottom:1.25rem">
+            <div class="field"><label for="impersonateSearch">Cerca una persona da vedere in sola lettura</label>
+              <input id="impersonateSearch" type="search" placeholder="Nome o email..." /></div>
+            <div id="impersonateResults" class="impersonate-results"></div>
+          </div>`;
+        const { users } = await api('/users');
+        const searchInput = document.getElementById('impersonateSearch');
+        const resultsEl = document.getElementById('impersonateResults');
+        function renderResults(list) {
+          resultsEl.innerHTML = list.length ? list.slice(0, 8).map((u) => `
+            <button type="button" class="impersonate-result" data-user-id="${u.id}">
+              <span>${escapeHtml(u.name)}</span>
+              <span class="hint">${escapeHtml(u.email)} · ${ROLE_LABELS[u.role] || u.role}</span>
+            </button>`).join('') : '<p class="hint">Nessuna persona trovata.</p>';
+          resultsEl.querySelectorAll('.impersonate-result').forEach((btn) => {
+            btn.addEventListener('click', () => {
+              const target = list.find((u) => u.id === Number(btn.dataset.userId));
+              if (target) startImpersonation(target);
+            });
+          });
+        }
+        renderResults(users.filter((u) => u.id !== state.user.id));
+        searchInput.addEventListener('input', () => {
+          const q = searchInput.value.trim().toLowerCase();
+          const filtered = users.filter((u) => u.id !== state.user.id && (u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)));
+          renderResults(filtered);
+        });
+        searchInput.focus();
+      });
+    }
 
     const listEl = document.getElementById('ticketList');
     const statsEl = document.getElementById('statsRow');
@@ -866,12 +938,14 @@
 
     function renderPersonalCounter(tickets) {
       let value, label;
-      if (isStaff()) {
-        value = tickets.filter((t) => t.assigned_to === state.user.id && t.status !== 'resolved' && t.status !== 'closed').length;
-        label = 'Assegnati a te, ancora aperti';
+      const asId = viewingAs ? viewingAs.id : state.user.id;
+      const asStaff = viewingAs ? viewingAs.role !== 'customer' : isStaff();
+      if (asStaff) {
+        value = tickets.filter((t) => t.assigned_to === asId && t.status !== 'resolved' && t.status !== 'closed').length;
+        label = viewingAs ? `Assegnati a ${viewingAs.name}, ancora aperti` : 'Assegnati a te, ancora aperti';
       } else {
         value = tickets.filter((t) => t.status === 'open' || t.status === 'in_progress').length;
-        label = 'Tuoi ticket in corso';
+        label = viewingAs ? `Ticket in corso di ${viewingAs.name}` : 'Tuoi ticket in corso';
       }
       personalEl.innerHTML = `
         <div class="personal-counter">
@@ -954,6 +1028,10 @@
       if (fPriority.value) params.set('priority', fPriority.value);
       if (fAssigned && fAssigned.value) params.set('assigned', fAssigned.value);
       if (fQuery.value.trim()) params.set('q', fQuery.value.trim());
+      if (viewingAs) {
+        if (viewingAs.role === 'customer') params.set('createdBy', viewingAs.id);
+        else params.set('assigned', viewingAs.id);
+      }
 
       try {
         const { tickets } = await api(`/tickets?${params.toString()}`);
@@ -974,17 +1052,19 @@
     });
 
     const autoUpdateBtn = document.getElementById('autoUpdateBtn');
-    function setAutoUpdate(enabled) {
-      teardownDashboardAutoUpdate();
-      autoUpdateBtn.classList.toggle('active', enabled);
-      document.getElementById('autoUpdateLabel').textContent = enabled ? 'Aggiornamento automatico attivo' : 'Aggiornamento automatico';
-      localStorage.setItem('ticketing_autoupdate', enabled ? '1' : '0');
-      if (enabled) dashboardAutoTimer = setInterval(load, 15000);
+    if (autoUpdateBtn) {
+      const setAutoUpdate = (enabled) => {
+        teardownDashboardAutoUpdate();
+        autoUpdateBtn.classList.toggle('active', enabled);
+        document.getElementById('autoUpdateLabel').textContent = enabled ? 'Aggiornamento automatico attivo' : 'Aggiornamento automatico';
+        localStorage.setItem('ticketing_autoupdate', enabled ? '1' : '0');
+        if (enabled) dashboardAutoTimer = setInterval(load, 15000);
+      };
+      autoUpdateBtn.addEventListener('click', () => {
+        setAutoUpdate(!autoUpdateBtn.classList.contains('active'));
+      });
+      setAutoUpdate(localStorage.getItem('ticketing_autoupdate') === '1');
     }
-    autoUpdateBtn.addEventListener('click', () => {
-      setAutoUpdate(!autoUpdateBtn.classList.contains('active'));
-    });
-    setAutoUpdate(localStorage.getItem('ticketing_autoupdate') === '1');
 
     load();
   }
@@ -1095,15 +1175,16 @@
     }
 
     const { ticket, activity } = data;
+    const readOnly = !!state.viewAs;
     const isOwner = ticket.created_by === state.user.id;
-    const canEditFields = isOwner || isStaff();
-    const canReopen = isOwner && !isStaff() && ['resolved', 'closed'].includes(ticket.status);
+    const canEditFields = (isOwner || isStaff()) && !readOnly;
+    const canReopen = isOwner && !isStaff() && ['resolved', 'closed'].includes(ticket.status) && !readOnly;
 
     let staffPanel = '';
     let assigneesOptions = '';
     let groupOptions = '';
     let assetOptions = '';
-    if (isStaff()) {
+    if (isStaff() && !readOnly) {
       try {
         const { users } = await api('/users');
         const staffGroups = groupStaffByGroup(users);
@@ -1213,6 +1294,7 @@
             <div id="activityList">
               ${activity.length ? activity.map(renderActivityItem).join('') : '<p class="hint">Nessuna attività ancora.</p>'}
             </div>
+            ${readOnly ? '<p class="hint">Modalità sola lettura: non è possibile inviare commenti.</p>' : `
             <form id="commentForm" class="form-grid" style="max-width:none;margin-top:1rem">
               <div class="field">
                 <label for="commentMsg">Aggiungi un commento</label>
@@ -1224,13 +1306,13 @@
                 Nota interna (visibile solo allo staff)
               </label>` : ''}
               <div><button class="btn btn-sm" type="submit">Invia</button></div>
-            </form>
+            </form>`}
           </div>
         </div>
         <div>${staffPanel}</div>
       </div>`;
 
-    guardForm(document.getElementById('commentForm'), async () => {
+    if (document.getElementById('commentForm')) guardForm(document.getElementById('commentForm'), async () => {
       const msgEl = document.getElementById('commentMsg');
       const internalEl = document.getElementById('internalCheck');
       if (!msgEl.value.trim()) return;
@@ -1500,6 +1582,23 @@
         } catch { groupOptionsCache = []; }
       }
 
+      function renderOrgNode(node) {
+        return `
+          <div class="org-branch">
+            <div class="org-node">
+              <div class="org-node-head">
+                <span class="org-node-name">${escapeHtml(node.name)}</span>
+                <button type="button" class="icon-btn deleteGroupBtn" data-id="${node.id}" title="Elimina gruppo">${icon('trash')}</button>
+              </div>
+              <div class="org-node-sla">
+                <label>Risposta (h) <input type="number" min="1" class="slaInput" data-group-id="${node.id}" data-field="slaResponseHours" value="${node.sla_response_hours ?? ''}" /></label>
+                <label>Risoluzione (h) <input type="number" min="1" class="slaInput" data-group-id="${node.id}" data-field="slaResolveHours" value="${node.sla_resolve_hours ?? ''}" /></label>
+              </div>
+            </div>
+            ${node.children.length ? `<div class="org-children">${node.children.map(renderOrgNode).join('')}</div>` : ''}
+          </div>`;
+      }
+
       async function loadGroups() {
         const listEl = document.getElementById('groupsList');
         listEl.className = 'spinner-row';
@@ -1507,21 +1606,9 @@
         try {
           const { groups } = await api('/groups');
           groupOptionsCache = groups;
-          const flat = flattenGroupTree(buildGroupTree(groups));
+          const tree = buildGroupTree(groups);
           listEl.className = '';
-          listEl.innerHTML = flat.length ? flat.map((g) => `
-            <div class="group-row" style="padding-left:${g.depth * 1.25}rem">
-              <span class="group-row-name">${g.depth ? '– ' : ''}${escapeHtml(g.name)}</span>
-              <span class="group-row-sla">
-                <label for="sla-response-${g.id}">Risposta (h)</label>
-                <input id="sla-response-${g.id}" type="number" min="1" class="slaInput" data-group-id="${g.id}" data-field="slaResponseHours" value="${g.sla_response_hours ?? ''}" />
-              </span>
-              <span class="group-row-sla">
-                <label for="sla-resolve-${g.id}">Risoluzione (h)</label>
-                <input id="sla-resolve-${g.id}" type="number" min="1" class="slaInput" data-group-id="${g.id}" data-field="slaResolveHours" value="${g.sla_resolve_hours ?? ''}" />
-              </span>
-              <button type="button" class="icon-btn deleteGroupBtn" data-id="${g.id}" title="Elimina gruppo">${icon('trash')}</button>
-            </div>`).join('') : '<p class="hint">Nessun gruppo.</p>';
+          listEl.innerHTML = tree.length ? `<div class="org-chart">${tree.map(renderOrgNode).join('')}</div>` : '<p class="hint">Nessun gruppo.</p>';
 
           listEl.querySelectorAll('.slaInput').forEach((input) => {
             input.addEventListener('change', async () => {
@@ -1660,110 +1747,191 @@
       loadCategories();
     }
 
+    let allUsersCache = [];
     async function loadUsersTable() {
       const wrap = document.getElementById('usersWrap');
       wrap.className = 'card spinner-row';
       wrap.textContent = 'Caricamento...';
       try {
         const { users } = await api('/users');
-        const groups = isAdmin ? (await api('/groups')).groups : [];
-        wrap.className = 'card';
-        wrap.innerHTML = `
-          <div class="table-scroll">
-            <table class="users-table">
-              <thead><tr><th>Nome</th><th>Email</th><th>Ruolo</th><th>Gruppo</th><th>Lingua</th><th>Registrato</th>${isAdmin ? '<th></th>' : ''}</tr></thead>
-              <tbody>
-                ${users.map((u) => `
-                  <tr>
-                    <td>${escapeHtml(u.name)}</td>
-                    <td>${escapeHtml(u.email)}</td>
-                    <td><span class="role-tag">${ROLE_LABELS[u.role] || u.role}</span></td>
-                    <td>
-                      ${isAdmin && u.role !== 'customer' ? `
-                        <select class="groupSel" data-user-id="${u.id}">${groupOptionsHtml(groups, u.group_id, 'Nessun gruppo')}</select>
-                      ` : escapeHtml(u.group_name ? (u.group_parent_name ? `${u.group_parent_name} / ${u.group_name}` : u.group_name) : '—')}
-                    </td>
-                    <td>
-                      ${isAdmin ? `
-                        <select class="localeSel" data-user-id="${u.id}">
-                          ${Object.entries(LANG_LABELS).map(([v, l]) => `<option value="${v}" ${u.locale === v ? 'selected' : ''}>${l}</option>`).join('')}
-                        </select>
-                      ` : escapeHtml(LANG_LABELS[u.locale] || u.locale || '—')}
-                    </td>
-                    <td>${formatDate(u.created_at)}</td>
-                    ${isAdmin ? `
-                      <td style="display:flex;gap:0.4rem;align-items:center">
-                        ${u.id === state.user.id ? '' : `
-                        <select data-user-id="${u.id}" class="roleSel">
-                          ${Object.entries(ROLE_LABELS).map(([v, l]) => `<option value="${v}" ${u.role === v ? 'selected' : ''}>${l}</option>`).join('')}
-                        </select>
-                        <button type="button" class="icon-btn resetPwBtn" data-user-id="${u.id}" title="Reimposta password">${icon('refresh')}</button>`}
-                      </td>` : ''}
-                  </tr>`).join('')}
-              </tbody>
-            </table>
-          </div>
-          <div id="resetPwBox"></div>`;
-
-        wrap.querySelectorAll('.groupSel').forEach((select) => {
-          select.addEventListener('change', async () => {
-            try {
-              await api(`/users/${select.dataset.userId}/group`, { method: 'PATCH', body: { groupId: select.value || null } });
-              showToast('Gruppo aggiornato', 'success');
-            } catch (err) {
-              showToast(err.message, 'error');
-              loadUsersTable();
-            }
-          });
-        });
-
-        wrap.querySelectorAll('.roleSel').forEach((sel) => {
-          sel.addEventListener('change', async () => {
-            try {
-              await api(`/users/${sel.dataset.userId}/role`, { method: 'PATCH', body: { role: sel.value } });
-              showToast('Ruolo aggiornato', 'success');
-            } catch (err) {
-              showToast(err.message, 'error');
-              loadUsersTable();
-            }
-          });
-        });
-
-        wrap.querySelectorAll('.localeSel').forEach((sel) => {
-          sel.addEventListener('change', async () => {
-            try {
-              await api(`/users/${sel.dataset.userId}/locale`, { method: 'PATCH', body: { locale: sel.value } });
-              showToast('Lingua aggiornata', 'success');
-            } catch (err) {
-              showToast(err.message, 'error');
-              loadUsersTable();
-            }
-          });
-        });
-
-        wrap.querySelectorAll('.resetPwBtn').forEach((btn) => {
-          btn.addEventListener('click', async () => {
-            if (!confirm('Generare una nuova password temporanea per questo utente?')) return;
-            try {
-              const { user, tempPassword } = await api(`/users/${btn.dataset.userId}/reset-password`, { method: 'POST' });
-              document.getElementById('resetPwBox').innerHTML = `
-                <div class="divider"></div>
-                <p class="success-text">Password reimpostata per ${escapeHtml(user.name)}.</p>
-                <p class="hint">Nuova password temporanea (comunicala in modo sicuro, non sarà più visibile):</p>
-                <p class="card" style="font-family:monospace;font-size:1rem;padding:0.6rem 0.9rem;display:inline-block">${escapeHtml(tempPassword)}</p>`;
-              showToast('Password reimpostata', 'success');
-            } catch (err) {
-              showToast(err.message, 'error');
-            }
-          });
-        });
+        allUsersCache = users;
+        renderUsersTable(users);
       } catch (err) {
         wrap.className = '';
         wrap.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
       }
     }
 
+    function renderUsersTable(users) {
+      const wrap = document.getElementById('usersWrap');
+      wrap.className = 'card';
+      wrap.innerHTML = `
+        <div class="field" style="max-width:320px;margin-bottom:1rem">
+          <label for="userSearchInput">Cerca persona</label>
+          <input id="userSearchInput" type="search" placeholder="Nome o email..." />
+        </div>
+        <div class="table-scroll">
+          <table class="users-table">
+            <thead><tr><th>Nome</th><th>Email</th><th>Ruolo</th><th>Gruppo</th><th>Registrato</th></tr></thead>
+            <tbody>
+              ${users.length ? users.map((u) => `
+                <tr class="user-row" data-user-id="${u.id}" tabindex="0" role="link">
+                  <td>${escapeHtml(u.name)}</td>
+                  <td>${escapeHtml(u.email)}</td>
+                  <td><span class="role-tag">${ROLE_LABELS[u.role] || u.role}</span></td>
+                  <td>${escapeHtml(groupLabel(u) || '—')}</td>
+                  <td>${formatDate(u.created_at)}</td>
+                </tr>`).join('') : `<tr><td colspan="5"><p class="hint">Nessuna persona trovata.</p></td></tr>`}
+            </tbody>
+          </table>
+        </div>`;
+
+      wrap.querySelectorAll('.user-row').forEach((row) => {
+        row.addEventListener('click', () => { location.hash = `#/users/${row.dataset.userId}`; });
+        row.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') location.hash = `#/users/${row.dataset.userId}`;
+        });
+      });
+
+      const searchInput = document.getElementById('userSearchInput');
+      searchInput.addEventListener('input', () => {
+        const q = searchInput.value.trim().toLowerCase();
+        const filtered = q ? allUsersCache.filter((u) => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)) : allUsersCache;
+        renderUsersTable(filtered);
+        document.getElementById('userSearchInput').focus();
+      });
+    }
+
     loadUsersTable();
+  }
+
+  async function renderUserDetail(id) {
+    if (!isStaff()) {
+      appEl.innerHTML = `<div class="card"><p class="error-text">Accesso non consentito.</p></div>`;
+      return;
+    }
+    let user;
+    try {
+      const data = await api(`/users/${id}`);
+      user = data.user;
+    } catch (err) {
+      appEl.innerHTML = `<div class="card"><p class="error-text">${escapeHtml(err.message)}</p></div>`;
+      return;
+    }
+
+    const isAdmin = state.user.role === 'admin';
+    const isSelf = user.id === state.user.id;
+    const [groups, createdStats, assignedStats] = await Promise.all([
+      isAdmin ? api('/groups').then((d) => d.groups).catch(() => []) : Promise.resolve([]),
+      api(`/tickets?createdBy=${user.id}`).then((d) => d.tickets).catch(() => []),
+      user.role !== 'customer' ? api(`/tickets?assigned=${user.id}`).then((d) => d.tickets).catch(() => []) : Promise.resolve([]),
+    ]);
+
+    const initials = user.name.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase();
+
+    appEl.innerHTML = `
+      <div class="view-header">
+        <h1>${icon('userCircle')} Scheda persona</h1>
+        <a class="btn btn-ghost" href="#/admin">${icon('arrowLeft')} Torna alla lista</a>
+      </div>
+      <div class="user-profile-grid">
+        <div class="card user-profile-head">
+          <div class="user-avatar">${escapeHtml(initials)}</div>
+          <div>
+            <h2 style="margin:0 0 0.2rem">${escapeHtml(user.name)}</h2>
+            <p class="hint" style="margin:0">${escapeHtml(user.email)}</p>
+            <span class="role-tag" style="margin-top:0.5rem;display:inline-block">${ROLE_LABELS[user.role] || user.role}</span>
+          </div>
+          ${state.user.is_super_admin && !isSelf ? `<button type="button" id="impersonateBtn" class="btn btn-sm" style="margin-left:auto">${icon('eye')} Immedesimati</button>` : ''}
+        </div>
+
+        <div class="card">
+          <h3 class="section-title" style="margin-top:0">Dettagli account</h3>
+          <div class="field"><label>Registrato il</label><p>${formatDate(user.created_at)}</p></div>
+          ${isAdmin ? `
+          <div class="field">
+            <label for="detailRole">Ruolo</label>
+            <select id="detailRole" ${isSelf ? 'disabled' : ''}>
+              ${Object.entries(ROLE_LABELS).map(([v, l]) => `<option value="${v}" ${user.role === v ? 'selected' : ''}>${l}</option>`).join('')}
+            </select>
+          </div>
+          <div class="field">
+            <label for="detailGroup">Gruppo di assegnazione</label>
+            <select id="detailGroup">${groupOptionsHtml(groups, user.group_id, 'Nessun gruppo')}</select>
+          </div>
+          <div class="field">
+            <label for="detailLocale">Lingua</label>
+            <select id="detailLocale">
+              ${Object.entries(LANG_LABELS).map(([v, l]) => `<option value="${v}" ${user.locale === v ? 'selected' : ''}>${l}</option>`).join('')}
+            </select>
+          </div>
+          <button type="button" id="detailResetPwBtn" class="btn btn-sm btn-outline-danger" style="margin-top:0.5rem">${icon('refresh')} Reimposta password</button>
+          <div id="detailResetPwBox"></div>
+          ` : `
+          <div class="field"><label>Gruppo</label><p>${escapeHtml(groupLabel(user) || '—')}</p></div>
+          <div class="field"><label>Lingua</label><p>${escapeHtml(LANG_LABELS[user.locale] || user.locale || '—')}</p></div>
+          `}
+        </div>
+
+        <div class="card">
+          <h3 class="section-title" style="margin-top:0">Attività ticket</h3>
+          <div class="stat-row" style="grid-template-columns:1fr 1fr">
+            <div class="stat-card"><div class="stat-value">${createdStats.length}</div><div class="stat-label">Aperti da questa persona</div></div>
+            ${user.role !== 'customer' ? `<div class="stat-card"><div class="stat-value">${assignedStats.length}</div><div class="stat-label">Assegnati a questa persona</div></div>` : ''}
+          </div>
+        </div>
+      </div>`;
+
+    if (isAdmin) {
+      document.getElementById('detailRole').addEventListener('change', async (e) => {
+        try {
+          await api(`/users/${user.id}/role`, { method: 'PATCH', body: { role: e.target.value } });
+          showToast('Ruolo aggiornato', 'success');
+        } catch (err) {
+          showToast(err.message, 'error');
+          renderUserDetail(id);
+        }
+      });
+      document.getElementById('detailGroup').addEventListener('change', async (e) => {
+        try {
+          await api(`/users/${user.id}/group`, { method: 'PATCH', body: { groupId: e.target.value || null } });
+          showToast('Gruppo aggiornato', 'success');
+        } catch (err) {
+          showToast(err.message, 'error');
+          renderUserDetail(id);
+        }
+      });
+      document.getElementById('detailLocale').addEventListener('change', async (e) => {
+        try {
+          await api(`/users/${user.id}/locale`, { method: 'PATCH', body: { locale: e.target.value } });
+          showToast('Lingua aggiornata', 'success');
+        } catch (err) {
+          showToast(err.message, 'error');
+          renderUserDetail(id);
+        }
+      });
+      document.getElementById('detailResetPwBtn').addEventListener('click', async () => {
+        if (!confirm(`Generare una nuova password temporanea per ${user.name}?`)) return;
+        try {
+          const { tempPassword } = await api(`/users/${user.id}/reset-password`, { method: 'POST' });
+          document.getElementById('detailResetPwBox').innerHTML = `
+            <div class="divider"></div>
+            <p class="success-text">Password reimpostata.</p>
+            <p class="hint">Nuova password temporanea (comunicala in modo sicuro, non sarà più visibile):</p>
+            <p class="card" style="font-family:monospace;font-size:1rem;padding:0.6rem 0.9rem;display:inline-block">${escapeHtml(tempPassword)}</p>`;
+          showToast('Password reimpostata', 'success');
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      });
+    }
+
+    const impersonateBtn = document.getElementById('impersonateBtn');
+    if (impersonateBtn) {
+      impersonateBtn.addEventListener('click', () => {
+        startImpersonation(user);
+      });
+    }
   }
 
   async function renderBacklog() {
