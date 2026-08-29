@@ -3,6 +3,8 @@ const path = require('path');
 const http = require('http');
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 
 const db = require('./db/database');
 const { initRealtime } = require('./realtime');
@@ -14,8 +16,17 @@ const categoryRoutes = require('./routes/categories');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: false }));
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
+
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api', apiLimiter);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/tickets', ticketRoutes);
@@ -46,6 +57,9 @@ const httpServer = http.createServer(app);
 initRealtime(httpServer);
 
 async function main() {
+  if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
+    console.warn('ATTENZIONE: JWT_SECRET non impostato in produzione, viene usato un valore di default non sicuro.');
+  }
   await db.initDb();
   httpServer.listen(PORT, '0.0.0.0', () => {
     console.log(`Piattaforma di ticketing in ascolto su http://0.0.0.0:${PORT}`);

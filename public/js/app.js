@@ -485,7 +485,7 @@
           <option value="me">Assegnati a me</option>
           <option value="unassigned">Non assegnati</option>
         </select>` : ''}
-        <input id="fQuery" type="search" placeholder="Cerca..." />
+        <input id="fQuery" type="search" placeholder="Cerca per testo o numero ticket..." />
       </div>
       <div id="ticketList" class="skeleton-grid">
         ${Array(4).fill('<div class="skeleton-card"></div>').join('')}
@@ -533,31 +533,61 @@
         </div>`;
     }
 
+    const CHART_DIMENSIONS = { status: 'Stato', priority: 'Priorità', type: 'Tipo', category: 'Categoria', assigned: 'Assegnatario' };
+    let currentChartDim = 'status';
+
+    function computeBreakdown(tickets, dim) {
+      if (dim === 'status') {
+        const order = ['open', 'in_progress', 'resolved', 'closed'];
+        const colors = { open: 'var(--primary)', in_progress: 'var(--warning)', resolved: 'var(--success)', closed: 'var(--muted)' };
+        return order.map((k) => ({ key: k, label: STATUS_LABELS[k], value: tickets.filter((t) => t.status === k).length, color: colors[k] }));
+      }
+      if (dim === 'priority') {
+        const order = ['low', 'medium', 'high', 'urgent'];
+        const colors = { low: 'var(--muted)', medium: 'var(--primary)', high: 'var(--warning)', urgent: 'var(--danger)' };
+        return order.map((k) => ({ key: k, label: PRIORITY_LABELS[k], value: tickets.filter((t) => t.priority === k).length, color: colors[k] }));
+      }
+      if (dim === 'type') {
+        const order = ['incident', 'task'];
+        const colors = { incident: 'var(--type-incident)', task: 'var(--type-task)' };
+        return order.map((k) => ({ key: k, label: TYPE_LABELS[k], value: tickets.filter((t) => t.type === k).length, color: colors[k] }));
+      }
+      if (dim === 'category') {
+        const counts = new Map();
+        tickets.forEach((t) => counts.set(t.category, (counts.get(t.category) || 0) + 1));
+        return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([label, value]) => ({ key: label, label, value, color: 'var(--primary)' }));
+      }
+      if (dim === 'assigned') {
+        const counts = new Map();
+        tickets.forEach((t) => {
+          const label = t.assignee_name || 'Non assegnato';
+          counts.set(label, (counts.get(label) || 0) + 1);
+        });
+        return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([label, value]) => ({ key: label, label, value, color: 'var(--primary)' }));
+      }
+      return [];
+    }
+
     function renderCharts(tickets) {
       chartsEl.innerHTML = '';
       if (!tickets.length) return;
 
-      const statusOrder = ['open', 'in_progress', 'resolved', 'closed'];
-      const statusColors = { open: 'var(--primary)', in_progress: 'var(--warning)', resolved: 'var(--success)', closed: 'var(--muted)' };
-      const statusCounts = statusOrder.map((s) => ({
-        key: s, label: STATUS_LABELS[s], value: tickets.filter((t) => t.status === s).length, color: statusColors[s],
-      }));
-
-      const typeOrder = ['incident', 'task'];
-      const typeColors = { incident: 'var(--type-incident)', task: 'var(--type-task)' };
-      const typeCounts = typeOrder.map((tp) => ({
-        key: tp, label: TYPE_LABELS[tp], value: tickets.filter((t) => t.type === tp).length, color: typeColors[tp],
-      }));
-
+      const rows = computeBreakdown(tickets, currentChartDim);
       chartsEl.innerHTML = `
-        <div class="card chart-card">
-          <h3 class="section-title" style="margin-top:0">Per stato</h3>
-          ${barChart(statusCounts, tickets.length)}
-        </div>
-        <div class="card chart-card">
-          <h3 class="section-title" style="margin-top:0">Incident vs Task</h3>
-          ${barChart(typeCounts, tickets.length)}
+        <div class="card chart-card chart-card-wide">
+          <div class="chart-card-head">
+            <h3 class="section-title" style="margin:0">Grafico</h3>
+            <select id="chartDim">
+              ${Object.entries(CHART_DIMENSIONS).map(([v, l]) => `<option value="${v}" ${v === currentChartDim ? 'selected' : ''}>${l}</option>`).join('')}
+            </select>
+          </div>
+          ${barChart(rows, tickets.length)}
         </div>`;
+
+      document.getElementById('chartDim').addEventListener('change', (e) => {
+        currentChartDim = e.target.value;
+        renderCharts(tickets);
+      });
     }
 
     function barChart(rows, total) {
@@ -569,7 +599,7 @@
             const width = Math.round((r.value / max) * 100);
             return `
               <div class="bar-row">
-                <span class="bar-label">${escapeHtml(r.label)}</span>
+                <span class="bar-label" title="${escapeHtml(r.label)}">${escapeHtml(r.label)}</span>
                 <div class="bar-track">
                   <div class="bar-fill" style="width:${width}%;background:${r.color}"></div>
                 </div>
@@ -724,8 +754,22 @@
       try {
         const { users } = await api('/users');
         const staffUsers = users.filter((u) => u.role === 'agent' || u.role === 'admin');
+        const groups = new Map();
+        staffUsers.forEach((u) => {
+          const key = u.team || 'Senza team';
+          if (!groups.has(key)) groups.set(key, []);
+          groups.get(key).push(u);
+        });
+        const sortedTeams = [...groups.keys()].sort((a, b) => {
+          if (a === 'Senza team') return 1;
+          if (b === 'Senza team') return -1;
+          return a.localeCompare(b);
+        });
         assigneesOptions = `<option value="">Non assegnato</option>` +
-          staffUsers.map((u) => `<option value="${u.id}" ${ticket.assigned_to === u.id ? 'selected' : ''}>${escapeHtml(u.name)}</option>`).join('');
+          sortedTeams.map((team) => `
+            <optgroup label="${escapeHtml(team)}">
+              ${groups.get(team).map((u) => `<option value="${u.id}" ${ticket.assigned_to === u.id ? 'selected' : ''}>${escapeHtml(u.name)}</option>`).join('')}
+            </optgroup>`).join('');
       } catch { assigneesOptions = ''; }
 
       staffPanel = `
@@ -1006,6 +1050,11 @@
                 <option value="admin">Amministratore</option>
               </select>
             </div>
+            <div class="field">
+              <label for="newTeam">Team (opzionale)</label>
+              <input id="newTeam" placeholder="es. Hardware, Rete..." />
+              <span class="hint">I membri dello stesso team si vedono a vicenda nell'assegnazione dei ticket</span>
+            </div>
             <p class="error-text" id="createStaffError"></p>
             <div><button class="btn btn-sm" type="submit">Crea account</button></div>
           </form>
@@ -1033,6 +1082,7 @@
           name: document.getElementById('newName').value.trim(),
           email: document.getElementById('newEmail').value.trim(),
           role: document.getElementById('newRole').value,
+          team: document.getElementById('newTeam').value.trim(),
         };
         try {
           const { user, tempPassword } = await api('/users', { method: 'POST', body });
@@ -1106,25 +1156,44 @@
         const { users } = await api('/users');
         wrap.className = 'card';
         wrap.innerHTML = `
-          <table class="users-table">
-            <thead><tr><th>Nome</th><th>Email</th><th>Ruolo</th><th>Registrato</th>${isAdmin ? '<th></th>' : ''}</tr></thead>
-            <tbody>
-              ${users.map((u) => `
-                <tr>
-                  <td>${escapeHtml(u.name)}</td>
-                  <td>${escapeHtml(u.email)}</td>
-                  <td><span class="role-tag">${ROLE_LABELS[u.role] || u.role}</span></td>
-                  <td>${formatDate(u.created_at)}</td>
-                  ${isAdmin ? `
+          <div class="table-scroll">
+            <table class="users-table">
+              <thead><tr><th>Nome</th><th>Email</th><th>Ruolo</th><th>Team</th><th>Registrato</th>${isAdmin ? '<th></th>' : ''}</tr></thead>
+              <tbody>
+                ${users.map((u) => `
+                  <tr>
+                    <td>${escapeHtml(u.name)}</td>
+                    <td>${escapeHtml(u.email)}</td>
+                    <td><span class="role-tag">${ROLE_LABELS[u.role] || u.role}</span></td>
                     <td>
-                      ${u.id === state.user.id ? '' : `
-                      <select data-user-id="${u.id}" class="roleSel">
-                        ${Object.entries(ROLE_LABELS).map(([v, l]) => `<option value="${v}" ${u.role === v ? 'selected' : ''}>${l}</option>`).join('')}
-                      </select>`}
-                    </td>` : ''}
-                </tr>`).join('')}
-            </tbody>
-          </table>`;
+                      ${isAdmin && u.role !== 'customer' ? `
+                        <input type="text" class="teamInput" data-user-id="${u.id}" value="${escapeHtml(u.team || '')}" placeholder="Nessun team" />
+                      ` : escapeHtml(u.team || '—')}
+                    </td>
+                    <td>${formatDate(u.created_at)}</td>
+                    ${isAdmin ? `
+                      <td>
+                        ${u.id === state.user.id ? '' : `
+                        <select data-user-id="${u.id}" class="roleSel">
+                          ${Object.entries(ROLE_LABELS).map(([v, l]) => `<option value="${v}" ${u.role === v ? 'selected' : ''}>${l}</option>`).join('')}
+                        </select>`}
+                      </td>` : ''}
+                  </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>`;
+
+        wrap.querySelectorAll('.teamInput').forEach((input) => {
+          input.addEventListener('change', async () => {
+            try {
+              await api(`/users/${input.dataset.userId}/team`, { method: 'PATCH', body: { team: input.value.trim() } });
+              showToast('Team aggiornato', 'success');
+            } catch (err) {
+              showToast(err.message, 'error');
+              loadUsersTable();
+            }
+          });
+        });
 
         wrap.querySelectorAll('.roleSel').forEach((sel) => {
           sel.addEventListener('change', async () => {

@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
+const rateLimit = require('express-rate-limit');
 const db = require('../db/database');
 const { authenticate, JWT_SECRET } = require('../middleware/auth');
 const asyncHandler = require('../middleware/asyncHandler');
@@ -10,6 +11,16 @@ const { getSsoConfig, verifyGoogleCredential, verifyMicrosoftToken } = require('
 const router = express.Router();
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function makeAuthLimiter() {
+  return rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Troppi tentativi, riprova tra qualche minuto' },
+  });
+}
 
 function issueToken(user) {
   return jwt.sign({ sub: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
@@ -36,6 +47,7 @@ async function findOrCreateSsoUser(email, name) {
 
 router.post(
   '/register',
+  makeAuthLimiter(),
   asyncHandler(async (req, res) => {
     const { name, email, password } = req.body || {};
 
@@ -70,6 +82,7 @@ router.post(
 
 router.post(
   '/login',
+  makeAuthLimiter(),
   asyncHandler(async (req, res) => {
     const { email, password } = req.body || {};
     if (!email || !password) {
@@ -92,6 +105,7 @@ router.get('/sso-config', (req, res) => {
 
 router.post(
   '/google',
+  makeAuthLimiter(),
   asyncHandler(async (req, res) => {
     const { credential } = req.body || {};
     if (!credential) {
@@ -110,6 +124,7 @@ router.post(
 
 router.post(
   '/microsoft',
+  makeAuthLimiter(),
   asyncHandler(async (req, res) => {
     const { idToken } = req.body || {};
     if (!idToken) {
@@ -133,6 +148,7 @@ router.get('/me', authenticate, (req, res) => {
 router.post(
   '/change-password',
   authenticate,
+  makeAuthLimiter(),
   asyncHandler(async (req, res) => {
     const { currentPassword, newPassword } = req.body || {};
     if (!currentPassword || !newPassword) {

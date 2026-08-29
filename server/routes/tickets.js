@@ -118,8 +118,15 @@ router.get(
       params.push(type);
     }
     if (q && q.trim()) {
-      clauses.push('(t.subject LIKE ? OR t.description LIKE ?)');
-      params.push(`%${q.trim()}%`, `%${q.trim()}%`);
+      const trimmed = q.trim();
+      const asId = /^\d+$/.test(trimmed) ? Number(trimmed) : null;
+      if (asId !== null) {
+        clauses.push('(t.subject LIKE ? OR t.description LIKE ? OR t.id = ?)');
+        params.push(`%${trimmed}%`, `%${trimmed}%`, asId);
+      } else {
+        clauses.push('(t.subject LIKE ? OR t.description LIKE ?)');
+        params.push(`%${trimmed}%`, `%${trimmed}%`);
+      }
     }
 
     const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
