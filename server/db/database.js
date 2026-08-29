@@ -158,6 +158,12 @@ async function migrate() {
   if (!userCols.some((c) => c.name === 'locale')) {
     await run("ALTER TABLE users ADD COLUMN locale TEXT NOT NULL DEFAULT 'it'");
   }
+  if (!userCols.some((c) => c.name === 'is_external')) {
+    await run('ALTER TABLE users ADD COLUMN is_external INTEGER NOT NULL DEFAULT 0');
+  }
+  if (!userCols.some((c) => c.name === 'manager_id')) {
+    await run('ALTER TABLE users ADD COLUMN manager_id INTEGER REFERENCES users(id) ON DELETE SET NULL');
+  }
   const superAdminRow = await get("SELECT COUNT(*) AS n FROM users WHERE is_super_admin = 1");
   if (superAdminRow.n === 0) {
     const earliestAdmin = await get("SELECT id FROM users WHERE role = 'admin' ORDER BY id ASC LIMIT 1");
@@ -190,7 +196,7 @@ async function migrate() {
   }
 
   const settingsCols = await all('PRAGMA table_info(app_settings)');
-  for (const col of ['invite_subject_it', 'invite_body_it', 'invite_subject_en', 'invite_body_en']) {
+  for (const col of ['invite_subject_it', 'invite_body_it', 'invite_subject_en', 'invite_body_en', 'org_logo']) {
     if (!settingsCols.some((c) => c.name === col)) {
       await run(`ALTER TABLE app_settings ADD COLUMN ${col} TEXT`);
     }

@@ -265,6 +265,12 @@
       th_name: 'Nome', th_email: 'Email', th_role: 'Ruolo', th_group: 'Gruppo', th_registered: 'Registrato',
       org_section_title: 'Organizzazione', org_section_hint: 'Il nome scelto compare nell\'intestazione e nelle email inviate agli utenti.',
       field_org_name: 'Nome organizzazione', btn_save: 'Salva', toast_org_updated: 'Nome organizzazione aggiornato',
+      field_org_logo: 'Logo aziendale', logo_hint: 'PNG o JPG, viene ridimensionato automaticamente.', btn_remove_logo: 'Rimuovi logo',
+      toast_logo_updated: 'Logo aggiornato', toast_logo_removed: 'Logo rimosso',
+      field_manager: 'Manager', field_is_external: 'Esterno (consulente/fornitore, non dipendente)',
+      external_badge: 'Esterno', direct_reports_title: 'Riporti diretti', no_direct_reports: 'Nessun riporto diretto.',
+      manager_label: 'Manager', no_manager_label: 'Nessun manager', toast_external_updated: 'Classificazione aggiornata',
+      toast_manager_updated: 'Manager aggiornato',
       invite_email_title: 'Email di invito account',
       invite_email_hint: 'Personalizza l\'oggetto e il testo dell\'email automatica inviata quando crei un nuovo account staff. Lasciala vuota per usare il testo predefinito. Segnaposto disponibili:',
       field_subject: 'Oggetto', field_email_body: 'Testo email', btn_save_template: 'Salva modello', toast_template_updated: 'Modello email aggiornato',
@@ -389,6 +395,12 @@
       th_name: 'Name', th_email: 'Email', th_role: 'Role', th_group: 'Group', th_registered: 'Registered',
       org_section_title: 'Organization', org_section_hint: 'The chosen name appears in the header and in emails sent to users.',
       field_org_name: 'Organization name', btn_save: 'Save', toast_org_updated: 'Organization name updated',
+      field_org_logo: 'Company logo', logo_hint: 'PNG or JPG, resized automatically.', btn_remove_logo: 'Remove logo',
+      toast_logo_updated: 'Logo updated', toast_logo_removed: 'Logo removed',
+      field_manager: 'Manager', field_is_external: 'External (contractor/vendor, not an employee)',
+      external_badge: 'External', direct_reports_title: 'Direct reports', no_direct_reports: 'No direct reports.',
+      manager_label: 'Manager', no_manager_label: 'No manager', toast_external_updated: 'Classification updated',
+      toast_manager_updated: 'Manager updated',
       invite_email_title: 'Account invite email',
       invite_email_hint: 'Customize the subject and text of the automatic email sent when you create a new staff account. Leave it empty to use the default text. Available placeholders:',
       field_subject: 'Subject', field_email_body: 'Email text', btn_save_template: 'Save template', toast_template_updated: 'Template updated',
@@ -568,13 +580,24 @@
     document.title = document.title.replace(/^[^·]+/, `${name} `);
   }
 
-  async function loadOrgName() {
-    const cached = localStorage.getItem('ticketing_org_name');
-    if (cached) applyOrgName(cached);
+  function applyOrgLogo(logoDataUri) {
+    document.querySelectorAll('.brand img').forEach((img) => {
+      img.src = logoDataUri || 'img/icon.svg';
+    });
+  }
+
+  async function loadOrgBranding() {
+    const cachedName = localStorage.getItem('ticketing_org_name');
+    if (cachedName) applyOrgName(cachedName);
+    const cachedLogo = localStorage.getItem('ticketing_org_logo');
+    if (cachedLogo) applyOrgLogo(cachedLogo);
     try {
-      const { orgName } = await api('/settings');
+      const { orgName, orgLogo } = await api('/settings');
       applyOrgName(orgName);
       localStorage.setItem('ticketing_org_name', orgName);
+      applyOrgLogo(orgLogo);
+      if (orgLogo) localStorage.setItem('ticketing_org_logo', orgLogo);
+      else localStorage.removeItem('ticketing_org_logo');
     } catch {}
   }
 
@@ -2040,6 +2063,14 @@
               </select>
               <span class="hint">${t('account_locale_hint')}</span>
             </div>
+            <div class="field">
+              <label for="newManager">${t('field_manager')}</label>
+              <select id="newManager"><option value="">${t('option_none')}</option></select>
+            </div>
+            <label class="checkbox-field">
+              <input type="checkbox" id="newIsExternal" />
+              ${t('field_is_external')}
+            </label>
             <p class="error-text" id="createStaffError"></p>
             <div><button class="btn btn-sm" type="submit">${t('btn_create_account')}</button></div>
           </form>
@@ -2090,6 +2121,17 @@
           const parentSelect = document.getElementById('newGroupParent');
           if (parentSelect) parentSelect.innerHTML = groupOptionsHtml(groups, '', t('option_no_parent'));
         } catch { groupOptionsCache = []; }
+      }
+
+      async function loadManagerOptions() {
+        const select = document.getElementById('newManager');
+        if (!select) return;
+        try {
+          const { users } = await api('/users');
+          const staffUsers = users.filter((u) => u.role === 'agent' || u.role === 'admin');
+          select.innerHTML = `<option value="">${t('option_none')}</option>` +
+            staffUsers.map((u) => `<option value="${u.id}">${escapeHtml(u.name)}</option>`).join('');
+        } catch {}
       }
 
       function renderOrgNode(node, statsById) {
@@ -2288,6 +2330,7 @@
 
       loadGroupOptions();
       loadGroups();
+      loadManagerOptions();
 
       guardForm(document.getElementById('createStaffForm'), async (e) => {
         const errEl = document.getElementById('createStaffError');
@@ -2298,6 +2341,8 @@
           role: document.getElementById('newRole').value,
           groupId: document.getElementById('newGroup').value || null,
           locale: document.getElementById('newLocale').value,
+          managerId: document.getElementById('newManager').value || null,
+          isExternal: document.getElementById('newIsExternal').checked,
         };
         try {
           const { user, tempPassword } = await api('/users', { method: 'POST', body });
@@ -2309,6 +2354,7 @@
           e.target.reset();
           showToast(t('toast_staff_created'), 'success');
           loadUsersTable();
+          loadManagerOptions();
         } catch (err) {
           errEl.textContent = err.message;
         }
@@ -2434,7 +2480,7 @@
                 <tr class="user-row" data-user-id="${u.id}" tabindex="0" role="link">
                   <td>${escapeHtml(u.name)}</td>
                   <td>${escapeHtml(u.email)}</td>
-                  <td><span class="role-tag">${roleLabels()[u.role] || u.role}</span></td>
+                  <td><span class="role-tag">${roleLabels()[u.role] || u.role}</span> ${u.is_external ? `<span class="role-tag role-tag-external">${t('external_badge')}</span>` : ''}</td>
                   <td>${escapeHtml(groupLabel(u) || '—')}</td>
                   <td>${formatDate(u.created_at)}</td>
                 </tr>`).join('') : `<tr><td colspan="5"><p class="hint">${t('no_people_found')}</p></td></tr>`}
@@ -2477,11 +2523,13 @@
 
     const isAdmin = state.user.role === 'admin';
     const isSelf = user.id === state.user.id;
-    const [groups, createdStats, assignedStats] = await Promise.all([
+    const [groups, createdStats, assignedStats, allUsers] = await Promise.all([
       isAdmin ? api('/groups').then((d) => d.groups).catch(() => []) : Promise.resolve([]),
       api(`/tickets?createdBy=${user.id}`).then((d) => d.tickets).catch(() => []),
       user.role !== 'customer' ? api(`/tickets?assigned=${user.id}`).then((d) => d.tickets).catch(() => []) : Promise.resolve([]),
+      user.role !== 'customer' ? api('/users').then((d) => d.users).catch(() => []) : Promise.resolve([]),
     ]);
+    const directReports = allUsers.filter((u) => u.manager_id === user.id);
 
     const initials = user.name.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase();
 
@@ -2497,6 +2545,7 @@
             <h2 style="margin:0 0 0.2rem">${escapeHtml(user.name)}</h2>
             <p class="hint" style="margin:0">${escapeHtml(user.email)}</p>
             <span class="role-tag" style="margin-top:0.5rem;display:inline-block">${roleLabels()[user.role] || user.role}</span>
+            ${user.is_external ? `<span class="role-tag role-tag-external" style="margin-top:0.5rem;display:inline-block">${t('external_badge')}</span>` : ''}
           </div>
           ${state.user.is_super_admin && !isSelf ? `<button type="button" id="impersonateBtn" class="btn btn-sm" style="margin-left:auto">${icon('eye')} ${t('impersonate')}</button>` : ''}
         </div>
@@ -2521,11 +2570,22 @@
               ${Object.entries(LANG_LABELS).map(([v, l]) => `<option value="${v}" ${user.locale === v ? 'selected' : ''}>${l}</option>`).join('')}
             </select>
           </div>
+          ${user.role !== 'customer' ? `
+          <div class="field">
+            <label for="detailManager">${t('field_manager')}</label>
+            <select id="detailManager"><option value="">${t('option_none')}</option></select>
+          </div>
+          <label class="checkbox-field">
+            <input type="checkbox" id="detailIsExternal" ${user.is_external ? 'checked' : ''} />
+            ${t('field_is_external')}
+          </label>
+          ` : ''}
           <button type="button" id="detailResetPwBtn" class="btn btn-sm btn-outline-danger" style="margin-top:0.5rem">${icon('refresh')} ${t('reset_password_btn')}</button>
           <div id="detailResetPwBox"></div>
           ` : `
           <div class="field"><label>${t('field_group')}</label><p>${escapeHtml(groupLabel(user) || '—')}</p></div>
           <div class="field"><label>${t('field_locale')}</label><p>${escapeHtml(LANG_LABELS[user.locale] || user.locale || '—')}</p></div>
+          ${user.role !== 'customer' ? `<div class="field"><label>${t('manager_label')}</label><p>${escapeHtml(user.manager_name || t('no_manager_label'))}</p></div>` : ''}
           `}
         </div>
 
@@ -2536,6 +2596,11 @@
             ${user.role !== 'customer' ? `<div class="stat-card"><div class="stat-value">${assignedStats.length}</div><div class="stat-label">${t('assigned_to_person')}</div></div>` : ''}
           </div>
         </div>
+        ${user.role !== 'customer' ? `
+        <div class="card">
+          <h3 class="section-title" style="margin-top:0">${t('direct_reports_title')}</h3>
+          ${directReports.length ? `<ul class="plain-list">${directReports.map((r) => `<li><a href="#/users/${r.id}">${escapeHtml(r.name)}</a> · ${roleLabels()[r.role] || r.role}${groupLabel(r) ? ' · ' + escapeHtml(groupLabel(r)) : ''}</li>`).join('')}</ul>` : `<p class="hint">${t('no_direct_reports')}</p>`}
+        </div>` : ''}
       </div>`;
 
     if (isAdmin) {
@@ -2566,6 +2631,33 @@
           renderUserDetail(id);
         }
       });
+      const detailManager = document.getElementById('detailManager');
+      if (detailManager) {
+        const managerOptions = allUsers.filter((u) => (u.role === 'agent' || u.role === 'admin') && u.id !== user.id);
+        detailManager.innerHTML = `<option value="">${t('option_none')}</option>` +
+          managerOptions.map((u) => `<option value="${u.id}" ${user.manager_id === u.id ? 'selected' : ''}>${escapeHtml(u.name)}</option>`).join('');
+        detailManager.addEventListener('change', async (e) => {
+          try {
+            await api(`/users/${user.id}/manager`, { method: 'PATCH', body: { managerId: e.target.value || null } });
+            showToast(t('toast_manager_updated'), 'success');
+          } catch (err) {
+            showToast(err.message, 'error');
+            renderUserDetail(id);
+          }
+        });
+      }
+      const detailIsExternal = document.getElementById('detailIsExternal');
+      if (detailIsExternal) {
+        detailIsExternal.addEventListener('change', async (e) => {
+          try {
+            await api(`/users/${user.id}/external`, { method: 'PATCH', body: { isExternal: e.target.checked } });
+            showToast(t('toast_external_updated'), 'success');
+          } catch (err) {
+            showToast(err.message, 'error');
+            renderUserDetail(id);
+          }
+        });
+      }
       document.getElementById('detailResetPwBtn').addEventListener('click', async () => {
         if (!confirm(`${t('confirm_reset_password_prefix')} ${user.name}${t('confirm_reset_password_suffix')}`)) return;
         try {
@@ -2966,6 +3058,7 @@
           <p class="hint">${escapeHtml(state.user.email)}</p>
           <p><span class="role-tag">${roleLabels()[state.user.role] || state.user.role}</span></p>
         </div>
+        ${isStaff() ? `<div class="card" id="managerCard"></div><div class="card" id="reportsCard"></div>` : ''}
         <div class="card">
           <h3 class="section-title" style="margin-top:0">${icon('lock')} ${t('change_password_title')}</h3>
           <form id="pwForm" class="form-grid" style="max-width:none">
@@ -3001,6 +3094,26 @@
           </form>
         </div>
       </div>`;
+
+    if (isStaff()) {
+      api('/users').then(({ users }) => {
+        const me = users.find((u) => u.id === state.user.id);
+        const reports = users.filter((u) => u.manager_id === state.user.id);
+        const managerCard = document.getElementById('managerCard');
+        if (managerCard) {
+          managerCard.innerHTML = `
+            <h3 class="section-title" style="margin-top:0">${t('manager_label')}</h3>
+            <p>${me && me.manager_name ? escapeHtml(me.manager_name) : t('no_manager_label')}</p>
+            ${me && me.is_external ? `<span class="role-tag role-tag-external">${t('external_badge')}</span>` : ''}`;
+        }
+        const reportsCard = document.getElementById('reportsCard');
+        if (reportsCard) {
+          reportsCard.innerHTML = `
+            <h3 class="section-title" style="margin-top:0">${t('direct_reports_title')}</h3>
+            ${reports.length ? `<ul class="plain-list">${reports.map((r) => `<li>${escapeHtml(r.name)} · ${roleLabels()[r.role] || r.role}${groupLabel(r) ? ' · ' + escapeHtml(groupLabel(r)) : ''}</li>`).join('')}</ul>` : `<p class="hint">${t('no_direct_reports')}</p>`}`;
+        }
+      }).catch(() => {});
+    }
 
     guardForm(document.getElementById('pwForm'), async (e) => {
       const errEl = document.getElementById('pwError');
@@ -3077,6 +3190,17 @@
             <div><button class="btn btn-sm" type="submit">${t('btn_save')}</button></div>
           </form>
           <p class="error-text" id="orgError"></p>
+          <div class="divider"></div>
+          <div class="field">
+            <label for="orgLogoInput">${t('field_org_logo')}</label>
+            <div style="display:flex;align-items:center;gap:0.85rem">
+              <img id="orgLogoPreview" src="img/icon.svg" alt="" width="44" height="44" style="border-radius:8px;object-fit:contain;background:var(--surface-alt)" />
+              <input id="orgLogoInput" type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" />
+              <button type="button" id="orgLogoRemoveBtn" class="btn btn-sm btn-outline-danger" hidden>${t('btn_remove_logo')}</button>
+            </div>
+            <span class="hint">${t('logo_hint')}</span>
+          </div>
+          <p class="error-text" id="orgLogoError"></p>
         </div>
         <div class="card admin-grid-full">
           <h3 class="section-title" style="margin-top:0">${icon('mail')} ${t('invite_email_title')}</h3>
@@ -3118,9 +3242,69 @@
     });
 
     if (isAdmin) {
-      api('/settings').then(({ orgName }) => {
+      const orgLogoPreview = document.getElementById('orgLogoPreview');
+      const orgLogoRemoveBtn = document.getElementById('orgLogoRemoveBtn');
+      api('/settings').then(({ orgName, orgLogo }) => {
         document.getElementById('orgName').value = orgName;
+        if (orgLogo) {
+          orgLogoPreview.src = orgLogo;
+          orgLogoRemoveBtn.hidden = false;
+        }
       }).catch(() => {});
+
+      function resizeImageToDataUri(file, maxSize) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onerror = () => reject(new Error('Lettura file fallita'));
+          reader.onload = () => {
+            const img = new Image();
+            img.onerror = () => reject(new Error('Immagine non valida'));
+            img.onload = () => {
+              const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+              const canvas = document.createElement('canvas');
+              canvas.width = Math.round(img.width * scale);
+              canvas.height = Math.round(img.height * scale);
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+              resolve(canvas.toDataURL('image/png'));
+            };
+            img.src = reader.result;
+          };
+          reader.readAsDataURL(file);
+        });
+      }
+
+      document.getElementById('orgLogoInput').addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const errEl = document.getElementById('orgLogoError');
+        errEl.textContent = '';
+        try {
+          const dataUri = await resizeImageToDataUri(file, 160);
+          const { orgLogo } = await api('/settings/logo', { method: 'PATCH', body: { orgLogo: dataUri } });
+          applyOrgLogo(orgLogo);
+          if (orgLogo) localStorage.setItem('ticketing_org_logo', orgLogo);
+          orgLogoPreview.src = orgLogo || 'img/icon.svg';
+          orgLogoRemoveBtn.hidden = !orgLogo;
+          showToast(t('toast_logo_updated'), 'success');
+        } catch (err) {
+          errEl.textContent = err.message;
+        }
+      });
+
+      orgLogoRemoveBtn.addEventListener('click', async () => {
+        try {
+          await api('/settings/logo', { method: 'PATCH', body: { orgLogo: null } });
+          applyOrgLogo(null);
+          localStorage.removeItem('ticketing_org_logo');
+          orgLogoPreview.src = 'img/icon.svg';
+          orgLogoRemoveBtn.hidden = true;
+          document.getElementById('orgLogoInput').value = '';
+          showToast(t('toast_logo_removed'), 'success');
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      });
 
       guardForm(document.getElementById('orgForm'), async () => {
         const errEl = document.getElementById('orgError');
@@ -3234,6 +3418,6 @@
   applyMotion(getMotionPref());
   applyChromeTranslations();
   updateChrome();
-  loadOrgName();
+  loadOrgBranding();
   route();
 })();

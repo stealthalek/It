@@ -8,8 +8,27 @@ const router = express.Router();
 router.get(
   '/',
   asyncHandler(async (req, res) => {
-    const row = await db.get('SELECT org_name FROM app_settings WHERE id = 1');
-    res.json({ orgName: (row && row.org_name) || 'Ticketing' });
+    const row = await db.get('SELECT org_name, org_logo FROM app_settings WHERE id = 1');
+    res.json({ orgName: (row && row.org_name) || 'Ticketing', orgLogo: (row && row.org_logo) || null });
+  })
+);
+
+router.patch(
+  '/logo',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const { orgLogo } = req.body || {};
+    if (orgLogo) {
+      if (typeof orgLogo !== 'string' || !orgLogo.startsWith('data:image/')) {
+        return res.status(400).json({ error: 'Formato immagine non valido' });
+      }
+      if (orgLogo.length > 400000) {
+        return res.status(400).json({ error: 'Immagine troppo grande (max 300 KB circa)' });
+      }
+    }
+    await db.run('UPDATE app_settings SET org_logo = ? WHERE id = 1', [orgLogo || null]);
+    res.json({ orgLogo: orgLogo || null });
   })
 );
 
