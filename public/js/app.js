@@ -634,7 +634,7 @@
   }
 
   function startImpersonation(user) {
-    state.viewAs = { id: user.id, name: user.name, role: user.role };
+    state.viewAs = { id: user.id, name: user.name, role: user.role, group_id: user.group_id || null, is_super_admin: !!user.is_super_admin };
     renderViewAsBanner();
     showToast(`${t('viewas_banner_text')} ${user.name}`, '');
     location.hash = '#/dashboard';
@@ -1524,7 +1524,10 @@
       }
 
       try {
-        const { tickets } = await api(`/tickets?${params.toString()}`);
+        const { tickets: fetched } = await api(`/tickets?${params.toString()}`);
+        const tickets = (viewingAs && viewingAs.role !== 'customer' && !viewingAs.is_super_admin)
+          ? fetched.filter((tk) => !tk.group_id || tk.group_id === viewingAs.group_id)
+          : fetched;
         lastTickets = tickets;
         renderStats(tickets);
         renderPersonalCounter(tickets);
