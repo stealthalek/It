@@ -19,7 +19,13 @@ Piattaforma di ticketing full-stack e realmente funzionante: gestione di richies
 - Categorie personalizzabili dall'amministratore, selezionabili dal cliente in fase di apertura
 - **Timeline attività** su ogni ticket: commenti e cambi di stato/priorità/assegnazione in un unico flusso cronologico (in stile ITSM)
 - **Tipo Incident / Task** per ogni ticket, con badge dedicato e filtro in dashboard
-- **Team di assegnazione**: l'amministratore può assegnare ogni agente a un team; nel pannello di gestione del ticket l'elenco degli assegnatari è raggruppato per team, così i membri dello stesso team si vedono e si assegnano i ticket a vicenda con un colpo d'occhio
+- **Gruppi di assegnazione gerarchici** (es. IT → Service Desk, Presidio, Endpoint, Network, Security, creati di default): l'amministratore può creare gruppi di primo livello (per altri reparti oltre l'IT, es. HR) o annidarli sotto un gruppo esistente; nel pannello di gestione del ticket l'elenco degli assegnatari è raggruppato per gruppo, così i membri dello stesso gruppo si vedono e si assegnano i ticket a vicenda con un colpo d'occhio
+- **SLA per gruppo**: ogni gruppo ha un tempo di risposta e risoluzione (in ore) impostabile dall'admin; ogni ticket mostra un badge SLA calcolato automaticamente (in linea / a rischio / superata)
+- **Backlog**: vista dedicata con i ticket non ancora assegnati, ordinati per urgenza SLA (i più a rischio in cima)
+- **Chiusura automatica**: un ticket risolto viene chiuso automaticamente dopo 72 ore di inattività, con evento registrato in cronologia
+- **Asset e prestiti**: inventario dispositivi (laptop, desktop, monitor, telefoni) con stato, assegnazione permanente o a prestito con scadenza, collegabile a un ticket
+- **Pagina di ricerca dedicata**: cerca per numero ticket, parola chiave o richiedente con risultati istantanei mentre scrivi, filtrabili per tipo/stato/priorità/gruppo
+- **Report di gestione** (admin): grafici su volume ticket per gruppo, tempo medio di risoluzione, percentuale SLA rispettata e carico per agente
 - Assegnazione dei ticket agli agenti, filtri per stato/priorità/tipo e per un assegnatario specifico (ogni membro dello staff, non solo "assegnati a me"); ricerca testuale che trova anche un ticket per numero esatto (es. cercando `42` salta dritto al ticket #42) e, per lo staff, anche per nome o email del richiedente — così un admin trova subito i ticket di una persona specifica
 - Dashboard con contatori in tempo reale (aperti, in lavorazione, risolti, urgenti), un **contatore personale** (carico assegnato per lo staff, ticket in corso per i clienti) e un **grafico personalizzabile** (cambia al volo la vista: stato, priorità, tipo, categoria o assegnatario)
 - **Storico completo**: nessun ticket sparisce dalla dashboard quando viene risolto o chiuso, resta sempre consultabile e filtrabile per stato
@@ -28,8 +34,10 @@ Piattaforma di ticketing full-stack e realmente funzionante: gestione di richies
 - **Notifica email** al cliente quando il suo ticket viene contrassegnato come risolto (richiede la configurazione SMTP opzionale, vedi sotto)
 - **Note interne**, visibili solo allo staff
 - Il cliente può riaprire un ticket risolto/chiuso se il problema persiste
-- Pannello di amministrazione grafico: ruoli utente, creazione account staff con password temporanea, categorie ticket
-- Profilo personale con cambio password
+- Pannello di amministrazione grafico: ruoli utente, creazione account staff con password temporanea, categorie ticket, gruppi con SLA
+- **Amministratore globale nascosto**: il primo account admin creato all'avvio non è visibile né modificabile dagli altri amministratori, per proteggere l'account proprietario della piattaforma
+- Profilo personale con cambio password e **cambio email** self-service
+- **Lingua** (italiano/inglese) e **personalizzazione del colore** dell'interfaccia, dalla pagina Impostazioni
 - Interfaccia responsive e curata graficamente, installabile come app (PWA) con **aggiornamento automatico** quando viene pubblicata una nuova versione
 
 ## Avvio rapido (locale)
@@ -199,19 +207,28 @@ Tutte le richieste (tranne `register`/`login`) richiedono l'header `Authorizatio
 | POST | `/api/auth/microsoft` | Login/registrazione tramite token Microsoft |
 | GET | `/api/auth/me` | Utente autenticato corrente |
 | POST | `/api/auth/change-password` | Cambia la propria password |
-| GET | `/api/tickets` | Elenco ticket (filtri: `status`, `priority`, `q`, `assigned`) |
+| POST | `/api/auth/change-email` | Cambia la propria email |
+| GET | `/api/tickets` | Elenco ticket (filtri: `status`, `priority`, `type`, `group`, `q`, `assigned`) |
 | POST | `/api/tickets` | Crea un ticket |
 | GET | `/api/tickets/:id` | Dettaglio ticket + timeline attività (le note interne sono escluse per i clienti) |
-| PATCH | `/api/tickets/:id` | Aggiorna ticket: stato/priorità/assegnazione per lo staff; oggetto/descrizione per il proprietario se ancora aperto; riapertura (`status: "open"`) per il proprietario se risolto/chiuso |
+| PATCH | `/api/tickets/:id` | Aggiorna ticket: stato/priorità/tipo/gruppo/assegnazione/asset per lo staff; oggetto/descrizione per il proprietario se ancora aperto; riapertura (`status: "open"`) per il proprietario se risolto/chiuso |
 | DELETE | `/api/tickets/:id` | Elimina ticket (solo admin) |
 | POST | `/api/tickets/:id/comments` | Aggiunge un commento (`is_internal: true` per una nota visibile solo allo staff) |
-| GET | `/api/users` | Elenco utenti (solo staff) |
+| GET | `/api/users` | Elenco utenti (solo staff; l'amministratore globale nascosto è escluso per gli altri admin) |
 | POST | `/api/users` | Crea un account agente/admin con password temporanea generata (solo admin) |
 | PATCH | `/api/users/:id/role` | Cambia il ruolo di un utente (solo admin) |
-| PATCH | `/api/users/:id/team` | Assegna o cambia il team di un utente staff (solo admin) |
+| PATCH | `/api/users/:id/group` | Assegna o cambia il gruppo di un utente staff (solo admin) |
 | GET | `/api/categories` | Elenco categorie ticket |
 | POST | `/api/categories` | Crea una categoria (solo admin) |
 | DELETE | `/api/categories/:id` | Elimina una categoria non in uso (solo admin) |
+| GET | `/api/groups` | Elenco gruppi di assegnazione con gerarchia e SLA |
+| POST | `/api/groups` | Crea un gruppo, opzionalmente sotto un gruppo padre (solo admin) |
+| PATCH | `/api/groups/:id` | Aggiorna SLA o gruppo padre (solo admin) |
+| DELETE | `/api/groups/:id` | Elimina un gruppo senza sotto-gruppi né ticket collegati (solo admin) |
+| GET | `/api/assets` | Elenco asset (filtri: `status`, `q`) |
+| POST | `/api/assets` | Crea un asset |
+| PATCH | `/api/assets/:id` | Aggiorna stato, tipo di assegnazione, assegnatario o scadenza |
+| DELETE | `/api/assets/:id` | Elimina un asset (solo admin) |
 
 ## Sicurezza
 
