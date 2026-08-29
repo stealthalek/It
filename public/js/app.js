@@ -190,7 +190,7 @@
       personal_counter_staff: 'Assegnati a te, ancora aperti', personal_counter_customer: 'Tuoi ticket in corso',
       chart_title: 'Grafico', chart_distribution: 'Distribuzione', chart_total: 'Totale',
       chart_mine_title: 'I miei ticket', chart_team_title: 'Il mio team', chart_no_team: 'Non fai parte di nessun gruppo',
-      dim_status: 'Stato', dim_priority: 'Priorità', dim_type: 'Tipo', dim_category: 'Categoria', dim_assigned: 'Assegnatario',
+      dim_status: 'Stato', dim_sla: 'SLA', dim_priority: 'Priorità', dim_type: 'Tipo', dim_category: 'Categoria', dim_assigned: 'Assegnatario',
       auto_update: 'Aggiornamento automatico', auto_update_on: 'Aggiornamento automatico attivo', impersonate: 'Immedesimati',
       btn_save: 'Salva', btn_cancel: 'Annulla', btn_delete: 'Elimina', btn_add: 'Aggiungi', btn_search: 'Cerca',
       loading: 'Caricamento...', no_results: 'Nessun risultato.', unassigned_label: 'Non assegnato',
@@ -237,6 +237,7 @@
       personalization_title: 'Personalizzazione', personalization_hint: 'Scegli il colore principale dell\'interfaccia.',
       cold_start_hint: 'Il server si sta risvegliando dopo un periodo di inattività, un momento...',
       admin_title: 'Amministrazione', access_denied: 'Accesso non consentito.', person_card_title: 'Scheda persona',
+      org_open_tickets: 'aperti', org_sla_breach: 'in ritardo', org_node_hint: 'Clic per vedere i ticket del team',
       account_details_title: 'Dettagli account', registered_on_label: 'Registrato il', field_role: 'Ruolo', field_locale: 'Lingua',
       reset_password_btn: 'Reimposta password', ticket_activity_title: 'Attività ticket',
       opened_by_person: 'Aperti da questa persona', assigned_to_person: 'Assegnati a questa persona',
@@ -273,7 +274,7 @@
       personal_counter_staff: 'Assigned to you, still open', personal_counter_customer: 'Your ongoing tickets',
       chart_title: 'Chart', chart_distribution: 'Distribution', chart_total: 'Total',
       chart_mine_title: 'My tickets', chart_team_title: 'My team', chart_no_team: 'You are not part of any group',
-      dim_status: 'Status', dim_priority: 'Priority', dim_type: 'Type', dim_category: 'Category', dim_assigned: 'Assignee',
+      dim_status: 'Status', dim_sla: 'SLA', dim_priority: 'Priority', dim_type: 'Type', dim_category: 'Category', dim_assigned: 'Assignee',
       auto_update: 'Auto update', auto_update_on: 'Auto update active', impersonate: 'View as',
       btn_save: 'Save', btn_cancel: 'Cancel', btn_delete: 'Delete', btn_add: 'Add', btn_search: 'Search',
       loading: 'Loading...', no_results: 'No results.', unassigned_label: 'Unassigned',
@@ -320,6 +321,7 @@
       personalization_title: 'Personalization', personalization_hint: 'Choose the main interface color.',
       cold_start_hint: 'The server is waking up after a period of inactivity, one moment...',
       admin_title: 'Administration', access_denied: 'Access not allowed.', person_card_title: 'Person profile',
+      org_open_tickets: 'open', org_sla_breach: 'overdue', org_node_hint: 'Click to see the team\'s tickets',
       account_details_title: 'Account details', registered_on_label: 'Registered on', field_role: 'Role', field_locale: 'Language',
       reset_password_btn: 'Reset password', ticket_activity_title: 'Ticket activity',
       opened_by_person: 'Opened by this person', assigned_to_person: 'Assigned to this person',
@@ -1187,7 +1189,7 @@
     }
 
     function chartDimensions() {
-      return { status: t('dim_status'), priority: t('dim_priority'), type: t('dim_type'), category: t('dim_category'), assigned: t('dim_assigned') };
+      return { status: t('dim_status'), sla: t('dim_sla'), priority: t('dim_priority'), type: t('dim_type'), category: t('dim_category'), assigned: t('dim_assigned') };
     }
     let currentChartDim = 'status';
     let lastTickets = [];
@@ -1195,8 +1197,13 @@
     function computeBreakdown(tickets, dim) {
       if (dim === 'status') {
         const order = ['open', 'in_progress', 'resolved', 'closed'];
-        const colors = { open: 'var(--primary)', in_progress: 'var(--warning)', resolved: 'var(--success)', closed: 'var(--muted)' };
+        const colors = { open: 'var(--success)', in_progress: 'var(--warning)', resolved: 'var(--type-task)', closed: 'var(--muted)' };
         return order.map((k) => ({ key: k, label: statusLabels()[k], value: tickets.filter((t) => t.status === k).length, color: colors[k] }));
+      }
+      if (dim === 'sla') {
+        const order = ['on_track', 'at_risk', 'breached'];
+        const colors = { on_track: 'var(--success)', at_risk: 'var(--warning)', breached: 'var(--danger)' };
+        return order.map((k) => ({ key: k, label: slaLabels()[k], value: tickets.filter((t) => t.sla_status === k).length, color: colors[k] }));
       }
       if (dim === 'priority') {
         const order = ['low', 'medium', 'high', 'urgent'];
@@ -1224,7 +1231,8 @@
       return [];
     }
 
-    const donutDims = ['status', 'priority', 'type'];
+    const donutDims = ['status', 'sla', 'priority', 'type'];
+    const filterableDims = ['status', 'priority', 'type'];
 
     function renderCharts(tickets) {
       chartsEl.innerHTML = '';
@@ -1246,7 +1254,7 @@
             <div class="chart-card-head">
               <h3 class="section-title" style="margin:0">${chartDimensions()[dim]}</h3>
             </div>
-            ${donutChart(computeBreakdown(tickets, dim), tickets.length, { dim, onSelect: true })}
+            ${donutChart(computeBreakdown(tickets, dim), tickets.length, { dim, onSelect: filterableDims.includes(dim) })}
           </div>`).join('')}`;
 
       document.getElementById('chartDim').addEventListener('change', (e) => {
@@ -1273,18 +1281,18 @@
           const dim = input.closest('.chart-card[data-dim]').dataset.dim;
           setCustomChartColor(dim, input.dataset.key, e.target.value);
           renderCharts(tickets);
-          if (dim === 'status') renderScopedCharts();
+          if (dim === 'status' || dim === 'type') renderScopedCharts();
         });
       });
     }
 
-    function scopedChartCard(id, title, rows, total, emptyHint) {
+    function scopedChartCard(dim, title, rows, total, emptyHint) {
       return `
-        <div class="card chart-card">
+        <div class="card chart-card" data-dim="${dim}">
           <div class="chart-card-head">
             <h3 class="section-title" style="margin:0">${escapeHtml(title)}</h3>
           </div>
-          ${total ? donutChart(rows, total, { dim: 'status' }) : `<p class="hint">${escapeHtml(emptyHint)}</p>`}
+          ${total ? donutChart(rows, total, { dim }) : `<p class="hint">${escapeHtml(emptyHint)}</p>`}
         </div>`;
     }
 
@@ -1309,17 +1317,18 @@
         groupId ? api(`/tickets?group=${groupId}`).catch(() => ({ tickets: [] })) : Promise.resolve({ tickets: [] }),
       ]);
 
-      const mineRows = computeBreakdown(mineData.tickets, 'status');
+      const mineRows = computeBreakdown(mineData.tickets, 'type');
       const teamRows = computeBreakdown(teamData.tickets, 'status');
 
       scopedChartsEl.innerHTML =
-        scopedChartCard('mineChart', t('chart_mine_title'), mineRows, mineData.tickets.length, t('no_tickets_found')) +
-        scopedChartCard('teamChart', groupName || t('chart_team_title'), teamRows, teamData.tickets.length, t('chart_no_team'));
+        scopedChartCard('type', t('chart_mine_title'), mineRows, mineData.tickets.length, t('no_tickets_found')) +
+        scopedChartCard('status', groupName || t('chart_team_title'), teamRows, teamData.tickets.length, t('chart_no_team'));
 
-      scopedChartsEl.querySelectorAll('.donut-color-input').forEach((input) => {
+      scopedChartsEl.querySelectorAll('.chart-card[data-dim] .donut-color-input').forEach((input) => {
         input.addEventListener('click', (e) => e.stopPropagation());
         input.addEventListener('input', (e) => {
-          setCustomChartColor('status', input.dataset.key, e.target.value);
+          const dim = input.closest('.chart-card[data-dim]').dataset.dim;
+          setCustomChartColor(dim, input.dataset.key, e.target.value);
           renderCharts(lastTickets);
           renderScopedCharts();
         });
@@ -1909,13 +1918,18 @@
         } catch { groupOptionsCache = []; }
       }
 
-      function renderOrgNode(node) {
+      function renderOrgNode(node, statsById) {
+        const stats = statsById.get(node.id) || { open: 0, breached: 0 };
         return `
           <div class="org-branch">
-            <div class="org-node">
+            <div class="org-node" data-group-id="${node.id}" data-group-name="${escapeHtml(node.name)}" title="${t('org_node_hint')}">
               <div class="org-node-head">
                 <span class="org-node-name">${escapeHtml(node.name)}</span>
                 <button type="button" class="icon-btn deleteGroupBtn" data-id="${node.id}" title="Elimina gruppo">${icon('trash')}</button>
+              </div>
+              <div class="org-node-stats">
+                <span class="org-node-badge ${stats.breached > 0 ? 'org-node-badge-danger' : 'org-node-badge-ok'}">${stats.open} ${t('org_open_tickets')}</span>
+                ${stats.breached > 0 ? `<span class="org-node-badge org-node-badge-danger">${stats.breached} ${t('org_sla_breach')}</span>` : ''}
               </div>
               <div class="org-node-sla">
                 <label>Risposta (h) <input type="number" min="1" class="slaInput" data-group-id="${node.id}" data-field="slaResponseHours" value="${node.sla_response_hours ?? ''}" /></label>
@@ -1924,7 +1938,7 @@
                 <label>alle <input type="number" min="0" max="24" class="workHourInput" data-group-id="${node.id}" data-field="workEndHour" value="${node.work_end_hour ?? 18}" /></label>
               </div>
             </div>
-            ${node.children.length ? `<div class="org-children">${node.children.map(renderOrgNode).join('')}</div>` : ''}
+            ${node.children.length ? `<div class="org-children">${node.children.map((child) => renderOrgNode(child, statsById)).join('')}</div>` : ''}
           </div>`;
       }
 
@@ -1933,11 +1947,30 @@
         listEl.className = 'spinner-row';
         listEl.textContent = 'Caricamento...';
         try {
-          const { groups } = await api('/groups');
+          const [{ groups }, { tickets }] = await Promise.all([
+            api('/groups'),
+            api('/tickets').catch(() => ({ tickets: [] })),
+          ]);
           groupOptionsCache = groups;
+          const statsById = new Map();
+          tickets.forEach((tk) => {
+            if (!tk.group_id) return;
+            const entry = statsById.get(tk.group_id) || { open: 0, breached: 0 };
+            if (tk.status === 'open' || tk.status === 'in_progress') entry.open += 1;
+            if (tk.sla_status === 'breached') entry.breached += 1;
+            statsById.set(tk.group_id, entry);
+          });
           const tree = buildGroupTree(groups);
           listEl.className = '';
-          listEl.innerHTML = tree.length ? `<div class="org-chart">${tree.map(renderOrgNode).join('')}</div>` : '<p class="hint">Nessun gruppo.</p>';
+          listEl.innerHTML = tree.length ? `<div class="org-chart">${tree.map((node) => renderOrgNode(node, statsById)).join('')}</div>` : '<p class="hint">Nessun gruppo.</p>';
+
+          listEl.querySelectorAll('.org-node').forEach((nodeEl) => {
+            nodeEl.addEventListener('click', (e) => {
+              if (e.target.closest('input, button, label')) return;
+              sessionStorage.setItem('ticketing_search_group', nodeEl.dataset.groupId);
+              location.hash = '#/search';
+            });
+          });
 
           listEl.querySelectorAll('.slaInput').forEach((input) => {
             input.addEventListener('change', async () => {
@@ -2554,6 +2587,12 @@
       debounceTimer = setTimeout(runSearch, 200);
     });
     [typeEl, statusEl, priorityEl, groupEl].forEach((el) => el.addEventListener('change', runSearch));
+
+    const presetGroup = sessionStorage.getItem('ticketing_search_group');
+    if (presetGroup) {
+      sessionStorage.removeItem('ticketing_search_group');
+      groupEl.value = presetGroup;
+    }
 
     runSearch();
   }

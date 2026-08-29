@@ -1121,7 +1121,9 @@ body.role-admin .admin-only { display: flex; }
   box-shadow: var(--shadow);
   padding: 0.75rem 0.9rem;
   min-width: 12rem;
+  cursor: pointer;
 }
+.org-node:hover { border-color: var(--primary); }
 .org-node-head {
   display: flex;
   align-items: center;
@@ -1132,6 +1134,20 @@ body.role-admin .admin-only { display: flex; }
   border-bottom: 1px solid var(--border);
 }
 .org-node-name { font-weight: 700; font-size: 0.92rem; }
+.org-node-stats { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 0.6rem; }
+.org-node-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+}
+.org-node-badge::before { content: ''; width: 0.4rem; height: 0.4rem; border-radius: 50%; background: currentColor; }
+.org-node-badge-ok { background: var(--success-soft); color: var(--success); }
+.org-node-badge-danger { background: var(--danger-soft); color: var(--danger); }
 .org-node-sla { display: flex; flex-direction: column; gap: 0.4rem; }
 .org-node-sla label {
   display: flex;
