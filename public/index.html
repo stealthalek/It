@@ -16,40 +16,53 @@
 <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
-<header class="topbar">
-  <div class="topbar-inner">
-    <a href="#/dashboard" class="brand">
-      <img src="img/icon.svg" alt="" width="28" height="28" />
-      <span>Ticketing</span>
-    </a>
-    <button id="installBtn" class="topbar-icon-btn" type="button" title="Installa l'app" aria-label="Installa l'app" style="display:none"></button>
-    <div class="notif-wrap">
-      <button id="notifBtn" class="topbar-icon-btn" type="button" title="Notifiche" aria-label="Notifiche" style="display:none">
-        <span id="notifBadge" class="notif-badge" hidden></span>
-      </button>
-      <div id="notifDropdown" class="notif-dropdown" hidden></div>
+<div class="app-shell">
+  <div id="sidebarBackdrop" class="sidebar-backdrop" hidden></div>
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-head">
+      <a href="#/dashboard" class="brand">
+        <img src="img/icon.svg" alt="" width="28" height="28" />
+        <span class="brand-label">Ticketing</span>
+      </a>
+      <button id="sidebarCollapseBtn" class="sidebar-collapse-btn" type="button" title="Comprimi menu" aria-label="Comprimi menu"></button>
     </div>
-    <button id="settingsBtn" class="topbar-icon-btn" type="button" title="Impostazioni" aria-label="Impostazioni"></button>
-    <button id="navToggle" class="nav-toggle" aria-label="Apri menu" aria-expanded="false">
-      <span></span><span></span><span></span>
-    </button>
     <nav id="mainNav" class="main-nav">
-      <a href="#/dashboard" data-nav="dashboard" class="logged-in-only">Ticket</a>
-      <a href="#/new" data-nav="new" class="logged-in-only">Nuovo ticket</a>
-      <a href="#/search" data-nav="search" class="staff-only">Ricerca</a>
-      <a href="#/backlog" data-nav="backlog" class="staff-only">Backlog</a>
-      <a href="#/assets" data-nav="assets" class="staff-only">Asset</a>
-      <a href="#/report" data-nav="report" class="admin-only">Report</a>
-      <a href="#/admin" data-nav="admin" class="staff-only">Amministrazione</a>
-      <a href="#/profile" data-nav="profile" class="logged-in-only">Profilo</a>
+      <a href="#/dashboard" data-nav="dashboard" class="logged-in-only"></a>
+      <a href="#/new" data-nav="new" class="logged-in-only"></a>
+      <a href="#/search" data-nav="search" class="staff-only"></a>
+      <a href="#/backlog" data-nav="backlog" class="staff-only"></a>
+      <a href="#/assets" data-nav="assets" class="staff-only"></a>
+      <a href="#/report" data-nav="report" class="admin-only"></a>
+      <a href="#/admin" data-nav="admin" class="staff-only"></a>
+      <a href="#/profile" data-nav="profile" class="logged-in-only"></a>
+    </nav>
+    <div class="sidebar-foot">
       <span id="userBadge" class="user-badge"></span>
       <button id="logoutBtn" class="btn btn-ghost"></button>
-    </nav>
-  </div>
-</header>
+    </div>
+  </aside>
+  <div class="shell-main">
+    <header class="topbar">
+      <div class="topbar-inner">
+        <button id="navToggle" class="nav-toggle" aria-label="Apri menu" aria-expanded="false">
+          <span></span><span></span><span></span>
+        </button>
+        <div class="topbar-spacer"></div>
+        <button id="installBtn" class="topbar-icon-btn" type="button" title="Installa l'app" aria-label="Installa l'app" style="display:none"></button>
+        <div class="notif-wrap">
+          <button id="notifBtn" class="topbar-icon-btn" type="button" title="Notifiche" aria-label="Notifiche" style="display:none">
+            <span id="notifBadge" class="notif-badge" hidden></span>
+          </button>
+          <div id="notifDropdown" class="notif-dropdown" hidden></div>
+        </div>
+        <button id="settingsBtn" class="topbar-icon-btn" type="button" title="Impostazioni" aria-label="Impostazioni"></button>
+      </div>
+    </header>
 
-<div id="viewAsBanner" class="viewas-banner" hidden></div>
-<main id="app" class="app-main"></main>
+    <div id="viewAsBanner" class="viewas-banner" hidden></div>
+    <main id="app" class="app-main"></main>
+  </div>
+</div>
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
