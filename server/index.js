@@ -15,6 +15,8 @@ const userRoutes = require('./routes/users');
 const categoryRoutes = require('./routes/categories');
 const groupRoutes = require('./routes/groups');
 const assetRoutes = require('./routes/assets');
+const settingsRoutes = require('./routes/settings');
+const notificationRoutes = require('./routes/notifications');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -37,6 +39,8 @@ app.use('/api/users', userRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/groups', groupRoutes);
 app.use('/api/assets', assetRoutes);
+app.use('/api/settings', settingsRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() });

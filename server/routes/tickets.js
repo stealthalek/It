@@ -4,6 +4,7 @@ const { authenticate } = require('../middleware/auth');
 const asyncHandler = require('../middleware/asyncHandler');
 const realtime = require('../realtime');
 const mailer = require('../mailer');
+const { notifyUser } = require('../notifications');
 
 const router = express.Router();
 router.use(authenticate);
@@ -21,6 +22,7 @@ const TICKET_SELECT = `
     t.*,
     creator.name AS creator_name,
     creator.email AS creator_email,
+    creator.locale AS creator_locale,
     assignee.name AS assignee_name,
     grp.name AS group_name,
     grpParent.name AS group_parent_name,
@@ -289,6 +291,9 @@ router.patch(
             updates.push('assigned_to = ?');
             params.push(body.assigned_to);
             events.push(`Assegnato a ${assignee.name}`);
+            if (assignee.id !== req.user.id) {
+              notifyUser(assignee.id, ticket.id, `Ti è stato assegnato il ticket #${ticket.id}: ${ticket.subject}`).catch(() => {});
+            }
           }
         }
       }
@@ -341,19 +346,18 @@ router.patch(
       } else if (body.status !== undefined) {
         return res.status(403).json({ error: 'Non puoi impostare questo stato' });
       }
+    }
 
-      if (body.subject !== undefined || body.description !== undefined) {
-        if (ticket.status !== 'open') {
-          return res.status(403).json({ error: 'Non è più possibile modificare un ticket già preso in carico' });
-        }
-        if (body.subject !== undefined && body.subject.trim()) {
-          updates.push('subject = ?');
-          params.push(body.subject.trim());
-        }
-        if (body.description !== undefined && body.description.trim()) {
-          updates.push('description = ?');
-          params.push(body.description.trim());
-        }
+    if (isOwner || isStaff(req.user)) {
+      if (body.subject !== undefined && body.subject.trim() && body.subject.trim() !== ticket.subject) {
+        updates.push('subject = ?');
+        params.push(body.subject.trim());
+        events.push('Oggetto del ticket modificato');
+      }
+      if (body.description !== undefined && body.description.trim() && body.description.trim() !== ticket.description) {
+        updates.push('description = ?');
+        params.push(body.description.trim());
+        events.push('Descrizione del ticket modificata');
       }
     }
 
@@ -372,6 +376,9 @@ router.patch(
     realtime.broadcastTicketUpdate(ticket.id, updated);
     if (justResolved) {
       mailer.notifyTicketResolved(updated).catch((err) => console.error('Invio email fallito:', err.message));
+      if (ticket.created_by !== req.user.id) {
+        notifyUser(ticket.created_by, ticket.id, `Il ticket #${ticket.id} è stato risolto: ${ticket.subject}`).catch(() => {});
+      }
     }
     res.json({ ticket: updated });
   })
@@ -418,6 +425,17 @@ router.post(
       [Number(info.lastInsertRowid)]
     );
     realtime.broadcastActivityItem(ticket.id, { kind: 'comment', ...commentRow });
+
+    const notifyTargets = new Set();
+    if (!internal) {
+      if (ticket.created_by !== req.user.id) notifyTargets.add(ticket.created_by);
+      if (ticket.assigned_to && ticket.assigned_to !== req.user.id) notifyTargets.add(ticket.assigned_to);
+    } else if (ticket.assigned_to && ticket.assigned_to !== req.user.id) {
+      notifyTargets.add(ticket.assigned_to);
+    }
+    for (const targetId of notifyTargets) {
+      notifyUser(targetId, ticket.id, `Nuovo messaggio sul ticket #${ticket.id}: ${ticket.subject}`).catch(() => {});
+    }
 
     const activity = await listActivity(ticket.id, isStaff(req.user));
     res.status(201).json({ activity });

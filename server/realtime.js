@@ -48,6 +48,7 @@ function initRealtime(httpServer) {
 
   io.on('connection', (socket) => {
     socket.data.ticketRoom = null;
+    socket.join(`user:${socket.user.id}`);
 
     socket.on('ticket:join', async (ticketId) => {
       const id = Number(ticketId);
@@ -86,4 +87,9 @@ function broadcastTicketUpdate(ticketId, ticket) {
   io.to(`ticket:${ticketId}`).emit('ticket:updated', ticket);
 }
 
-module.exports = { initRealtime, broadcastActivityItem, broadcastTicketUpdate };
+function broadcastNotification(userId, notification) {
+  if (!io) return;
+  io.to(`user:${userId}`).emit('notification:new', notification);
+}
+
+module.exports = { initRealtime, broadcastActivityItem, broadcastTicketUpdate, broadcastNotification };

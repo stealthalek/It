@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const db = require('./db/database');
 
 function isConfigured() {
   return Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
@@ -26,16 +27,125 @@ async function sendMail({ to, subject, text, html }) {
   await t.sendMail({ from, to, subject, text, html });
 }
 
-async function notifyTicketResolved(ticket) {
-  if (!ticket.creator_email) return;
-  const subject = `Ticket #${ticket.id} risolto: ${ticket.subject}`;
-  const text = [
-    `Ciao ${ticket.creator_name || ''},`,
-    '',
-    `il tuo ticket #${ticket.id} "${ticket.subject}" è stato contrassegnato come risolto.`,
-    'Se il problema persiste puoi riaprirlo direttamente dalla piattaforma di ticketing.',
-  ].join('\n');
-  await sendMail({ to: ticket.creator_email, subject, text });
+async function getOrgName() {
+  try {
+    const row = await db.get('SELECT org_name FROM app_settings WHERE id = 1');
+    return (row && row.org_name) || 'Ticketing';
+  } catch {
+    return 'Ticketing';
+  }
 }
 
-module.exports = { sendMail, notifyTicketResolved, isConfigured };
+const STRINGS = {
+  it: {
+    resolvedSubject: (id, subject) => `Ticket #${id} risolto: ${subject}`,
+    resolvedText: (name, id, subject, org) => [
+      `Ciao ${name || ''},`,
+      '',
+      `il tuo ticket #${id} "${subject}" è stato contrassegnato come risolto.`,
+      'Se il problema persiste puoi riaprirlo direttamente dalla piattaforma di ticketing.',
+      '',
+      `— ${org}`,
+    ].join('\n'),
+    inviteSubject: (org) => `Il tuo accesso a ${org}`,
+    inviteText: (name, email, tempPassword, org) => [
+      `Ciao ${name},`,
+      '',
+      `è stato creato per te un account su ${org}.`,
+      '',
+      `Email di accesso: ${email}`,
+      `Password temporanea: ${tempPassword}`,
+      '',
+      'Accedi e cambia la password dal tuo profilo appena possibile.',
+      '',
+      `— ${org}`,
+    ].join('\n'),
+    resetSubject: (org) => `La tua password su ${org} è stata reimpostata`,
+    resetText: (name, tempPassword, org) => [
+      `Ciao ${name},`,
+      '',
+      `la tua password su ${org} è stata reimpostata da un amministratore.`,
+      '',
+      `Nuova password temporanea: ${tempPassword}`,
+      '',
+      'Accedi e cambiala dal tuo profilo appena possibile. Se non hai richiesto questa modifica, contatta subito un amministratore.',
+      '',
+      `— ${org}`,
+    ].join('\n'),
+  },
+  en: {
+    resolvedSubject: (id, subject) => `Ticket #${id} resolved: ${subject}`,
+    resolvedText: (name, id, subject, org) => [
+      `Hi ${name || ''},`,
+      '',
+      `your ticket #${id} "${subject}" has been marked as resolved.`,
+      'If the issue persists, you can reopen it directly from the ticketing platform.',
+      '',
+      `— ${org}`,
+    ].join('\n'),
+    inviteSubject: (org) => `Your access to ${org}`,
+    inviteText: (name, email, tempPassword, org) => [
+      `Hi ${name},`,
+      '',
+      `an account has been created for you on ${org}.`,
+      '',
+      `Login email: ${email}`,
+      `Temporary password: ${tempPassword}`,
+      '',
+      'Sign in and change your password from your profile as soon as possible.',
+      '',
+      `— ${org}`,
+    ].join('\n'),
+    resetSubject: (org) => `Your password on ${org} has been reset`,
+    resetText: (name, tempPassword, org) => [
+      `Hi ${name},`,
+      '',
+      `your password on ${org} has been reset by an administrator.`,
+      '',
+      `New temporary password: ${tempPassword}`,
+      '',
+      'Sign in and change it from your profile as soon as possible. If you did not request this, contact an administrator immediately.',
+      '',
+      `— ${org}`,
+    ].join('\n'),
+  },
+};
+
+function strings(locale) {
+  return STRINGS[locale] || STRINGS.it;
+}
+
+async function notifyTicketResolved(ticket) {
+  if (!ticket.creator_email) return;
+  const org = await getOrgName();
+  const s = strings(ticket.creator_locale);
+  await sendMail({
+    to: ticket.creator_email,
+    subject: s.resolvedSubject(ticket.id, ticket.subject),
+    text: s.resolvedText(ticket.creator_name, ticket.id, ticket.subject, org),
+  });
+}
+
+async function sendInvite(user, tempPassword) {
+  if (!user.email) return;
+  const org = await getOrgName();
+  const s = strings(user.locale);
+  await sendMail({
+    to: user.email,
+    subject: s.inviteSubject(org),
+    text: s.inviteText(user.name, user.email, tempPassword, org),
+  });
+}
+
+async function sendPasswordReset(user, tempPassword) {
+  if (!user.email) return;
+  const org = await getOrgName();
+  const s = strings(user.locale);
+  await sendMail({
+    to: user.email,
+    subject: s.resetSubject(org),
+    text: s.resetText(user.name, tempPassword, org),
+  });
+}
+
+module.exports = { sendMail, notifyTicketResolved, sendInvite, sendPasswordReset, isConfigured };
