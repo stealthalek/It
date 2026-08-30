@@ -338,6 +338,14 @@ router.get(
       clauses.push('t.id IN (SELECT tt.ticket_id FROM ticket_tags tt JOIN tags tg ON tg.id = tt.tag_id WHERE tg.name = ?)');
       params.push(req.query.tag.trim());
     }
+    if (req.query.category && req.query.category.trim()) {
+      clauses.push('t.category = ?');
+      params.push(req.query.category.trim());
+    }
+    if (req.query.excludeId && /^\d+$/.test(req.query.excludeId)) {
+      clauses.push('t.id != ?');
+      params.push(Number(req.query.excludeId));
+    }
     if (q && q.trim()) {
       const trimmed = q.trim();
       const asId = /^\d+$/.test(trimmed) ? Number(trimmed) : null;

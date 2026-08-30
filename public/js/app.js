@@ -258,6 +258,7 @@
       bulk_selected_count: 'Selezionati:', toast_bulk_assigned: 'Ticket assegnati', toast_bulk_status_updated: 'Stato aggiornato sui ticket selezionati',
       add_tag_placeholder: 'Aggiungi etichetta e premi invio',
       linked_tickets_title: 'Ticket collegati', link_ticket_placeholder: 'Numero ticket (es. 12)', btn_link_ticket: 'Collega',
+      similar_tickets_title: 'Ticket simili', no_similar_tickets_hint: 'Nessun ticket simile trovato nella stessa categoria.', toast_ticket_linked: 'Ticket collegato',
       no_linked_tickets_hint: 'Nessun ticket collegato.',
       btn_watch: 'Segui', btn_unwatch: 'Non seguire più', toast_now_watching: 'Ora segui questo ticket', toast_stopped_watching: 'Non segui più questo ticket',
       assets_hint: 'Inventario dispositivi, assegnazioni permanenti e prestiti.', new_asset_title: 'Nuovo asset',
@@ -450,6 +451,7 @@
       bulk_selected_count: 'Selected:', toast_bulk_assigned: 'Tickets assigned', toast_bulk_status_updated: 'Status updated on selected tickets',
       add_tag_placeholder: 'Add a tag and press enter',
       linked_tickets_title: 'Linked tickets', link_ticket_placeholder: 'Ticket number (e.g. 12)', btn_link_ticket: 'Link',
+      similar_tickets_title: 'Similar tickets', no_similar_tickets_hint: 'No similar tickets found in the same category.', toast_ticket_linked: 'Ticket linked',
       no_linked_tickets_hint: 'No linked tickets.',
       btn_watch: 'Watch', btn_unwatch: 'Unwatch', toast_now_watching: 'You are now watching this ticket', toast_stopped_watching: 'You stopped watching this ticket',
       assets_hint: 'Device inventory, permanent assignments and loans.', new_asset_title: 'New asset',
@@ -2223,6 +2225,12 @@
             <p class="error-text" id="linkTicketError"></p>
           </div>` : ''}
 
+          ${isStaff() && !readOnly ? `
+          <div class="card" style="margin-bottom:1rem">
+            <h3 class="section-title" style="margin-top:0">${icon('activity')} ${t('similar_tickets_title')}</h3>
+            <div id="similarTicketsList" class="linked-tickets-list spinner-row">${t('loading')}</div>
+          </div>` : ''}
+
           <div class="card">
             <h3 class="section-title" style="margin-top:0">${t('activity_title')}</h3>
             <div id="activityList" class="activity-timeline">
@@ -2483,6 +2491,39 @@
           errEl.textContent = err.message;
         }
       });
+    }
+
+    const similarTicketsList = document.getElementById('similarTicketsList');
+    if (similarTicketsList) {
+      (async () => {
+        try {
+          const params = new URLSearchParams({ category: ticket.category, excludeId: String(ticket.id) });
+          const { tickets: similar } = await api(`/tickets?${params.toString()}`);
+          const top = similar.slice(0, 5);
+          similarTicketsList.className = 'linked-tickets-list';
+          similarTicketsList.innerHTML = top.length ? top.map((s) => `
+            <div class="linked-ticket-row">
+              <a href="#/ticket/${s.id}">#${s.id} ${escapeHtml(s.subject)}</a>
+              <span class="badge badge-${s.status}">${statusLabels()[s.status] || s.status}</span>
+              ${ticketLinks.some((l) => l.linked_ticket_id === s.id) ? '' : `<button type="button" class="btn btn-ghost btn-sm quickLinkBtn" data-id="${s.id}">${t('btn_link_ticket')}</button>`}
+            </div>`).join('') : `<p class="hint">${t('no_similar_tickets_hint')}</p>`;
+
+          similarTicketsList.querySelectorAll('.quickLinkBtn').forEach((btn) => {
+            btn.addEventListener('click', async () => {
+              try {
+                await api(`/tickets/${ticket.id}/links`, { method: 'POST', body: { linkedTicketId: Number(btn.dataset.id) } });
+                showToast(t('toast_ticket_linked'), 'success');
+                renderTicketDetail(ticket.id);
+              } catch (err) {
+                showToast(err.message, 'error');
+              }
+            });
+          });
+        } catch {
+          similarTicketsList.className = '';
+          similarTicketsList.innerHTML = '';
+        }
+      })();
     }
 
     const watchToggleBtn = document.getElementById('watchToggleBtn');
