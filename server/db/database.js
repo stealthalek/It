@@ -201,6 +201,18 @@ async function setupSchema() {
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         PRIMARY KEY (ticket_id, user_id)
       )`,
+      `CREATE TABLE IF NOT EXISTS ticket_templates (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        category TEXT,
+        subject TEXT NOT NULL,
+        description TEXT NOT NULL,
+        priority TEXT CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
+        type TEXT CHECK (type IN ('incident', 'task')),
+        position INTEGER NOT NULL DEFAULT 0,
+        created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`,
       'CREATE INDEX IF NOT EXISTS idx_tickets_created_by ON tickets(created_by)',
       'CREATE INDEX IF NOT EXISTS idx_tickets_assigned_to ON tickets(assigned_to)',
       'CREATE INDEX IF NOT EXISTS idx_comments_ticket_id ON comments(ticket_id)',

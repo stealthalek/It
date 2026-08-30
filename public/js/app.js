@@ -329,6 +329,9 @@
       admin_canned_title: 'Risposte rapide', admin_canned_hint: 'Testi pronti che il personale può inserire velocemente nei commenti dei ticket.',
       field_canned_title: 'Titolo', field_canned_body: 'Testo della risposta', btn_add_canned: 'Aggiungi risposta rapida', no_canned_hint: 'Nessuna risposta rapida configurata.',
       toast_canned_added: 'Risposta rapida aggiunta', toast_canned_deleted: 'Risposta rapida eliminata',
+      admin_templates_title: 'Modelli ticket', admin_templates_hint: 'Modelli predefiniti per velocizzare l\'apertura di richieste ricorrenti, selezionabili dall\'utente nel modulo di nuovo ticket.',
+      field_template_name: 'Nome modello', btn_add_template: 'Aggiungi modello', no_templates_hint: 'Nessun modello configurato.',
+      toast_template_added: 'Modello aggiunto', toast_template_deleted: 'Modello eliminato',
       field_group_name: 'Nome gruppo', field_parent_group: 'Gruppo padre', option_no_parent: 'Nessuno (primo livello)',
       field_response_hours: 'Risposta (h)', field_resolve_hours: 'Risoluzione (h)', field_shift_start: 'Inizio turno', field_shift_end: 'Fine turno',
       btn_create_group: 'Crea gruppo', delete_group_title: 'Elimina gruppo', shift_from_label: 'Turno dalle', shift_to_label: 'alle',
@@ -361,6 +364,7 @@
       passwords_mismatch: 'Le password non coincidono', toast_welcome_back: 'Bentornato', toast_account_created: 'Account creato, benvenuto',
       new_ticket_title: 'Nuovo ticket', new_ticket_hint: 'Raccontaci il problema: bastano pochi campi, il resto lo segue il nostro team.',
       field_request_type: 'Tipo di richiesta', type_incident_suffix: '— qualcosa non funziona', type_task_suffix: '— richiesta pianificabile',
+      field_template: 'Parti da un modello', template_blank_option: 'Nessun modello (parti da zero)',
       field_category: 'Categoria', field_subject_placeholder: 'Un breve titolo per il problema', field_urgency: 'Quanto è urgente?',
       category_search_placeholder: 'Cerca una categoria (es. laptop, arredamento, marketing...)',
       category_selected_label: 'Categoria selezionata:', field_parent_category: 'Categoria principale',
@@ -511,6 +515,9 @@
       admin_canned_title: 'Canned responses', admin_canned_hint: 'Ready-made text that staff can quickly insert into ticket comments.',
       field_canned_title: 'Title', field_canned_body: 'Response text', btn_add_canned: 'Add canned response', no_canned_hint: 'No canned responses configured.',
       toast_canned_added: 'Canned response added', toast_canned_deleted: 'Canned response deleted',
+      admin_templates_title: 'Ticket templates', admin_templates_hint: 'Preset templates to speed up opening recurring requests, selectable by users on the new-ticket form.',
+      field_template_name: 'Template name', btn_add_template: 'Add template', no_templates_hint: 'No templates configured.',
+      toast_template_added: 'Template added', toast_template_deleted: 'Template deleted',
       field_group_name: 'Group name', field_parent_group: 'Parent group', option_no_parent: 'None (top level)',
       field_response_hours: 'Response (h)', field_resolve_hours: 'Resolution (h)', field_shift_start: 'Shift start', field_shift_end: 'Shift end',
       btn_create_group: 'Create group', delete_group_title: 'Delete group', shift_from_label: 'Shift from', shift_to_label: 'to',
@@ -543,6 +550,7 @@
       passwords_mismatch: 'Passwords do not match', toast_welcome_back: 'Welcome back', toast_account_created: 'Account created, welcome',
       new_ticket_title: 'New ticket', new_ticket_hint: 'Tell us about the problem: just a few fields, our team takes care of the rest.',
       field_request_type: 'Request type', type_incident_suffix: '— something isn\'t working', type_task_suffix: '— schedulable request',
+      field_template: 'Start from a template', template_blank_option: 'No template (start from scratch)',
       field_category: 'Category', field_subject_placeholder: 'A short title for the issue', field_urgency: 'How urgent is it?',
       category_search_placeholder: 'Search a category (e.g. laptop, furniture, marketing...)',
       category_selected_label: 'Selected category:', field_parent_category: 'Parent category',
@@ -1799,6 +1807,7 @@
   async function renderNewTicket() {
     let categories = [];
     let customFields = [];
+    let templates = [];
     try {
       const data = await api('/categories');
       categories = data.categories;
@@ -1807,6 +1816,10 @@
       const data = await api('/custom-fields');
       customFields = data.fields;
     } catch { customFields = []; }
+    try {
+      const data = await api('/ticket-templates');
+      templates = data.templates;
+    } catch { templates = []; }
 
     appEl.innerHTML = `
       <div class="view-header">
@@ -1817,6 +1830,14 @@
       </div>
       <div class="card" style="max-width:720px">
         <form id="newTicketForm" class="form-grid" style="max-width:none">
+          ${templates.length ? `
+          <div class="field">
+            <label for="templateSelect">${t('field_template')}</label>
+            <select id="templateSelect">
+              <option value="">${t('template_blank_option')}</option>
+              ${templates.map((tpl) => `<option value="${tpl.id}">${escapeHtml(tpl.name)}</option>`).join('')}
+            </select>
+          </div>` : ''}
           <div class="field-row">
             <div class="field">
               <label for="type">${t('field_request_type')}</label>
@@ -1979,6 +2000,26 @@
     renderCategoryTree('');
     renderCustomFieldsSection();
     categorySearchInput.addEventListener('input', () => renderCategoryTree(categorySearchInput.value));
+
+    const templateSelect = document.getElementById('templateSelect');
+    if (templateSelect) {
+      templateSelect.addEventListener('change', () => {
+        const tpl = templates.find((t2) => String(t2.id) === templateSelect.value);
+        if (!tpl) return;
+        document.getElementById('subject').value = tpl.subject;
+        document.getElementById('description').value = tpl.description;
+        if (tpl.priority) document.getElementById('priority').value = tpl.priority;
+        if (tpl.type) document.getElementById('type').value = tpl.type;
+        const catRow = categories.find((c) => c.name === tpl.category);
+        if (catRow) {
+          selectedCategory = catRow.name;
+          if (catRow.parent_id) expandedMacroId = catRow.parent_id;
+          updateCategorySelectedHint();
+          renderCategoryTree(categorySearchInput.value);
+          renderCustomFieldsSection();
+        }
+      });
+    }
 
     guardForm(document.getElementById('newTicketForm'), async () => {
       const errEl = document.getElementById('newTicketError');
@@ -2827,6 +2868,25 @@
           <p class="error-text" id="cannedError"></p>
           <div id="cannedList" class="spinner-row">${t('loading')}</div>
         </div>
+        <div class="card admin-grid-full">
+          <h3 class="section-title" style="margin-top:0">${icon('plus')} ${t('admin_templates_title')}</h3>
+          <p class="hint">${t('admin_templates_hint')}</p>
+          <form id="newTemplateForm" class="form-grid" style="max-width:none;margin:0.75rem 0">
+            <div class="field-row">
+              <div class="field"><label for="newTemplateName">${t('field_template_name')}</label><input id="newTemplateName" required /></div>
+              <div class="field"><label for="newTemplateCategory">${t('field_category')}</label><select id="newTemplateCategory"><option value="">${t('option_none')}</option></select></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label for="newTemplatePriority">${t('field_urgency')}</label><select id="newTemplatePriority"><option value="">${t('option_none')}</option>${Object.entries(priorityLabels()).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select></div>
+              <div class="field"><label for="newTemplateType">${t('field_request_type')}</label><select id="newTemplateType"><option value="">${t('option_none')}</option>${Object.entries(typeLabels()).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select></div>
+            </div>
+            <div class="field"><label for="newTemplateSubject">${t('field_subject')}</label><input id="newTemplateSubject" required /></div>
+            <div class="field"><label for="newTemplateDescription">${t('field_description')}</label><textarea id="newTemplateDescription" rows="3" required></textarea></div>
+            <div><button class="btn btn-sm" type="submit">${t('btn_add_template')}</button></div>
+          </form>
+          <p class="error-text" id="templateError"></p>
+          <div id="templatesList" class="spinner-row">${t('loading')}</div>
+        </div>
       </div>` : ''}
       <div id="usersWrap" class="card spinner-row">${t('loading')}</div>`;
 
@@ -3462,6 +3522,75 @@
       });
 
       loadCannedResponses();
+
+      async function loadTemplateCategoryOptions() {
+        try {
+          const { categories: cats } = await api('/categories');
+          const leafCats = cats.filter((c) => c.parent_id).sort((a, b) => a.name.localeCompare(b.name));
+          document.getElementById('newTemplateCategory').innerHTML = `<option value="">${t('option_none')}</option>` +
+            leafCats.map((c) => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join('');
+        } catch {}
+      }
+
+      async function loadTemplates() {
+        const listEl = document.getElementById('templatesList');
+        listEl.className = 'spinner-row';
+        listEl.textContent = t('loading');
+        try {
+          const { templates } = await api('/ticket-templates');
+          listEl.className = '';
+          listEl.innerHTML = templates.length ? templates.map((tpl) => `
+            <div class="rule-row">
+              <div class="rule-row-head">
+                <strong>${escapeHtml(tpl.name)}</strong>
+                ${tpl.category ? `<span class="badge badge-in_progress">${escapeHtml(tpl.category)}</span>` : ''}
+                <button type="button" class="icon-btn deleteTemplateBtn" data-id="${tpl.id}" title="${t('delete_category_title')}">${icon('trash')}</button>
+              </div>
+              <p class="hint" style="margin:0.3rem 0 0">${escapeHtml(tpl.subject)}</p>
+            </div>`).join('') : `<p class="hint">${t('no_templates_hint')}</p>`;
+
+          listEl.querySelectorAll('.deleteTemplateBtn').forEach((btn) => {
+            btn.addEventListener('click', async () => {
+              try {
+                await api(`/ticket-templates/${btn.dataset.id}`, { method: 'DELETE' });
+                showToast(t('toast_template_deleted'), 'success');
+                loadTemplates();
+              } catch (err) {
+                showToast(err.message, 'error');
+              }
+            });
+          });
+        } catch (err) {
+          listEl.className = '';
+          listEl.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
+        }
+      }
+
+      guardForm(document.getElementById('newTemplateForm'), async () => {
+        const errEl = document.getElementById('templateError');
+        errEl.textContent = '';
+        try {
+          await api('/ticket-templates', {
+            method: 'POST',
+            body: {
+              name: document.getElementById('newTemplateName').value.trim(),
+              category: document.getElementById('newTemplateCategory').value || null,
+              priority: document.getElementById('newTemplatePriority').value || null,
+              type: document.getElementById('newTemplateType').value || null,
+              subject: document.getElementById('newTemplateSubject').value.trim(),
+              description: document.getElementById('newTemplateDescription').value.trim(),
+            },
+          });
+          document.getElementById('newTemplateForm').reset();
+          showToast(t('toast_template_added'), 'success');
+          loadTemplates();
+        } catch (err) {
+          errEl.textContent = err.message;
+        }
+      });
+
+      loadTemplateCategoryOptions();
+      loadTemplates();
     }
 
     let allUsersCache = [];
