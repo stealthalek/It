@@ -84,6 +84,7 @@
 
   const ICON_PATHS = {
     plus: '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
+    search: '<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
     ticket: '<path d="M3 8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4V8z"/>',
     users: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
     lock: '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
@@ -259,6 +260,8 @@
       add_tag_placeholder: 'Aggiungi etichetta e premi invio',
       linked_tickets_title: 'Ticket collegati', link_ticket_placeholder: 'Numero ticket (es. 12)', btn_link_ticket: 'Collega',
       similar_tickets_title: 'Ticket simili', no_similar_tickets_hint: 'Nessun ticket simile trovato nella stessa categoria.', toast_ticket_linked: 'Ticket collegato',
+      quick_jump_placeholder: 'Cerca ticket, persone, asset...', quick_jump_hint: 'Digita per cercare tra ticket, persone e asset.', quick_jump_empty: 'Nessun risultato.',
+      quick_jump_tickets: 'Ticket', quick_jump_people: 'Persone', quick_jump_assets: 'Asset',
       no_linked_tickets_hint: 'Nessun ticket collegato.',
       btn_watch: 'Segui', btn_unwatch: 'Non seguire più', toast_now_watching: 'Ora segui questo ticket', toast_stopped_watching: 'Non segui più questo ticket',
       assets_hint: 'Inventario dispositivi, assegnazioni permanenti e prestiti.', new_asset_title: 'Nuovo asset',
@@ -452,6 +455,8 @@
       add_tag_placeholder: 'Add a tag and press enter',
       linked_tickets_title: 'Linked tickets', link_ticket_placeholder: 'Ticket number (e.g. 12)', btn_link_ticket: 'Link',
       similar_tickets_title: 'Similar tickets', no_similar_tickets_hint: 'No similar tickets found in the same category.', toast_ticket_linked: 'Ticket linked',
+      quick_jump_placeholder: 'Search tickets, people, assets...', quick_jump_hint: 'Type to search across tickets, people and assets.', quick_jump_empty: 'No results.',
+      quick_jump_tickets: 'Tickets', quick_jump_people: 'People', quick_jump_assets: 'Assets',
       no_linked_tickets_hint: 'No linked tickets.',
       btn_watch: 'Watch', btn_unwatch: 'Unwatch', toast_now_watching: 'You are now watching this ticket', toast_stopped_watching: 'You stopped watching this ticket',
       assets_hint: 'Device inventory, permanent assignments and loans.', new_asset_title: 'New asset',
@@ -706,6 +711,7 @@
       userBadge.style.display = '';
       logoutBtn.style.display = '';
       notifBtn.style.display = '';
+      quickJumpBtn.style.display = '';
       if (!notifSocket) {
         loadNotifications();
         connectNotifSocket();
@@ -714,6 +720,7 @@
       userBadge.style.display = 'none';
       logoutBtn.style.display = 'none';
       notifBtn.style.display = 'none';
+      quickJumpBtn.style.display = 'none';
       notifDropdown.hidden = true;
       notifBadge.hidden = true;
       teardownNotifSocket();
@@ -962,6 +969,129 @@
   const settingsBtn = document.getElementById('settingsBtn');
   settingsBtn.innerHTML = icon('settings');
   settingsBtn.addEventListener('click', () => { location.hash = '#/settings'; });
+
+  const quickJumpBtn = document.getElementById('quickJumpBtn');
+  const quickJumpOverlay = document.getElementById('quickJumpOverlay');
+  const quickJumpInput = document.getElementById('quickJumpInput');
+  const quickJumpResults = document.getElementById('quickJumpResults');
+  quickJumpBtn.innerHTML = icon('search');
+
+  let quickJumpDebounce;
+  let quickJumpActiveIndex = -1;
+
+  function openQuickJump() {
+    if (!state.user) return;
+    quickJumpOverlay.hidden = false;
+    quickJumpInput.placeholder = t('quick_jump_placeholder');
+    quickJumpInput.value = '';
+    quickJumpResults.innerHTML = `<p class="cmdk-hint">${t('quick_jump_hint')}</p>`;
+    quickJumpActiveIndex = -1;
+    setTimeout(() => quickJumpInput.focus(), 0);
+  }
+  function closeQuickJump() {
+    quickJumpOverlay.hidden = true;
+  }
+  quickJumpBtn.addEventListener('click', openQuickJump);
+  quickJumpOverlay.addEventListener('click', (e) => { if (e.target === quickJumpOverlay) closeQuickJump(); });
+
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      if (quickJumpOverlay.hidden) openQuickJump(); else closeQuickJump();
+    } else if (e.key === 'Escape' && !quickJumpOverlay.hidden) {
+      closeQuickJump();
+    }
+  });
+
+  function updateQuickJumpActive(items) {
+    items.forEach((it, i) => it.classList.toggle('cmdk-item-active', i === quickJumpActiveIndex));
+    if (quickJumpActiveIndex >= 0) items[quickJumpActiveIndex].scrollIntoView({ block: 'nearest' });
+  }
+
+  function renderQuickJumpResults(groups) {
+    quickJumpActiveIndex = -1;
+    if (!groups.length) {
+      quickJumpResults.innerHTML = `<p class="cmdk-empty">${t('quick_jump_empty')}</p>`;
+      return;
+    }
+    quickJumpResults.innerHTML = groups.map((g) => `
+      <div class="cmdk-group">
+        <div class="cmdk-group-label">${escapeHtml(g.label)}</div>
+        ${g.items.map((item) => `<button type="button" class="cmdk-item" data-hash="${escapeHtml(item.hash)}" ${item.presetQuery ? `data-preset="${escapeHtml(item.presetQuery)}"` : ''}>${escapeHtml(item.label)}</button>`).join('')}
+      </div>`).join('');
+
+    quickJumpResults.querySelectorAll('.cmdk-item').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        if (btn.dataset.preset) sessionStorage.setItem('ticketing_assets_query', btn.dataset.preset);
+        location.hash = btn.dataset.hash;
+        closeQuickJump();
+      });
+    });
+  }
+
+  async function runQuickJump(query) {
+    const trimmed = query.trim();
+    if (!trimmed) {
+      quickJumpResults.innerHTML = `<p class="cmdk-hint">${t('quick_jump_hint')}</p>`;
+      return;
+    }
+    const groups = [];
+    try {
+      const { tickets } = await api(`/tickets?q=${encodeURIComponent(trimmed)}`);
+      if (tickets.length) {
+        groups.push({
+          label: t('quick_jump_tickets'),
+          items: tickets.slice(0, 5).map((tk) => ({ label: `#${tk.id} ${tk.subject}`, hash: `#/ticket/${tk.id}` })),
+        });
+      }
+    } catch {}
+    if (isStaff()) {
+      try {
+        const { users } = await api('/users');
+        const lower = trimmed.toLowerCase();
+        const matches = users.filter((u) => u.name.toLowerCase().includes(lower) || u.email.toLowerCase().includes(lower));
+        if (matches.length) {
+          groups.push({
+            label: t('quick_jump_people'),
+            items: matches.slice(0, 5).map((u) => ({ label: `${u.name} · ${u.email}`, hash: `#/users/${u.id}` })),
+          });
+        }
+      } catch {}
+      try {
+        const { assets } = await api(`/assets?q=${encodeURIComponent(trimmed)}`);
+        if (assets.length) {
+          groups.push({
+            label: t('quick_jump_assets'),
+            items: assets.slice(0, 5).map((a) => ({ label: `${a.name}${a.tag ? ' · ' + a.tag : ''}`, hash: '#/assets', presetQuery: a.tag || a.name })),
+          });
+        }
+      } catch {}
+    }
+    renderQuickJumpResults(groups);
+  }
+
+  quickJumpInput.addEventListener('input', () => {
+    clearTimeout(quickJumpDebounce);
+    quickJumpDebounce = setTimeout(() => runQuickJump(quickJumpInput.value), 200);
+  });
+
+  quickJumpInput.addEventListener('keydown', (e) => {
+    const items = [...quickJumpResults.querySelectorAll('.cmdk-item')];
+    if (!items.length) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      quickJumpActiveIndex = Math.min(quickJumpActiveIndex + 1, items.length - 1);
+      updateQuickJumpActive(items);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      quickJumpActiveIndex = Math.max(quickJumpActiveIndex - 1, 0);
+      updateQuickJumpActive(items);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const target = quickJumpActiveIndex >= 0 ? items[quickJumpActiveIndex] : items[0];
+      if (target) target.click();
+    }
+  });
 
   const notifBtn = document.getElementById('notifBtn');
   const notifBadge = document.getElementById('notifBadge');

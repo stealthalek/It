@@ -54,6 +54,7 @@
           <span></span><span></span><span></span>
         </button>
         <div class="topbar-spacer"></div>
+        <button id="quickJumpBtn" class="topbar-icon-btn" type="button" title="Ricerca rapida (Ctrl+K)" aria-label="Ricerca rapida" style="display:none"></button>
         <button id="installBtn" class="topbar-icon-btn" type="button" title="Installa l'app" aria-label="Installa l'app" style="display:none"></button>
         <div class="notif-wrap">
           <button id="notifBtn" class="topbar-icon-btn" type="button" title="Notifiche" aria-label="Notifiche" style="display:none">
@@ -71,6 +72,13 @@
 </div>
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<div id="quickJumpOverlay" class="cmdk-overlay" hidden>
+  <div class="cmdk-modal" role="dialog" aria-modal="true">
+    <input id="quickJumpInput" class="cmdk-input" type="text" autocomplete="off" />
+    <div id="quickJumpResults" class="cmdk-results"></div>
+  </div>
+</div>
 
 <script src="js/app.js" defer></script>
 </body>

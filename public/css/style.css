@@ -1650,3 +1650,57 @@ body:not(.role-customer):not(.role-agent):not(.role-admin) .nav-toggle { display
 }
 .org-children > .org-branch:first-child::after { left: 50%; }
 .org-children > .org-branch:last-child::after { right: 50%; }
+
+.cmdk-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 12, 8, 0.45);
+  z-index: 60;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 10vh 1rem 1rem;
+}
+.cmdk-overlay[hidden] { display: none; }
+.cmdk-modal {
+  width: 100%;
+  max-width: 560px;
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  animation: fadeInUp 0.15s ease;
+}
+.cmdk-input {
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  padding: 1rem 1.25rem;
+  font-size: 1.05rem;
+  background: transparent;
+  color: var(--text);
+}
+.cmdk-input:focus { outline: none; }
+.cmdk-results { max-height: 55vh; overflow-y: auto; padding: 0.5rem; }
+.cmdk-group-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  padding: 0.5rem 0.75rem 0.25rem;
+}
+.cmdk-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.6rem 0.75rem;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 0.92rem;
+  cursor: pointer;
+}
+.cmdk-item:hover, .cmdk-item-active { background: var(--surface-alt); }
+.cmdk-hint, .cmdk-empty { padding: 1.25rem; color: var(--muted); font-size: 0.9rem; text-align: center; }
