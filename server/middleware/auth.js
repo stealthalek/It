@@ -19,7 +19,12 @@ async function authenticate(req, res, next) {
   }
 
   try {
-    const user = await db.get('SELECT id, name, email, role, is_super_admin, group_id FROM users WHERE id = ?', [payload.sub]);
+    const user = await db.get(
+      `SELECT id, name, email, role, is_super_admin, group_id,
+         (SELECT COUNT(*) FROM users r WHERE r.manager_id = users.id) > 0 AS is_manager
+       FROM users WHERE id = ?`,
+      [payload.sub]
+    );
     if (!user) {
       return res.status(401).json({ error: 'Utente non valido' });
     }

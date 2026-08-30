@@ -291,7 +291,120 @@ async function setupSchema() {
   );
 }
 
+async function rebuildTableIfDangling(tableName, danglingRef, createSql, columns) {
+  const info = await get("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?", [tableName]);
+  if (!info || !info.sql.includes(danglingRef)) return;
+  await run(createSql);
+  await run(`INSERT INTO ${tableName}_fixed (${columns}) SELECT ${columns} FROM ${tableName}`);
+  await run(`DROP TABLE ${tableName}`);
+  await run(`ALTER TABLE ${tableName}_fixed RENAME TO ${tableName}`);
+}
+
+async function repairDanglingTicketReferences() {
+  const stale = await all(
+    "SELECT name FROM sqlite_master WHERE type = 'table' AND sql LIKE '%tickets_old%'"
+  );
+  if (!stale.length) return;
+
+  await run('PRAGMA foreign_keys = OFF');
+  await rebuildTableIfDangling(
+    'comments', 'tickets_old',
+    `CREATE TABLE comments_fixed (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      message TEXT NOT NULL,
+      is_internal INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now'))
+    )`,
+    'id, ticket_id, user_id, message, is_internal, created_at'
+  );
+  await rebuildTableIfDangling(
+    'ticket_events', 'tickets_old',
+    `CREATE TABLE ticket_events_fixed (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+      actor_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      message TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now'))
+    )`,
+    'id, ticket_id, actor_id, message, created_at'
+  );
+  await rebuildTableIfDangling(
+    'notifications', 'tickets_old',
+    `CREATE TABLE notifications_fixed (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      ticket_id INTEGER REFERENCES tickets(id) ON DELETE CASCADE,
+      message TEXT NOT NULL,
+      is_read INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now'))
+    )`,
+    'id, user_id, ticket_id, message, is_read, created_at'
+  );
+  await rebuildTableIfDangling(
+    'ticket_custom_values', 'tickets_old',
+    `CREATE TABLE ticket_custom_values_fixed (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+      field_id INTEGER NOT NULL REFERENCES custom_fields(id) ON DELETE CASCADE,
+      value TEXT,
+      UNIQUE(ticket_id, field_id)
+    )`,
+    'id, ticket_id, field_id, value'
+  );
+  await rebuildTableIfDangling(
+    'ticket_attachments', 'tickets_old',
+    `CREATE TABLE ticket_attachments_fixed (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+      comment_id INTEGER REFERENCES comments(id) ON DELETE CASCADE,
+      uploaded_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      file_name TEXT NOT NULL,
+      mime_type TEXT NOT NULL,
+      size_bytes INTEGER NOT NULL,
+      data TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )`,
+    'id, ticket_id, comment_id, uploaded_by, file_name, mime_type, size_bytes, data, created_at'
+  );
+  await rebuildTableIfDangling(
+    'ticket_tags', 'tickets_old',
+    `CREATE TABLE ticket_tags_fixed (
+      ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+      tag_id INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+      PRIMARY KEY (ticket_id, tag_id)
+    )`,
+    'ticket_id, tag_id'
+  );
+  await rebuildTableIfDangling(
+    'ticket_links', 'tickets_old',
+    `CREATE TABLE ticket_links_fixed (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+      linked_ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+      created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(ticket_id, linked_ticket_id)
+    )`,
+    'id, ticket_id, linked_ticket_id, created_by, created_at'
+  );
+  await rebuildTableIfDangling(
+    'ticket_watchers', 'tickets_old',
+    `CREATE TABLE ticket_watchers_fixed (
+      ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (ticket_id, user_id)
+    )`,
+    'ticket_id, user_id, created_at'
+  );
+  await run('PRAGMA foreign_keys = ON');
+}
+
 async function migrate() {
+  await repairDanglingTicketReferences();
+
   const groupCols = await all('PRAGMA table_info(groups)');
   if (groupCols.length && !groupCols.some((c) => c.name === 'parent_id')) {
     await run('ALTER TABLE groups ADD COLUMN parent_id INTEGER REFERENCES groups(id) ON DELETE SET NULL');
@@ -403,8 +516,8 @@ async function migrate() {
 
   const ticketsTable = await get("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'tickets'");
   if (ticketsTable && ticketsTable.sql && !ticketsTable.sql.includes('waiting_customer')) {
-    await run('ALTER TABLE tickets RENAME TO tickets_old');
-    await run(`CREATE TABLE tickets (
+    await run('PRAGMA foreign_keys = OFF');
+    await run(`CREATE TABLE tickets_new (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       subject TEXT NOT NULL,
       description TEXT NOT NULL,
@@ -422,9 +535,11 @@ async function migrate() {
       waiting_since TEXT,
       sla_paused_ms INTEGER NOT NULL DEFAULT 0
     )`);
-    await run(`INSERT INTO tickets (id, subject, description, status, priority, type, category, created_by, assigned_to, created_at, updated_at, group_id, resolved_at, asset_id, waiting_since, sla_paused_ms)
-      SELECT id, subject, description, status, priority, type, category, created_by, assigned_to, created_at, updated_at, group_id, resolved_at, asset_id, waiting_since, sla_paused_ms FROM tickets_old`);
-    await run('DROP TABLE tickets_old');
+    await run(`INSERT INTO tickets_new (id, subject, description, status, priority, type, category, created_by, assigned_to, created_at, updated_at, group_id, resolved_at, asset_id, waiting_since, sla_paused_ms)
+      SELECT id, subject, description, status, priority, type, category, created_by, assigned_to, created_at, updated_at, group_id, resolved_at, asset_id, waiting_since, sla_paused_ms FROM tickets`);
+    await run('DROP TABLE tickets');
+    await run('ALTER TABLE tickets_new RENAME TO tickets');
+    await run('PRAGMA foreign_keys = ON');
   }
 
   const ticketCols3 = await all('PRAGMA table_info(tickets)');
@@ -454,6 +569,7 @@ async function migrate() {
 
   const assetsTable = await get("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'assets'");
   if (assetsTable && assetsTable.sql && !assetsTable.sql.includes("'tablet'")) {
+    await run('PRAGMA foreign_keys = OFF');
     await run(`CREATE TABLE assets_new (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
@@ -469,6 +585,7 @@ async function migrate() {
       SELECT id, name, asset_type, tag, status, assignment_type, assigned_to, due_date, created_at FROM assets`);
     await run('DROP TABLE assets');
     await run('ALTER TABLE assets_new RENAME TO assets');
+    await run('PRAGMA foreign_keys = ON');
   }
 
   const onboardingTypeCount = await get('SELECT COUNT(*) AS n FROM onboarding_item_types');

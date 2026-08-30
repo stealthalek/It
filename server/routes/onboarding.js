@@ -7,7 +7,15 @@ const { notifyUser } = require('../notifications');
 
 const router = express.Router();
 router.use(authenticate);
-router.use(requireRole('agent', 'admin'));
+
+function requireOnboardingAccess(req, res, next) {
+  const isStaffUser = req.user.role === 'agent' || req.user.role === 'admin';
+  if (!isStaffUser && !req.user.is_manager) {
+    return res.status(403).json({ error: 'Permessi insufficienti' });
+  }
+  next();
+}
+router.use(requireOnboardingAccess);
 
 const KINDS = ['checkbox', 'license', 'copy_user', 'asset'];
 const ASSET_TYPES = ['laptop', 'desktop', 'monitor', 'telefono', 'tablet', 'altro'];

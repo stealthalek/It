@@ -408,6 +408,8 @@ svg { display: block; }
 body.role-customer .main-nav a.logged-in-only, body.role-agent .main-nav a.logged-in-only, body.role-admin .main-nav a.logged-in-only { display: flex; }
 .main-nav a.staff-only { display: none; }
 body.role-agent .main-nav a.staff-only, body.role-admin .main-nav a.staff-only { display: flex; }
+.main-nav a.onboarding-nav { display: none; }
+body.role-agent .main-nav a.onboarding-nav, body.role-admin .main-nav a.onboarding-nav, body.is-manager .main-nav a.onboarding-nav { display: flex; }
 .main-nav a.admin-only { display: none; }
 body.role-admin .main-nav a.admin-only { display: flex; }
 .main-nav a.super-admin-only { display: none; }
@@ -534,6 +536,22 @@ body:not(.role-customer):not(.role-agent):not(.role-admin) .nav-toggle { display
   box-shadow: var(--shadow);
   padding: 1.4rem;
 }
+
+.callout-link {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  background: var(--primary-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.9rem 1.2rem;
+  max-width: 720px;
+  color: var(--text);
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.callout-link:hover { border-color: var(--primary); box-shadow: var(--shadow); text-decoration: none; }
+.callout-link-icon { flex: 0 0 auto; color: var(--primary); width: 1.6rem; height: 1.6rem; }
+.callout-link-arrow { flex: 0 0 auto; margin-left: auto; transform: rotate(-90deg); color: var(--muted); }
 
 .form-grid {
   display: grid;

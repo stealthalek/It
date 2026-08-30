@@ -36,8 +36,12 @@ function issueToken(user) {
   return jwt.sign({ sub: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
 }
 
-function publicUser(user) {
-  return { id: user.id, name: user.name, email: user.email, role: user.role, is_super_admin: !!user.is_super_admin };
+async function publicUser(user) {
+  const rep = await db.get('SELECT COUNT(*) AS n FROM users WHERE manager_id = ?', [user.id]);
+  return {
+    id: user.id, name: user.name, email: user.email, role: user.role,
+    is_super_admin: !!user.is_super_admin, is_manager: rep.n > 0,
+  };
 }
 
 async function findOrCreateSsoUser(email, name) {
@@ -87,7 +91,7 @@ router.post(
 
     const user = await db.get('SELECT id, name, email, role FROM users WHERE id = ?', [Number(info.lastInsertRowid)]);
     const token = issueToken(user);
-    res.status(201).json({ token, user: publicUser(user) });
+    res.status(201).json({ token, user: await publicUser(user) });
   })
 );
 
@@ -106,7 +110,7 @@ router.post(
     }
 
     const token = issueToken(user);
-    res.json({ token, user: publicUser(user) });
+    res.json({ token, user: await publicUser(user) });
   })
 );
 
@@ -126,7 +130,7 @@ router.post(
       const { email, name } = await verifyGoogleCredential(credential);
       const user = await findOrCreateSsoUser(email, name);
       const token = issueToken(user);
-      res.json({ token, user: publicUser(user) });
+      res.json({ token, user: await publicUser(user) });
     } catch (err) {
       res.status(401).json({ error: 'Accesso con Google non riuscito' });
     }
@@ -145,7 +149,7 @@ router.post(
       const { email, name } = await verifyMicrosoftToken(idToken);
       const user = await findOrCreateSsoUser(email, name);
       const token = issueToken(user);
-      res.json({ token, user: publicUser(user) });
+      res.json({ token, user: await publicUser(user) });
     } catch (err) {
       res.status(401).json({ error: 'Accesso con Microsoft non riuscito' });
     }

@@ -451,6 +451,7 @@
       onboarding_status_open: 'Aperto', onboarding_status_in_progress: 'In lavorazione', onboarding_status_completed: 'Completato', onboarding_status_cancelled: 'Annullato',
       onboarding_item_pending: 'Da fare', onboarding_item_done: 'Completato', onboarding_item_skipped: 'Saltato',
       onboarding_kind_checkbox: 'Attivazione semplice', onboarding_kind_license: 'Con licenza', onboarding_kind_copy_user: 'Copia utenza da collega', onboarding_kind_asset: 'Genera asset',
+      onboarding_callout_title: 'Devi far entrare una nuova persona in azienda?', onboarding_callout_hint: 'Avvia una pratica di onboarding: postazione, accessi e account, tutto tracciato in un unico posto.',
     },
     en: {
       nav_dashboard: 'Tickets', nav_new: 'New ticket', nav_search: 'Search', nav_backlog: 'Backlog',
@@ -677,6 +678,7 @@
       onboarding_status_open: 'Open', onboarding_status_in_progress: 'In progress', onboarding_status_completed: 'Completed', onboarding_status_cancelled: 'Cancelled',
       onboarding_item_pending: 'To do', onboarding_item_done: 'Done', onboarding_item_skipped: 'Skipped',
       onboarding_kind_checkbox: 'Simple activation', onboarding_kind_license: 'With license', onboarding_kind_copy_user: 'Copy entitlements from colleague', onboarding_kind_asset: 'Generate asset',
+      onboarding_callout_title: 'Bringing a new person on board?', onboarding_callout_hint: 'Start an onboarding request: workstation, access and accounts, all tracked in one place.',
     },
   };
   const LANG_LABELS = { it: 'Italiano', en: 'English' };
@@ -790,10 +792,11 @@
   }
 
   function updateChrome() {
-    document.body.classList.remove('role-customer', 'role-agent', 'role-admin', 'super-admin');
+    document.body.classList.remove('role-customer', 'role-agent', 'role-admin', 'super-admin', 'is-manager');
     if (state.user) {
       document.body.classList.add(`role-${state.user.role}`);
       if (state.user.is_super_admin) document.body.classList.add('super-admin');
+      if (state.user.is_manager) document.body.classList.add('is-manager');
       userBadge.innerHTML = `${icon('userCircle')} <span>${escapeHtml(state.user.name)} · ${roleLabels()[state.user.role] || state.user.role}</span>`;
       userBadge.style.display = '';
       logoutBtn.style.display = '';
@@ -1514,6 +1517,10 @@
     return state.user && (state.user.role === 'agent' || state.user.role === 'admin');
   }
 
+  function canAccessOnboarding() {
+    return isStaff() || (state.user && state.user.is_manager);
+  }
+
   function resolveCssColor(value) {
     if (!value || !value.startsWith('var(')) return value;
     const varName = value.slice(4, -1).trim();
@@ -2119,6 +2126,15 @@
           <p class="hint">${t('new_ticket_hint')}</p>
         </div>
       </div>
+      ${canAccessOnboarding() ? `
+      <a href="#/onboarding/new" class="callout-link" style="margin-bottom:1.25rem">
+        ${icon('userCircle', 'callout-link-icon')}
+        <div>
+          <strong>${t('onboarding_callout_title')}</strong>
+          <p class="hint" style="margin:0.15rem 0 0">${t('onboarding_callout_hint')}</p>
+        </div>
+        ${icon('chevronDown', 'callout-link-arrow')}
+      </a>` : ''}
       <div class="card" style="max-width:720px">
         <form id="newTicketForm" class="form-grid" style="max-width:none">
           ${templates.length ? `
@@ -4405,7 +4421,7 @@
       });
       const detailManager = document.getElementById('detailManager');
       if (detailManager) {
-        const managerOptions = allUsers.filter((u) => (u.role === 'agent' || u.role === 'admin') && u.id !== user.id);
+        const managerOptions = allUsers.filter((u) => u.id !== user.id).sort((a, b) => a.name.localeCompare(b.name));
         detailManager.innerHTML = `<option value="">${t('option_none')}</option>` +
           managerOptions.map((u) => `<option value="${u.id}" ${user.manager_id === u.id ? 'selected' : ''}>${escapeHtml(u.name)}</option>`).join('');
         detailManager.addEventListener('change', async (e) => {
@@ -4825,6 +4841,10 @@
   }
 
   async function renderOnboarding(param) {
+    if (!canAccessOnboarding()) {
+      appEl.innerHTML = `<div class="card"><p class="error-text">Accesso non consentito.</p></div>`;
+      return;
+    }
     if (param === 'new') return renderOnboardingForm();
     if (param) return renderOnboardingDetail(param);
     return renderOnboardingList();
