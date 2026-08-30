@@ -195,6 +195,12 @@ async function setupSchema() {
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         UNIQUE(ticket_id, linked_ticket_id)
       )`,
+      `CREATE TABLE IF NOT EXISTS ticket_watchers (
+        ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        PRIMARY KEY (ticket_id, user_id)
+      )`,
       'CREATE INDEX IF NOT EXISTS idx_tickets_created_by ON tickets(created_by)',
       'CREATE INDEX IF NOT EXISTS idx_tickets_assigned_to ON tickets(assigned_to)',
       'CREATE INDEX IF NOT EXISTS idx_comments_ticket_id ON comments(ticket_id)',

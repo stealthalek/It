@@ -233,6 +233,13 @@ async function runAutomationRules(ticketId, triggerEvent, actorId) {
   if (finalTicket) realtime.broadcastTicketUpdate(ticketId, withSla(finalTicket));
 }
 
+async function listWatchers(ticketId) {
+  return db.all(
+    `SELECT u.id, u.name FROM ticket_watchers w JOIN users u ON u.id = w.user_id WHERE w.ticket_id = ? ORDER BY u.name ASC`,
+    [ticketId]
+  );
+}
+
 async function listTicketLinks(ticketId) {
   return db.all(
     `SELECT l.id, t.id AS linked_ticket_id, t.subject AS linked_subject, t.status AS linked_status
@@ -400,7 +407,34 @@ router.get(
     const customFieldValues = await listCustomValues(ticket.id);
     const tags = await listTicketTags(ticket.id);
     const links = await listTicketLinks(ticket.id);
-    res.json({ ticket: withSla(ticket), activity, customFieldValues, tags, links });
+    const watchers = await listWatchers(ticket.id);
+    const isWatching = isStaff(req.user) && watchers.some((w) => w.id === req.user.id);
+    res.json({ ticket: withSla(ticket), activity, customFieldValues, tags, links, watchers, isWatching });
+  })
+);
+
+router.post(
+  '/:id/watch',
+  asyncHandler(async (req, res) => {
+    const ticket = await getTicketOr404(req, res);
+    if (!ticket) return;
+    if (!isStaff(req.user)) {
+      return res.status(403).json({ error: 'Solo lo staff può seguire un ticket' });
+    }
+    await db.run('INSERT OR IGNORE INTO ticket_watchers (ticket_id, user_id) VALUES (?, ?)', [ticket.id, req.user.id]);
+    const watchers = await listWatchers(ticket.id);
+    res.status(201).json({ watchers, isWatching: true });
+  })
+);
+
+router.delete(
+  '/:id/watch',
+  asyncHandler(async (req, res) => {
+    const ticket = await getTicketOr404(req, res);
+    if (!ticket) return;
+    await db.run('DELETE FROM ticket_watchers WHERE ticket_id = ? AND user_id = ?', [ticket.id, req.user.id]);
+    const watchers = await listWatchers(ticket.id);
+    res.json({ watchers, isWatching: false });
   })
 );
 
@@ -704,6 +738,15 @@ router.patch(
         en: `Ticket #${ticket.id} is awaiting your reply: ${ticket.subject}`,
       }).catch(() => {});
     }
+    if (events.length) {
+      const watchers = await listWatchers(ticket.id);
+      watchers.filter((w) => w.id !== req.user.id).forEach((w) => {
+        notifyUser(w.id, ticket.id, {
+          it: `Il ticket #${ticket.id} che segui è stato aggiornato: ${ticket.subject}`,
+          en: `Ticket #${ticket.id} you follow was updated: ${ticket.subject}`,
+        }).catch(() => {});
+      });
+    }
     res.json({ ticket: updated });
   })
 );
@@ -775,6 +818,8 @@ router.post(
     } else if (ticket.assigned_to && ticket.assigned_to !== req.user.id) {
       notifyTargets.add(ticket.assigned_to);
     }
+    const watchers = await listWatchers(ticket.id);
+    watchers.forEach((w) => { if (w.id !== req.user.id) notifyTargets.add(w.id); });
     for (const targetId of notifyTargets) {
       notifyUser(targetId, ticket.id, {
         it: `Nuovo messaggio sul ticket #${ticket.id}: ${ticket.subject}`,

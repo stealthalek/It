@@ -258,6 +258,7 @@
       add_tag_placeholder: 'Aggiungi etichetta e premi invio',
       linked_tickets_title: 'Ticket collegati', link_ticket_placeholder: 'Numero ticket (es. 12)', btn_link_ticket: 'Collega',
       no_linked_tickets_hint: 'Nessun ticket collegato.',
+      btn_watch: 'Segui', btn_unwatch: 'Non seguire più', toast_now_watching: 'Ora segui questo ticket', toast_stopped_watching: 'Non segui più questo ticket',
       assets_hint: 'Inventario dispositivi, assegnazioni permanenti e prestiti.', new_asset_title: 'Nuovo asset',
       field_name: 'Nome', field_tag: 'Tag/matricola', btn_add_asset: 'Aggiungi asset',
       table_type: 'Tipo', table_tag: 'Tag', table_status: 'Stato', table_assignment: 'Assegnazione', table_due_date: 'Scadenza',
@@ -439,6 +440,7 @@
       add_tag_placeholder: 'Add a tag and press enter',
       linked_tickets_title: 'Linked tickets', link_ticket_placeholder: 'Ticket number (e.g. 12)', btn_link_ticket: 'Link',
       no_linked_tickets_hint: 'No linked tickets.',
+      btn_watch: 'Watch', btn_unwatch: 'Unwatch', toast_now_watching: 'You are now watching this ticket', toast_stopped_watching: 'You stopped watching this ticket',
       assets_hint: 'Device inventory, permanent assignments and loans.', new_asset_title: 'New asset',
       field_name: 'Name', field_tag: 'Tag/asset number', btn_add_asset: 'Add asset',
       table_type: 'Type', table_tag: 'Tag', table_status: 'Status', table_assignment: 'Assignment', table_due_date: 'Due date',
@@ -2009,9 +2011,11 @@
       return;
     }
 
-    const { ticket, activity, customFieldValues, tags, links } = data;
+    const { ticket, activity, customFieldValues, tags, links, watchers } = data;
     let ticketTags = tags || [];
     let ticketLinks = links || [];
+    let isWatching = !!data.isWatching;
+    let ticketWatchers = watchers || [];
     const readOnly = !!state.viewAs;
     const isOwner = ticket.created_by === state.user.id;
     const canEditFields = (isOwner || isStaff()) && !readOnly;
@@ -2084,7 +2088,10 @@
     appEl.innerHTML = `
       <div class="view-header">
         <h1>#${ticket.id} ${escapeHtml(ticket.subject)}</h1>
-        <a class="btn btn-ghost" href="#/dashboard">${icon('arrowLeft')} ${t('back_to_list')}</a>
+        <div style="display:flex;gap:0.5rem">
+          ${isStaff() && !readOnly ? `<button type="button" id="watchToggleBtn" class="btn btn-ghost">${icon(isWatching ? 'eyeOff' : 'eye')} <span id="watchToggleLabel">${isWatching ? t('btn_unwatch') : t('btn_watch')}</span>${ticketWatchers.length ? ` (${ticketWatchers.length})` : ''}</button>` : ''}
+          <a class="btn btn-ghost" href="#/dashboard">${icon('arrowLeft')} ${t('back_to_list')}</a>
+        </div>
       </div>
       <div id="presenceBanner" class="presence-banner" hidden></div>
       <div class="ticket-detail-grid">
@@ -2420,6 +2427,21 @@
           renderLinkedTickets();
         } catch (err) {
           errEl.textContent = err.message;
+        }
+      });
+    }
+
+    const watchToggleBtn = document.getElementById('watchToggleBtn');
+    if (watchToggleBtn) {
+      watchToggleBtn.addEventListener('click', async () => {
+        try {
+          const res = await api(`/tickets/${ticket.id}/watch`, { method: isWatching ? 'DELETE' : 'POST' });
+          isWatching = res.isWatching;
+          ticketWatchers = res.watchers;
+          watchToggleBtn.innerHTML = `${icon(isWatching ? 'eyeOff' : 'eye')} <span id="watchToggleLabel">${isWatching ? t('btn_unwatch') : t('btn_watch')}</span>${ticketWatchers.length ? ` (${ticketWatchers.length})` : ''}`;
+          showToast(isWatching ? t('toast_now_watching') : t('toast_stopped_watching'), 'success');
+        } catch (err) {
+          showToast(err.message, 'error');
         }
       });
     }
