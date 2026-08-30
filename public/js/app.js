@@ -152,6 +152,26 @@
     return d.toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   }
 
+  function exportFilename(base, ext) {
+    return `${base}-${new Date().toISOString().slice(0, 10)}.${ext}`;
+  }
+
+  function csvEscape(value) {
+    const str = String(value ?? '');
+    return /[",\n;]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
+  }
+
+  function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
   function showToast(message, type = '', duration = 3200) {
     toastEl.textContent = message;
     toastEl.className = 'toast show' + (type ? ` ${type}` : '');
@@ -178,7 +198,7 @@
   const TRANSLATIONS = {
     it: {
       nav_dashboard: 'Ticket', nav_new: 'Nuovo ticket', nav_search: 'Ricerca', nav_backlog: 'Backlog',
-      nav_assets: 'Asset', nav_report: 'Report', nav_admin: 'Amministrazione', nav_profile: 'Profilo', logout: 'Esci',
+      nav_assets: 'Asset', nav_report: 'Report', nav_audit: 'Audit', nav_admin: 'Amministrazione', nav_profile: 'Profilo', logout: 'Esci',
       login_title: 'Accedi', login_hint: 'Entra nella piattaforma di ticketing.', login_email: 'Email', login_password: 'Password',
       login_submit: 'Accedi', login_no_account: 'Non hai un account?', login_register_link: 'Registrati',
       register_title: 'Crea un account', register_submit: 'Registrati',
@@ -251,6 +271,11 @@
       report_col_requester_email: 'Email richiedente', report_col_assignee: 'Assegnatario',
       report_col_created: 'Creato il', report_col_resolved: 'Risolto il', report_col_resolution_hours: 'Ore di risoluzione',
       report_col_sla: 'SLA',
+      audit_hint: 'Traccia completa di ogni modifica e messaggio su tutti i ticket, incluse le note interne — pensata per revisioni e controlli esterni.',
+      audit_search_placeholder: 'Cerca per testo, autore o numero ticket...',
+      audit_kind_event: 'Modifica', audit_kind_comment: 'Messaggio', audit_kind_internal_note: 'Nota interna',
+      audit_col_date: 'Data e ora', audit_col_ticket: 'Ticket', audit_col_subject: 'Oggetto ticket', audit_col_kind: 'Tipo',
+      audit_col_actor: 'Autore', audit_col_message: 'Dettaglio',
       your_account_title: 'Il tuo account', change_password_title: 'Cambia password',
       current_password_label: 'Password attuale', new_password_label: 'Nuova password',
       confirm_new_password_label: 'Conferma nuova password', btn_update_password: 'Aggiorna password',
@@ -324,7 +349,7 @@
     },
     en: {
       nav_dashboard: 'Tickets', nav_new: 'New ticket', nav_search: 'Search', nav_backlog: 'Backlog',
-      nav_assets: 'Assets', nav_report: 'Report', nav_admin: 'Administration', nav_profile: 'Profile', logout: 'Log out',
+      nav_assets: 'Assets', nav_report: 'Report', nav_audit: 'Audit', nav_admin: 'Administration', nav_profile: 'Profile', logout: 'Log out',
       login_title: 'Sign in', login_hint: 'Enter the ticketing platform.', login_email: 'Email', login_password: 'Password',
       login_submit: 'Sign in', login_no_account: "Don't have an account?", login_register_link: 'Register',
       register_title: 'Create an account', register_submit: 'Register',
@@ -397,6 +422,11 @@
       report_col_requester_email: 'Requester email', report_col_assignee: 'Assignee',
       report_col_created: 'Created at', report_col_resolved: 'Resolved at', report_col_resolution_hours: 'Resolution hours',
       report_col_sla: 'SLA',
+      audit_hint: 'Complete trail of every change and message across all tickets, including internal notes — built for review and external audits.',
+      audit_search_placeholder: 'Search by text, author, or ticket number...',
+      audit_kind_event: 'Change', audit_kind_comment: 'Message', audit_kind_internal_note: 'Internal note',
+      audit_col_date: 'Date & time', audit_col_ticket: 'Ticket', audit_col_subject: 'Ticket subject', audit_col_kind: 'Type',
+      audit_col_actor: 'Author', audit_col_message: 'Detail',
       your_account_title: 'Your account', change_password_title: 'Change password',
       current_password_label: 'Current password', new_password_label: 'New password',
       confirm_new_password_label: 'Confirm new password', btn_update_password: 'Update password',
@@ -486,11 +516,11 @@
 
   const NAV_KEY_BY_ROUTE = {
     dashboard: 'nav_dashboard', new: 'nav_new', search: 'nav_search', backlog: 'nav_backlog',
-    assets: 'nav_assets', report: 'nav_report', admin: 'nav_admin', profile: 'nav_profile',
+    assets: 'nav_assets', report: 'nav_report', audit: 'nav_audit', admin: 'nav_admin', profile: 'nav_profile',
   };
   const NAV_ICON_BY_ROUTE = {
     dashboard: 'ticket', new: 'plus', search: 'inbox', backlog: 'check',
-    assets: 'monitor', report: 'activity', admin: 'shield', profile: 'userCircle',
+    assets: 'monitor', report: 'activity', audit: 'eye', admin: 'shield', profile: 'userCircle',
   };
 
   function applyChromeTranslations() {
@@ -580,9 +610,10 @@
   }
 
   function updateChrome() {
-    document.body.classList.remove('role-customer', 'role-agent', 'role-admin');
+    document.body.classList.remove('role-customer', 'role-agent', 'role-admin', 'super-admin');
     if (state.user) {
       document.body.classList.add(`role-${state.user.role}`);
+      if (state.user.is_super_admin) document.body.classList.add('super-admin');
       userBadge.innerHTML = `${icon('userCircle')} <span>${escapeHtml(state.user.name)} · ${roleLabels()[state.user.role] || state.user.role}</span>`;
       userBadge.style.display = '';
       logoutBtn.style.display = '';
@@ -995,6 +1026,7 @@
         case 'assets': return renderAssets();
         case 'search': return renderSearch();
         case 'report': return renderReport();
+        case 'audit': return renderAudit();
         default: return renderNotFound();
       }
     } catch (err) {
@@ -2536,20 +2568,46 @@
           const groupSelect = document.getElementById('newCategoryGroup');
           groupSelect.innerHTML = groupOptionsHtml(groups, '', t('option_none'));
 
-          const parentSelect = document.getElementById('newCategoryParent');
           const topLevel = categories.filter((c) => !c.parent_id).sort((a, b) => a.name.localeCompare(b.name));
+          const parentSelect = document.getElementById('newCategoryParent');
           parentSelect.innerHTML = `<option value="">${t('option_top_level_category')}</option>` +
             topLevel.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
 
-          const flat = flattenGroupTree(buildGroupTree(categories));
+          const subsByParent = new Map();
+          categories.filter((c) => c.parent_id).forEach((c) => {
+            if (!subsByParent.has(c.parent_id)) subsByParent.set(c.parent_id, []);
+            subsByParent.get(c.parent_id).push(c);
+          });
+          subsByParent.forEach((list) => list.sort((a, b) => a.name.localeCompare(b.name)));
+
+          function categoryRowHtml(c) {
+            return `
+              <div class="category-row">
+                <span class="category-row-icon">${icon(c.icon || 'ticket')}</span>
+                <span class="category-row-name">${escapeHtml(c.name)}</span>
+                <select class="categoryGroupSel" data-id="${c.id}">${groupOptionsHtml(groups, c.default_group_id, t('option_none'))}</select>
+                <button type="button" class="icon-btn deleteCategoryBtn" data-id="${c.id}" title="${t('delete_category_title')}">${icon('trash')}</button>
+              </div>`;
+          }
+
           listEl.className = '';
-          listEl.innerHTML = flat.length ? flat.map((c) => `
-            <div class="category-row" style="padding-left:${c.depth * 1.6}rem">
-              <span class="category-row-icon">${icon(c.icon || 'ticket')}</span>
-              <span class="category-row-name">${c.depth ? '– ' : ''}${escapeHtml(c.name)}</span>
-              <select class="categoryGroupSel" data-id="${c.id}">${groupOptionsHtml(groups, c.default_group_id, t('option_none'))}</select>
-              <button type="button" class="icon-btn deleteCategoryBtn" data-id="${c.id}" title="${t('delete_category_title')}">${icon('trash')}</button>
-            </div>`).join('') : `<p class="hint">${t('no_categories_hint')}</p>`;
+          listEl.innerHTML = topLevel.length ? topLevel.map((macro) => {
+            const subs = subsByParent.get(macro.id) || [];
+            if (!subs.length) return categoryRowHtml(macro);
+            return `
+              <details class="category-macro-block">
+                <summary class="category-macro-summary">
+                  ${icon(macro.icon || 'ticket')}
+                  <span class="category-macro-summary-name">${escapeHtml(macro.name)}</span>
+                  <span class="category-macro-count">${subs.length}</span>
+                  ${icon('chevronDown', 'category-chevron')}
+                </summary>
+                <div class="category-sub-list">
+                  ${categoryRowHtml(macro)}
+                  ${subs.map(categoryRowHtml).join('')}
+                </div>
+              </details>`;
+          }).join('') : `<p class="hint">${t('no_categories_hint')}</p>`;
 
           listEl.querySelectorAll('.categoryGroupSel').forEach((sel) => {
             sel.addEventListener('change', async () => {
@@ -3266,33 +3324,13 @@
       }));
     }
 
-    function exportFilename(ext) {
-      return `report-ticket-${new Date().toISOString().slice(0, 10)}.${ext}`;
-    }
-
-    function csvEscape(value) {
-      const str = String(value ?? '');
-      return /[",\n;]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
-    }
-
-    function downloadBlob(blob, filename) {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-    }
-
     exportCsvBtn.addEventListener('click', () => {
       const rows = buildExportRows();
       if (!rows.length) { showToast(t('toast_export_no_data'), 'error'); return; }
       const headers = Object.keys(rows[0]);
       const lines = [headers.join(',')].concat(rows.map((r) => headers.map((h) => csvEscape(r[h])).join(',')));
       const blob = new Blob([`﻿${lines.join('\r\n')}`], { type: 'text/csv;charset=utf-8;' });
-      downloadBlob(blob, exportFilename('csv'));
+      downloadBlob(blob, exportFilename('report-ticket', 'csv'));
     });
 
     exportExcelBtn.addEventListener('click', async () => {
@@ -3306,7 +3344,7 @@
         const sheet = window.XLSX.utils.json_to_sheet(rows);
         const wb = window.XLSX.utils.book_new();
         window.XLSX.utils.book_append_sheet(wb, sheet, t('nav_report'));
-        window.XLSX.writeFile(wb, exportFilename('xlsx'));
+        window.XLSX.writeFile(wb, exportFilename('report-ticket', 'xlsx'));
       } catch {
         showToast(t('toast_export_failed'), 'error');
       } finally {
@@ -3316,6 +3354,122 @@
     });
 
     renderAll();
+  }
+
+  async function renderAudit() {
+    appEl.innerHTML = `
+      <div class="view-header">
+        <div>
+          <h1>${icon('eye')} ${t('nav_audit')}</h1>
+          <p class="hint">${t('audit_hint')}</p>
+        </div>
+      </div>
+      <div class="filters">
+        <input type="date" id="auditDateFrom" title="${t('report_date_from')}" />
+        <input type="date" id="auditDateTo" title="${t('report_date_to')}" />
+        <input type="search" id="auditSearch" placeholder="${t('audit_search_placeholder')}" style="flex:1 1 16rem" />
+      </div>
+      <div class="report-export-bar">
+        <button type="button" id="auditExportCsvBtn" class="btn btn-ghost">${icon('download')} ${t('btn_export_csv')}</button>
+        <button type="button" id="auditExportExcelBtn" class="btn btn-ghost">${icon('download')} ${t('btn_export_excel')}</button>
+        <span class="hint" id="auditResultCount"></span>
+      </div>
+      <div id="auditList" class="spinner-row">${t('loading')}</div>`;
+
+    const listEl = document.getElementById('auditList');
+    const dateFromEl = document.getElementById('auditDateFrom');
+    const dateToEl = document.getElementById('auditDateTo');
+    const searchEl = document.getElementById('auditSearch');
+    const resultCountEl = document.getElementById('auditResultCount');
+    const exportCsvBtn = document.getElementById('auditExportCsvBtn');
+    const exportExcelBtn = document.getElementById('auditExportExcelBtn');
+
+    let currentEntries = [];
+    let debounceTimer;
+
+    async function load() {
+      listEl.className = 'spinner-row';
+      listEl.textContent = t('loading');
+      const params = new URLSearchParams();
+      if (dateFromEl.value) params.set('from', dateFromEl.value);
+      if (dateToEl.value) params.set('to', dateToEl.value);
+      if (searchEl.value.trim()) params.set('q', searchEl.value.trim());
+      try {
+        const { entries } = await api(`/audit?${params.toString()}`);
+        currentEntries = entries;
+        resultCountEl.textContent = `${t('report_export_count_label')} ${entries.length}`;
+        if (!entries.length) {
+          listEl.className = '';
+          listEl.innerHTML = `<div class="empty-state">${icon('inbox')}<span>${t('no_results')}</span></div>`;
+          return;
+        }
+        listEl.className = 'audit-list';
+        listEl.innerHTML = entries.map((e) => `
+          <div class="audit-row">
+            <div class="audit-row-time">${formatDate(e.created_at)}</div>
+            <div class="audit-row-body">
+              <div class="audit-row-head">
+                <a href="#/ticket/${e.ticket_id}" class="audit-row-ticket">#${e.ticket_id} ${escapeHtml(e.ticket_subject)}</a>
+                <span class="badge ${e.kind === 'comment' ? 'badge-in_progress' : 'badge-closed'}">${e.kind === 'comment' ? (e.is_internal ? t('audit_kind_internal_note') : t('audit_kind_comment')) : t('audit_kind_event')}</span>
+              </div>
+              <p class="audit-row-message">${escapeHtml(e.message)}</p>
+              <p class="hint">${t('by_label')} ${escapeHtml(e.actor_name || t('unassigned_label'))}</p>
+            </div>
+          </div>`).join('');
+      } catch (err) {
+        listEl.className = '';
+        listEl.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
+      }
+    }
+
+    dateFromEl.addEventListener('change', load);
+    dateToEl.addEventListener('change', load);
+    searchEl.addEventListener('input', () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(load, 300);
+    });
+
+    function buildExportRows() {
+      return currentEntries.map((e) => ({
+        [t('audit_col_date')]: e.created_at,
+        [t('audit_col_ticket')]: `#${e.ticket_id}`,
+        [t('audit_col_subject')]: e.ticket_subject,
+        [t('audit_col_kind')]: e.kind === 'comment' ? (e.is_internal ? t('audit_kind_internal_note') : t('audit_kind_comment')) : t('audit_kind_event'),
+        [t('audit_col_actor')]: e.actor_name || '',
+        [t('audit_col_message')]: e.message,
+      }));
+    }
+
+    exportCsvBtn.addEventListener('click', () => {
+      const rows = buildExportRows();
+      if (!rows.length) { showToast(t('toast_export_no_data'), 'error'); return; }
+      const headers = Object.keys(rows[0]);
+      const lines = [headers.join(',')].concat(rows.map((r) => headers.map((h) => csvEscape(r[h])).join(',')));
+      const blob = new Blob([`﻿${lines.join('\r\n')}`], { type: 'text/csv;charset=utf-8;' });
+      downloadBlob(blob, exportFilename('audit-log', 'csv'));
+    });
+
+    exportExcelBtn.addEventListener('click', async () => {
+      const rows = buildExportRows();
+      if (!rows.length) { showToast(t('toast_export_no_data'), 'error'); return; }
+      const originalLabel = exportExcelBtn.innerHTML;
+      exportExcelBtn.disabled = true;
+      exportExcelBtn.innerHTML = `${icon('download')} ${t('loading')}`;
+      try {
+        if (!window.XLSX) await loadScriptOnce('vendor/xlsx.full.min.js');
+        const sheet = window.XLSX.utils.json_to_sheet(rows);
+        const wb = window.XLSX.utils.book_new();
+        window.XLSX.utils.book_append_sheet(wb, sheet, t('nav_audit'));
+        window.XLSX.writeFile(wb, exportFilename('audit-log', 'xlsx'));
+      } catch {
+        showToast(t('toast_export_failed'), 'error');
+      } finally {
+        exportExcelBtn.disabled = false;
+        exportExcelBtn.innerHTML = originalLabel;
+      }
+    });
+
+    load();
   }
 
   function renderProfile() {
