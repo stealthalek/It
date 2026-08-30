@@ -512,11 +512,153 @@ async function seedAppSettings() {
   }
 }
 
+async function seedDefaultAssets() {
+  const row = await get('SELECT COUNT(*) AS n FROM assets');
+  if (row.n > 0) return;
+
+  const items = [
+    ['Laptop Dell Latitude 5440', 'laptop', 'IT-LT-0001'],
+    ['Laptop Dell Latitude 5440', 'laptop', 'IT-LT-0002'],
+    ['Laptop Dell Latitude 5440', 'laptop', 'IT-LT-0003'],
+    ['Laptop Lenovo ThinkPad T14', 'laptop', 'IT-LT-0004'],
+    ['Laptop Lenovo ThinkPad T14', 'laptop', 'IT-LT-0005'],
+    ['MacBook Pro 14"', 'laptop', 'IT-LT-0006'],
+    ['MacBook Air 13"', 'laptop', 'IT-LT-0007'],
+    ['Desktop HP EliteDesk 800', 'desktop', 'IT-DT-0001'],
+    ['Desktop HP EliteDesk 800', 'desktop', 'IT-DT-0002'],
+    ['Desktop Dell OptiPlex 7010', 'desktop', 'IT-DT-0003'],
+    ['Workstation Dell Precision 3660', 'desktop', 'IT-DT-0004'],
+    ['Monitor Dell UltraSharp 24"', 'monitor', 'IT-MN-0001'],
+    ['Monitor Dell UltraSharp 24"', 'monitor', 'IT-MN-0002'],
+    ['Monitor Dell UltraSharp 27"', 'monitor', 'IT-MN-0003'],
+    ['Monitor LG 27" 4K', 'monitor', 'IT-MN-0004'],
+    ['Monitor LG 27" 4K', 'monitor', 'IT-MN-0005'],
+    ['iPhone 14', 'telefono', 'IT-PH-0001'],
+    ['iPhone 14', 'telefono', 'IT-PH-0002'],
+    ['iPhone 15 Pro', 'telefono', 'IT-PH-0003'],
+    ['Samsung Galaxy S23', 'telefono', 'IT-PH-0004'],
+    ['Samsung Galaxy A54', 'telefono', 'IT-PH-0005'],
+    ['Stampante multifunzione HP LaserJet', 'altro', 'IT-PR-0001'],
+    ['Stampante multifunzione Canon', 'altro', 'IT-PR-0002'],
+    ['Router Wi-Fi Ubiquiti UniFi', 'altro', 'IT-NW-0001'],
+    ['Switch di rete Cisco 24 porte', 'altro', 'IT-NW-0002'],
+    ['Webcam Logitech Brio', 'altro', 'IT-AC-0001'],
+    ['Cuffie Jabra Evolve2', 'altro', 'IT-AC-0002'],
+    ['Docking station Dell WD19', 'altro', 'IT-AC-0003'],
+    ['Tablet iPad Air', 'altro', 'IT-TB-0001'],
+    ['Proiettore Epson sala riunioni', 'altro', 'IT-AC-0004'],
+  ];
+
+  for (let i = 0; i < items.length; i += 1) {
+    const [name, assetType, tag] = items[i];
+    const status = i % 11 === 0 ? 'in_riparazione' : i % 5 === 3 ? 'in_uso' : 'disponibile';
+    await run('INSERT INTO assets (name, asset_type, tag, status, assignment_type) VALUES (?, ?, ?, ?, ?)', [
+      name, assetType, tag, status, 'permanente',
+    ]);
+  }
+}
+
+async function seedDefaultTags() {
+  const row = await get('SELECT COUNT(*) AS n FROM tags');
+  if (row.n > 0) return;
+
+  const tags = [
+    'urgente', 'hardware', 'software', 'rete', 'sicurezza', 'vip',
+    'recidivo', 'in-attesa-fornitore', 'da-verificare', 'escalation',
+    'cambio-standard', 'post-implementazione', 'formazione', 'bug', 'accesso-remoto',
+  ];
+  for (const name of tags) {
+    await run('INSERT INTO tags (name) VALUES (?)', [name]);
+  }
+}
+
+async function seedDefaultCannedResponses(adminId) {
+  const row = await get('SELECT COUNT(*) AS n FROM canned_responses');
+  if (row.n > 0) return;
+
+  const items = [
+    ['Presa in carico', 'Gentile utente,\n\nla ringraziamo per la segnalazione. Il ticket è stato preso in carico dal nostro team e verrà gestito con la massima priorità possibile.\n\nCordiali saluti'],
+    ['Richiesta informazioni aggiuntive', 'Gentile utente,\n\nper poter procedere con la risoluzione avremmo bisogno di alcune informazioni aggiuntive. Potrebbe fornirci maggiori dettagli sul problema riscontrato (es. screenshot, orario, dispositivo utilizzato)?\n\nGrazie per la collaborazione.'],
+    ['Risoluzione: riavvio del dispositivo', "Gentile utente,\n\nla invitiamo a riavviare il dispositivo e verificare se il problema persiste. In molti casi questa operazione risolve l'anomalia segnalata.\n\nResto a disposizione."],
+    ['Password reimpostata', 'Gentile utente,\n\nabbiamo reimpostato la password come richiesto. Le invieremo le nuove credenziali tramite canale sicuro. La invitiamo a modificarla al primo accesso.\n\nCordiali saluti'],
+    ['Ticket risolto - richiesta conferma', 'Gentile utente,\n\nil problema segnalato è stato risolto. La invitiamo a verificare e confermarci l\'esito, in modo da poter chiudere il ticket.\n\nGrazie'],
+    ['Escalation a livello 2', "Il ticket è stato inoltrato al team specialistico di secondo livello per un'analisi più approfondita. Verrà aggiornato non appena disponibili nuove informazioni."],
+    ['In attesa di componente', "Gentile utente,\n\nla richiesta necessita di un componente/materiale non attualmente disponibile a magazzino. Abbiamo attivato l'ordine e la aggiorneremo non appena ricevuto.\n\nCi scusiamo per l'attesa."],
+    ['Accesso VPN concesso', "Gentile utente,\n\nl'accesso VPN richiesto è stato configurato e attivato sul suo account. Troverà le istruzioni di connessione nella email dedicata.\n\nCordiali saluti"],
+    ['Chiusura per inattività', 'Il ticket viene chiuso per assenza di riscontro da parte dell\'utente. Qualora il problema dovesse ripresentarsi, la invitiamo ad aprire una nuova segnalazione o a riaprire questo ticket.'],
+    ['Segnalazione duplicata', 'Gentile utente,\n\nabbiamo rilevato che questa segnalazione risulta duplicata rispetto a un ticket già aperto. Procederemo con la gestione unificata sul ticket originale.\n\nGrazie per la comprensione.'],
+  ];
+  for (const [title, body] of items) {
+    await run('INSERT INTO canned_responses (title, body, created_by) VALUES (?, ?, ?)', [title, body, adminId]);
+  }
+}
+
+async function seedDefaultTicketTemplates(adminId) {
+  const row = await get('SELECT COUNT(*) AS n FROM ticket_templates');
+  if (row.n > 0) return;
+
+  const items = [
+    ['Nuovo dipendente - postazione completa', 'Nuovo account', 'Onboarding nuovo dipendente', 'Richiesta configurazione completa postazione di lavoro per nuovo assunto: account, PC, accessori, accessi software.', 'medium', 'task'],
+    ['Guasto laptop', 'Laptop', 'Laptop non si accende', 'Il laptop aziendale non si accende / non risponde. Descrivere eventuali segnali (led, ventole, rumori) e da quando si verifica il problema.', 'high', 'incident'],
+    ['Problema connessione Wi-Fi', 'Wi-Fi', 'Impossibile connettersi alla rete Wi-Fi aziendale', 'Il dispositivo non riesce a connettersi o si disconnette frequentemente dalla rete Wi-Fi aziendale.', 'medium', 'incident'],
+    ['Richiesta VPN', 'VPN', 'Attivazione accesso VPN', 'Richiesta di attivazione/configurazione accesso VPN per lavoro da remoto.', 'medium', 'task'],
+    ['Reset password account', 'Reset password', 'Impossibile accedere - password dimenticata', 'Richiesta di reimpostazione password per impossibilità di accesso all\'account aziendale.', 'high', 'incident'],
+    ['Richiesta nuovo software', 'Licenze software', 'Richiesta installazione/licenza software', 'Richiesta di installazione o acquisto licenza per un nuovo software necessario per l\'attività lavorativa.', 'low', 'task'],
+    ['Stampante non funzionante', 'Periferiche (mouse, tastiera, cuffie)', 'Stampante non stampa / errore', 'La stampante di reparto non stampa correttamente o segnala un errore. Indicare modello e messaggio di errore.', 'medium', 'incident'],
+    ['Richiesta nuovo monitor', 'Monitor', 'Richiesta assegnazione monitor aggiuntivo', 'Richiesta di assegnazione di un monitor aggiuntivo per la postazione di lavoro.', 'low', 'task'],
+    ['Segnalazione problema email', 'Email e posta elettronica', 'Problemi di invio/ricezione email', 'Impossibile inviare o ricevere email dall\'account aziendale. Specificare client utilizzato (webmail, Outlook, app mobile).', 'high', 'incident'],
+    ['Richiesta accesso a sistema esterno', 'Accesso a sistemi esterni', 'Richiesta credenziali per portale/sistema esterno', 'Richiesta di attivazione accesso a un sistema o portale esterno necessario per l\'attività lavorativa.', 'medium', 'task'],
+  ];
+  for (let i = 0; i < items.length; i += 1) {
+    const [name, category, subject, description, priority, type] = items[i];
+    await run(
+      'INSERT INTO ticket_templates (name, category, subject, description, priority, type, position, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [name, category, subject, description, priority, type, i, adminId]
+    );
+  }
+}
+
+async function seedDefaultHolidays() {
+  const row = await get('SELECT COUNT(*) AS n FROM holidays');
+  if (row.n > 0) return;
+
+  const items = [
+    ['2026-01-01', 'Capodanno'],
+    ['2026-01-06', 'Epifania'],
+    ['2026-04-05', 'Pasqua'],
+    ['2026-04-06', "Lunedì dell'Angelo"],
+    ['2026-04-25', 'Festa della Liberazione'],
+    ['2026-05-01', 'Festa dei Lavoratori'],
+    ['2026-06-02', 'Festa della Repubblica'],
+    ['2026-08-15', 'Ferragosto'],
+    ['2026-11-01', 'Ognissanti'],
+    ['2026-12-08', 'Immacolata Concezione'],
+    ['2026-12-25', 'Natale'],
+    ['2026-12-26', 'Santo Stefano'],
+    ['2027-01-01', 'Capodanno'],
+    ['2027-01-06', 'Epifania'],
+  ];
+  for (const [date, name] of items) {
+    await run('INSERT INTO holidays (date, name) VALUES (?, ?)', [date, name]);
+  }
+}
+
+async function seedDefaultContent() {
+  const admin = await get('SELECT id FROM users ORDER BY id ASC LIMIT 1');
+  const adminId = admin ? admin.id : null;
+  await seedDefaultAssets();
+  await seedDefaultTags();
+  await seedDefaultCannedResponses(adminId);
+  await seedDefaultTicketTemplates(adminId);
+  await seedDefaultHolidays();
+}
+
 async function initDb() {
   await setupSchema();
   await migrate();
   await seedDefaultAdmin();
   await seedAppSettings();
+  await seedDefaultContent();
   console.log(usingTurso ? 'Database: Turso (persistente)' : `Database: file locale (${url})`);
 }
 
