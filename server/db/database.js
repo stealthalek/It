@@ -223,6 +223,19 @@ async function migrate() {
   if (!categoryCols.some((c) => c.name === 'default_group_id')) {
     await run('ALTER TABLE categories ADD COLUMN default_group_id INTEGER REFERENCES groups(id) ON DELETE SET NULL');
   }
+  if (!categoryCols.some((c) => c.name === 'parent_id')) {
+    await run('ALTER TABLE categories ADD COLUMN parent_id INTEGER REFERENCES categories(id) ON DELETE CASCADE');
+  }
+
+  const deptDefaults = ['Facility Management', 'Marketing e Comunicazione', 'Acquisti e Fornitori'];
+  for (const name of deptDefaults) {
+    const existing = await get('SELECT id FROM groups WHERE name = ?', [name]);
+    if (!existing) {
+      await run('INSERT INTO groups (name, sla_response_hours, sla_resolve_hours) VALUES (?, 8, 48)', [name]);
+    }
+  }
+
+  await seedExpandedCategories();
 
   const ticketsTable = await get("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'tickets'");
   if (ticketsTable && ticketsTable.sql && !ticketsTable.sql.includes('waiting_customer')) {
@@ -270,12 +283,77 @@ async function seedDefaultGroups() {
   }
 }
 
-async function seedDefaultCategories() {
-  const row = await get('SELECT COUNT(*) AS n FROM categories');
-  if (row.n > 0) return;
-  const defaults = ['Hardware', 'Software', 'Rete', 'Account e accessi', 'Altro'];
-  for (const name of defaults) {
-    await run('INSERT INTO categories (name) VALUES (?)', [name]);
+async function seedExpandedCategories() {
+  const groupIdByName = {};
+  (await all('SELECT id, name FROM groups')).forEach((g) => { groupIdByName[g.name] = g.id; });
+
+  const tree = [
+    { name: 'Hardware', icon: 'monitor', children: [
+      { name: 'Laptop', icon: 'laptop', group: 'Endpoint' },
+      { name: 'Desktop', icon: 'monitor', group: 'Endpoint' },
+      { name: 'Monitor', icon: 'monitor', group: 'Endpoint' },
+      { name: 'Smartphone', icon: 'phone', group: 'Endpoint' },
+      { name: 'Tablet', icon: 'tablet', group: 'Endpoint' },
+      { name: 'Stampante', icon: 'printer', group: 'Endpoint' },
+      { name: 'Periferiche (mouse, tastiera, cuffie)', icon: 'grid', group: 'Endpoint' },
+    ] },
+    { name: 'Software', icon: 'globe', children: [
+      { name: 'Sistema operativo', icon: 'monitor', group: 'Endpoint' },
+      { name: 'Applicativi aziendali', icon: 'grid', group: 'Service Desk' },
+      { name: 'Browser', icon: 'globe', group: 'Service Desk' },
+      { name: 'Licenze software', icon: 'lock', group: 'Service Desk' },
+      { name: 'Email e posta elettronica', icon: 'mail', group: 'Service Desk' },
+    ] },
+    { name: 'Rete', icon: 'wifi', children: [
+      { name: 'Wi-Fi', icon: 'wifi', group: 'Network' },
+      { name: 'VPN', icon: 'shield', group: 'Network' },
+      { name: 'Cablaggio di rete', icon: 'server', group: 'Network' },
+      { name: 'Telefonia aziendale', icon: 'phone', group: 'Network' },
+    ] },
+    { name: 'Account e accessi', icon: 'lock', children: [
+      { name: 'Reset password', icon: 'lock', group: 'Service Desk' },
+      { name: 'Nuovo account', icon: 'users', group: 'Service Desk' },
+      { name: 'Permessi e ruoli', icon: 'shield', group: 'Security' },
+      { name: 'Accesso a sistemi esterni', icon: 'globe', group: 'Security' },
+    ] },
+    { name: 'Ufficio e Facility', icon: 'package', children: [
+      { name: 'Arredamento (mobili, scrivanie, sedie)', icon: 'package', group: 'Facility Management' },
+      { name: 'Cablaggio e impianti elettrici', icon: 'bulb', group: 'Facility Management' },
+      { name: 'Illuminazione', icon: 'bulb', group: 'Facility Management' },
+      { name: 'Climatizzazione', icon: 'refresh', group: 'Facility Management' },
+      { name: 'Sicurezza antincendio (estintori)', icon: 'flame', group: 'Facility Management' },
+      { name: 'Controllo accessi e badge', icon: 'lock', group: 'Facility Management' },
+      { name: 'Pulizie e manutenzione', icon: 'check', group: 'Facility Management' },
+    ] },
+    { name: 'Marketing e Comunicazione', icon: 'megaphone', children: [
+      { name: 'Materiali promozionali e stampe', icon: 'printer', group: 'Marketing e Comunicazione' },
+      { name: 'Eventi e fiere', icon: 'users', group: 'Marketing e Comunicazione' },
+      { name: 'Sito web e social media', icon: 'globe', group: 'Marketing e Comunicazione' },
+      { name: 'Gadget aziendali', icon: 'package', group: 'Marketing e Comunicazione' },
+    ] },
+    { name: 'Fornitori e Acquisti', icon: 'truck', children: [
+      { name: 'Nuovo fornitore', icon: 'users', group: 'Acquisti e Fornitori' },
+      { name: 'Ordini e materiale di consumo', icon: 'package', group: 'Acquisti e Fornitori' },
+      { name: 'Contratti e fatturazione', icon: 'mail', group: 'Acquisti e Fornitori' },
+      { name: 'Spedizioni e logistica', icon: 'truck', group: 'Acquisti e Fornitori' },
+    ] },
+    { name: 'Altro', icon: 'ticket', children: [] },
+  ];
+
+  for (const macro of tree) {
+    const macroRow = await get('SELECT id FROM categories WHERE name = ?', [macro.name]);
+    let macroId = macroRow ? macroRow.id : null;
+    if (!macroId) {
+      const info = await run('INSERT INTO categories (name, icon) VALUES (?, ?)', [macro.name, macro.icon]);
+      macroId = Number(info.lastInsertRowid);
+    }
+    for (const sub of macro.children) {
+      const existing = await get('SELECT id FROM categories WHERE name = ?', [sub.name]);
+      if (existing) continue;
+      await run('INSERT INTO categories (name, icon, parent_id, default_group_id) VALUES (?, ?, ?, ?)', [
+        sub.name, sub.icon, macroId, groupIdByName[sub.group] || null,
+      ]);
+    }
   }
 }
 
@@ -312,7 +390,6 @@ async function seedAppSettings() {
 async function initDb() {
   await setupSchema();
   await migrate();
-  await seedDefaultCategories();
   await seedDefaultAdmin();
   await seedAppSettings();
   console.log(usingTurso ? 'Database: Turso (persistente)' : `Database: file locale (${url})`);

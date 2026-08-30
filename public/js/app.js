@@ -114,9 +114,17 @@
     server: '<rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/>',
     phone: '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>',
     grid: '<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>',
+    laptop: '<path d="M20 16V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v9"/><path d="M2 16h20l1.28 2.55a1 1 0 0 1-.9 1.45H1.62a1 1 0 0 1-.9-1.45L2 16z"/>',
+    tablet: '<rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/>',
+    package: '<line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>',
+    bulb: '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>',
+    flame: '<path d="M12 2c1 3-3 4-3 8a3 3 0 0 0 6 0c0-1-1-2-1-2 1 2 2 3 2 5a4 4 0 0 1-8 0c0-5 4-6 4-11z"/>',
+    truck: '<rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>',
+    megaphone: '<path d="M3 11v2a1 1 0 0 0 1 1h2l4 4V6L6 10H4a1 1 0 0 0-1 1z"/><path d="M15 8a3 3 0 0 1 0 6"/><path d="M17.5 5.5a7 7 0 0 1 0 11"/>',
+    chevronDown: '<polyline points="6 9 12 15 18 9"/>',
   };
 
-  const CATEGORY_ICON_CHOICES = ['ticket', 'wifi', 'globe', 'printer', 'mail', 'monitor', 'server', 'phone', 'grid', 'lock', 'shield', 'users'];
+  const CATEGORY_ICON_CHOICES = ['ticket', 'wifi', 'globe', 'printer', 'mail', 'monitor', 'server', 'phone', 'grid', 'lock', 'shield', 'users', 'laptop', 'tablet', 'package', 'bulb', 'flame', 'truck', 'megaphone'];
 
   function icon(name, cls = '') {
     return `<svg class="icon ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON_PATHS[name] || ''}</svg>`;
@@ -294,6 +302,9 @@
       new_ticket_title: 'Nuovo ticket', new_ticket_hint: 'Raccontaci il problema: bastano pochi campi, il resto lo segue il nostro team.',
       field_request_type: 'Tipo di richiesta', type_incident_suffix: '— qualcosa non funziona', type_task_suffix: '— richiesta pianificabile',
       field_category: 'Categoria', field_subject_placeholder: 'Un breve titolo per il problema', field_urgency: 'Quanto è urgente?',
+      category_search_placeholder: 'Cerca una categoria (es. laptop, arredamento, marketing...)',
+      category_selected_label: 'Categoria selezionata:', field_parent_category: 'Categoria principale',
+      option_top_level_category: '— Categoria principale (nessun genitore) —',
       field_description_placeholder: 'Descrivi il problema in dettaglio', toast_request_sent: 'Richiesta inviata con successo',
       toast_asset_created: 'Asset creato', toast_app_installed: 'App installata con successo',
       ios_install_hint: 'Per installare: tocca Condividi, poi "Aggiungi alla schermata Home"',
@@ -437,6 +448,9 @@
       new_ticket_title: 'New ticket', new_ticket_hint: 'Tell us about the problem: just a few fields, our team takes care of the rest.',
       field_request_type: 'Request type', type_incident_suffix: '— something isn\'t working', type_task_suffix: '— schedulable request',
       field_category: 'Category', field_subject_placeholder: 'A short title for the issue', field_urgency: 'How urgent is it?',
+      category_search_placeholder: 'Search a category (e.g. laptop, furniture, marketing...)',
+      category_selected_label: 'Selected category:', field_parent_category: 'Parent category',
+      option_top_level_category: '— Top-level category (no parent) —',
       field_description_placeholder: 'Describe the problem in detail', toast_request_sent: 'Request sent successfully',
       toast_asset_created: 'Asset created', toast_app_installed: 'App installed successfully',
       ios_install_hint: 'To install: tap Share, then "Add to Home Screen"',
@@ -1692,7 +1706,7 @@
           <p class="hint">${t('new_ticket_hint')}</p>
         </div>
       </div>
-      <div class="card" style="max-width:560px">
+      <div class="card" style="max-width:640px">
         <form id="newTicketForm" class="form-grid">
           <div class="field">
             <label for="type">${t('field_request_type')}</label>
@@ -1702,14 +1716,10 @@
             </select>
           </div>
           <div class="field">
-            <label>${t('field_category')}</label>
-            <div id="categoryPicker" class="category-picker">
-              ${categories.map((c, i) => `
-                <button type="button" class="category-choice ${i === 0 ? 'active' : ''}" data-category="${escapeHtml(c.name)}">
-                  ${icon(c.icon || 'ticket')}
-                  <span>${escapeHtml(c.name)}</span>
-                </button>`).join('')}
-            </div>
+            <label for="categorySearch">${t('field_category')}</label>
+            <input type="text" id="categorySearch" class="category-search-input" placeholder="${t('category_search_placeholder')}" autocomplete="off" />
+            <p class="hint" id="categorySelectedHint"></p>
+            <div id="categoryTree" class="category-tree"></div>
           </div>
           <div class="field">
             <label for="subject">${t('field_subject')}</label>
@@ -1732,14 +1742,82 @@
         </form>
       </div>`;
 
-    let selectedCategory = categories[0] ? categories[0].name : '';
-    document.querySelectorAll('.category-choice').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.category-choice').forEach((b) => b.classList.remove('active'));
-        btn.classList.add('active');
-        selectedCategory = btn.dataset.category;
-      });
+    const macroCategories = categories.filter((c) => !c.parent_id);
+    const subsByParent = new Map();
+    categories.filter((c) => c.parent_id).forEach((c) => {
+      if (!subsByParent.has(c.parent_id)) subsByParent.set(c.parent_id, []);
+      subsByParent.get(c.parent_id).push(c);
     });
+
+    let selectedCategory = '';
+    let expandedMacroId = macroCategories[0] ? macroCategories[0].id : null;
+    if (expandedMacroId) {
+      const firstSubs = subsByParent.get(expandedMacroId) || [];
+      selectedCategory = firstSubs.length ? firstSubs[0].name : macroCategories[0].name;
+    }
+
+    const treeEl = document.getElementById('categoryTree');
+    const categorySearchInput = document.getElementById('categorySearch');
+    const categorySelectedHint = document.getElementById('categorySelectedHint');
+
+    function updateCategorySelectedHint() {
+      categorySelectedHint.textContent = selectedCategory ? `${t('category_selected_label')} ${selectedCategory}` : '';
+    }
+
+    function renderCategoryTree(filterText) {
+      const q = (filterText || '').trim().toLowerCase();
+      const rows = macroCategories.map((macro) => {
+        const subs = subsByParent.get(macro.id) || [];
+        const macroMatches = !q || macro.name.toLowerCase().includes(q);
+        const matchingSubs = subs.filter((s) => !q || s.name.toLowerCase().includes(q));
+        if (q && !macroMatches && matchingSubs.length === 0) return '';
+        const isExpanded = q ? true : expandedMacroId === macro.id;
+        const visibleSubs = q ? matchingSubs : subs;
+        const isDirectChoice = subs.length === 0;
+        return `
+          <div class="category-macro ${isExpanded ? 'expanded' : ''}" data-macro-id="${macro.id}">
+            <button type="button" class="category-macro-head ${isDirectChoice && selectedCategory === macro.name ? 'active' : ''}" data-category="${isDirectChoice ? escapeHtml(macro.name) : ''}">
+              ${icon(macro.icon || 'ticket')}
+              <span>${escapeHtml(macro.name)}</span>
+              ${!isDirectChoice ? `<span class="category-macro-count">${subs.length}</span>${icon('chevronDown', 'category-chevron')}` : ''}
+            </button>
+            ${!isDirectChoice ? `
+            <div class="category-sub-grid" ${isExpanded ? '' : 'hidden'}>
+              ${visibleSubs.map((s) => `
+                <button type="button" class="category-choice ${selectedCategory === s.name ? 'active' : ''}" data-category="${escapeHtml(s.name)}">
+                  ${icon(s.icon || 'ticket')}
+                  <span>${escapeHtml(s.name)}</span>
+                </button>`).join('')}
+            </div>` : ''}
+          </div>`;
+      }).join('');
+      treeEl.innerHTML = rows || `<p class="hint">${t('no_results')}</p>`;
+
+      treeEl.querySelectorAll('.category-macro-head').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          if (btn.dataset.category) {
+            selectedCategory = btn.dataset.category;
+            updateCategorySelectedHint();
+            renderCategoryTree(categorySearchInput.value);
+            return;
+          }
+          const macroId = Number(btn.closest('.category-macro').dataset.macroId);
+          expandedMacroId = expandedMacroId === macroId ? null : macroId;
+          renderCategoryTree(categorySearchInput.value);
+        });
+      });
+      treeEl.querySelectorAll('.category-choice').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          selectedCategory = btn.dataset.category;
+          updateCategorySelectedHint();
+          renderCategoryTree(categorySearchInput.value);
+        });
+      });
+    }
+
+    updateCategorySelectedHint();
+    renderCategoryTree('');
+    categorySearchInput.addEventListener('input', () => renderCategoryTree(categorySearchInput.value));
 
     guardForm(document.getElementById('newTicketForm'), async () => {
       const errEl = document.getElementById('newTicketError');
@@ -2157,6 +2235,7 @@
               <div id="newCategoryIconPicker" class="icon-picker"></div>
             </div>
             <div class="field" style="flex:1 1 12rem"><label for="newCategoryGroup">${t('field_default_team')}</label><select id="newCategoryGroup"><option value="">${t('option_none')}</option></select></div>
+            <div class="field" style="flex:1 1 12rem"><label for="newCategoryParent">${t('field_parent_category')}</label><select id="newCategoryParent"><option value="">${t('option_top_level_category')}</option></select></div>
             <button class="btn btn-sm" type="submit">${t('btn_add')}</button>
           </form>
           <p class="error-text" id="categoryError"></p>
@@ -2457,11 +2536,17 @@
           const groupSelect = document.getElementById('newCategoryGroup');
           groupSelect.innerHTML = groupOptionsHtml(groups, '', t('option_none'));
 
+          const parentSelect = document.getElementById('newCategoryParent');
+          const topLevel = categories.filter((c) => !c.parent_id).sort((a, b) => a.name.localeCompare(b.name));
+          parentSelect.innerHTML = `<option value="">${t('option_top_level_category')}</option>` +
+            topLevel.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+
+          const flat = flattenGroupTree(buildGroupTree(categories));
           listEl.className = '';
-          listEl.innerHTML = categories.length ? categories.map((c) => `
-            <div class="category-row">
+          listEl.innerHTML = flat.length ? flat.map((c) => `
+            <div class="category-row" style="padding-left:${c.depth * 1.6}rem">
               <span class="category-row-icon">${icon(c.icon || 'ticket')}</span>
-              <span class="category-row-name">${escapeHtml(c.name)}</span>
+              <span class="category-row-name">${c.depth ? '– ' : ''}${escapeHtml(c.name)}</span>
               <select class="categoryGroupSel" data-id="${c.id}">${groupOptionsHtml(groups, c.default_group_id, t('option_none'))}</select>
               <button type="button" class="icon-btn deleteCategoryBtn" data-id="${c.id}" title="${t('delete_category_title')}">${icon('trash')}</button>
             </div>`).join('') : `<p class="hint">${t('no_categories_hint')}</p>`;
@@ -2507,9 +2592,11 @@
               name: input.value.trim(),
               icon: selectedNewCategoryIcon,
               defaultGroupId: document.getElementById('newCategoryGroup').value || null,
+              parentId: document.getElementById('newCategoryParent').value || null,
             },
           });
           input.value = '';
+          document.getElementById('newCategoryParent').value = '';
           showToast(t('toast_category_added'), 'success');
           loadCategories();
         } catch (err) {
