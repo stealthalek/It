@@ -272,6 +272,15 @@ async function setupSchema() {
         data TEXT NOT NULL,
         created_at TEXT NOT NULL DEFAULT (datetime('now'))
       )`,
+      `CREATE TABLE IF NOT EXISTS user_sessions (
+        id TEXT PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        user_agent TEXT,
+        ip_address TEXT,
+        revoked INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        last_active_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`,
       'CREATE INDEX IF NOT EXISTS idx_tickets_created_by ON tickets(created_by)',
       'CREATE INDEX IF NOT EXISTS idx_tickets_assigned_to ON tickets(assigned_to)',
       'CREATE INDEX IF NOT EXISTS idx_comments_ticket_id ON comments(ticket_id)',
@@ -285,6 +294,7 @@ async function setupSchema() {
       'CREATE INDEX IF NOT EXISTS idx_ticket_links_linked_ticket_id ON ticket_links(linked_ticket_id)',
       'CREATE INDEX IF NOT EXISTS idx_onboarding_items_request_id ON onboarding_items(request_id)',
       'CREATE INDEX IF NOT EXISTS idx_onboarding_items_group_id ON onboarding_items(assigned_group_id)',
+      'CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON user_sessions(user_id)',
       'CREATE INDEX IF NOT EXISTS idx_onboarding_attachments_request_id ON onboarding_attachments(request_id)',
     ],
     'write'
@@ -591,6 +601,14 @@ async function migrate() {
   const onboardingTypeCount = await get('SELECT COUNT(*) AS n FROM onboarding_item_types');
   if (onboardingTypeCount.n === 0) {
     await seedOnboardingItemTypes();
+  }
+
+  const userCols4 = await all('PRAGMA table_info(users)');
+  if (!userCols4.some((c) => c.name === 'totp_secret')) {
+    await run('ALTER TABLE users ADD COLUMN totp_secret TEXT');
+  }
+  if (!userCols4.some((c) => c.name === 'totp_enabled')) {
+    await run('ALTER TABLE users ADD COLUMN totp_enabled INTEGER NOT NULL DEFAULT 0');
   }
 }
 
