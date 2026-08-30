@@ -253,6 +253,8 @@
       group_label_prefix: 'Gruppo', viewing_as_title: 'Vista di', viewing_as_hint: 'Stai visualizzando i ticket di questa persona in sola lettura.',
       viewas_banner_text: 'Stai vedendo la piattaforma come', viewas_readonly_suffix: 'sola lettura', viewas_exit: 'Esci dalla modalità',
       backlog_hint: 'Ticket non assegnati, in ordine di urgenza SLA.',
+      bulk_assign_placeholder: 'Assegna a...', bulk_status_placeholder: 'Cambia stato...', bulk_clear_selection: 'Deseleziona',
+      bulk_selected_count: 'Selezionati:', toast_bulk_assigned: 'Ticket assegnati', toast_bulk_status_updated: 'Stato aggiornato sui ticket selezionati',
       assets_hint: 'Inventario dispositivi, assegnazioni permanenti e prestiti.', new_asset_title: 'Nuovo asset',
       field_name: 'Nome', field_tag: 'Tag/matricola', btn_add_asset: 'Aggiungi asset',
       table_type: 'Tipo', table_tag: 'Tag', table_status: 'Stato', table_assignment: 'Assegnazione', table_due_date: 'Scadenza',
@@ -429,6 +431,8 @@
       group_label_prefix: 'Group', viewing_as_title: 'View of', viewing_as_hint: "You're viewing this person's tickets in read-only mode.",
       viewas_banner_text: "You're viewing the platform as", viewas_readonly_suffix: 'read-only', viewas_exit: 'Exit this mode',
       backlog_hint: 'Unassigned tickets, ordered by SLA urgency.',
+      bulk_assign_placeholder: 'Assign to...', bulk_status_placeholder: 'Change status...', bulk_clear_selection: 'Clear selection',
+      bulk_selected_count: 'Selected:', toast_bulk_assigned: 'Tickets assigned', toast_bulk_status_updated: 'Status updated on selected tickets',
       assets_hint: 'Device inventory, permanent assignments and loans.', new_asset_title: 'New asset',
       field_name: 'Name', field_tag: 'Tag/asset number', btn_add_asset: 'Add asset',
       table_type: 'Type', table_tag: 'Tag', table_status: 'Status', table_assignment: 'Assignment', table_due_date: 'Due date',
@@ -1733,10 +1737,11 @@
     return `${hours}h ${mins}m`;
   }
 
-  function ticketCardHtml(tk) {
+  function ticketCardHtml(tk, opts = {}) {
     const countdown = formatSlaCountdown(tk.sla_remaining_ms);
     return `
-      <a class="ticket-card prio-${tk.priority}" href="#/ticket/${tk.id}">
+      <a class="ticket-card prio-${tk.priority} ${opts.selectable ? 'selectable-card' : ''}" href="#/ticket/${tk.id}">
+        ${opts.selectable ? `<label class="ticket-select-check" onclick="event.stopPropagation()"><input type="checkbox" class="ticketSelectBox" data-id="${tk.id}" /></label>` : ''}
         <div class="badges">
           <span class="badge badge-type-${tk.type}">${icon(tk.type, 'badge-icon')}${typeLabels()[tk.type] || tk.type}</span>
           <span class="badge badge-${tk.status}">${statusLabels()[tk.status]}</span>
@@ -1771,14 +1776,14 @@
     });
   }
 
-  function renderTicketList(container, tickets) {
+  function renderTicketList(container, tickets, opts = {}) {
     if (!tickets.length) {
       container.className = '';
       container.innerHTML = `<div class="empty-state">${icon('inbox')}<span>${t('no_tickets_found')}</span></div>`;
       return;
     }
     container.className = 'ticket-grid';
-    container.innerHTML = tickets.map(ticketCardHtml).join('');
+    container.innerHTML = tickets.map((tk) => ticketCardHtml(tk, opts)).join('');
     wireTicketCardActions(container);
   }
 
@@ -3573,26 +3578,107 @@
           <p class="hint">${t('backlog_hint')}</p>
         </div>
       </div>
+      <div id="bulkBar" class="bulk-action-bar" hidden>
+        <span id="bulkCount" class="hint"></span>
+        <select id="bulkAssignSel"><option value="">${t('bulk_assign_placeholder')}</option></select>
+        <select id="bulkStatusSel">
+          <option value="">${t('bulk_status_placeholder')}</option>
+          ${Object.entries(statusLabels()).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
+        </select>
+        <button type="button" id="bulkClearBtn" class="btn btn-ghost btn-sm">${t('bulk_clear_selection')}</button>
+      </div>
       <div id="ticketList" class="skeleton-grid">
         ${Array(4).fill('<div class="skeleton-card"></div>').join('')}
       </div>`;
 
     const listEl = document.getElementById('ticketList');
+    const bulkBar = document.getElementById('bulkBar');
+    const bulkCount = document.getElementById('bulkCount');
+    const bulkAssignSel = document.getElementById('bulkAssignSel');
+    const bulkStatusSel = document.getElementById('bulkStatusSel');
+    const bulkClearBtn = document.getElementById('bulkClearBtn');
+    const selected = new Set();
+
     try {
-      const { tickets } = await api('/tickets?assigned=unassigned');
-      const open = tickets.filter((t) => t.status === 'open' || t.status === 'in_progress');
-      const order = { breached: 0, at_risk: 1, on_track: 2 };
-      open.sort((a, b) => {
-        const sa = order[a.sla_status] ?? 3;
-        const sb = order[b.sla_status] ?? 3;
-        if (sa !== sb) return sa - sb;
-        return a.created_at < b.created_at ? -1 : a.created_at > b.created_at ? 1 : 0;
-      });
-      renderTicketList(listEl, open);
-    } catch (err) {
-      listEl.className = '';
-      listEl.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
+      const { users } = await api('/users');
+      const staffUsers = users.filter((u) => u.role === 'agent' || u.role === 'admin');
+      bulkAssignSel.innerHTML = `<option value="">${t('bulk_assign_placeholder')}</option>` +
+        staffUsers.map((u) => `<option value="${u.id}">${escapeHtml(u.name)}</option>`).join('');
+    } catch {}
+
+    function updateBulkBar() {
+      bulkBar.hidden = selected.size === 0;
+      bulkCount.textContent = `${t('bulk_selected_count')} ${selected.size}`;
     }
+
+    function wireSelectionCheckboxes() {
+      listEl.querySelectorAll('.ticketSelectBox').forEach((box) => {
+        box.checked = selected.has(Number(box.dataset.id));
+        box.addEventListener('change', () => {
+          const id = Number(box.dataset.id);
+          if (box.checked) selected.add(id); else selected.delete(id);
+          updateBulkBar();
+        });
+      });
+    }
+
+    async function loadBacklog() {
+      try {
+        const { tickets } = await api('/tickets?assigned=unassigned');
+        const open = tickets.filter((t) => t.status === 'open' || t.status === 'in_progress');
+        const order = { breached: 0, at_risk: 1, on_track: 2 };
+        open.sort((a, b) => {
+          const sa = order[a.sla_status] ?? 3;
+          const sb = order[b.sla_status] ?? 3;
+          if (sa !== sb) return sa - sb;
+          return a.created_at < b.created_at ? -1 : a.created_at > b.created_at ? 1 : 0;
+        });
+        const openIds = new Set(open.map((t) => t.id));
+        [...selected].forEach((id) => { if (!openIds.has(id)) selected.delete(id); });
+        renderTicketList(listEl, open, { selectable: isStaff() });
+        wireSelectionCheckboxes();
+        updateBulkBar();
+      } catch (err) {
+        listEl.className = '';
+        listEl.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
+      }
+    }
+
+    bulkClearBtn.addEventListener('click', () => {
+      selected.clear();
+      wireSelectionCheckboxes();
+      updateBulkBar();
+    });
+
+    bulkAssignSel.addEventListener('change', async () => {
+      if (!bulkAssignSel.value || !selected.size) return;
+      const assignedTo = Number(bulkAssignSel.value);
+      try {
+        await Promise.all([...selected].map((id) => api(`/tickets/${id}`, { method: 'PATCH', body: { assigned_to: assignedTo } })));
+        showToast(t('toast_bulk_assigned'), 'success');
+        selected.clear();
+        bulkAssignSel.value = '';
+        loadBacklog();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+
+    bulkStatusSel.addEventListener('change', async () => {
+      if (!bulkStatusSel.value || !selected.size) return;
+      const status = bulkStatusSel.value;
+      try {
+        await Promise.all([...selected].map((id) => api(`/tickets/${id}`, { method: 'PATCH', body: { status } })));
+        showToast(t('toast_bulk_status_updated'), 'success');
+        selected.clear();
+        bulkStatusSel.value = '';
+        loadBacklog();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+
+    loadBacklog();
   }
 
   async function renderAssets() {

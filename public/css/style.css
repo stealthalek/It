@@ -1158,6 +1158,30 @@ body:not(.role-customer):not(.role-agent):not(.role-admin) .nav-toggle { display
   transform: translateY(-2px);
   box-shadow: 0 4px 10px rgba(60, 40, 25, 0.09), 0 16px 34px rgba(60, 40, 25, 0.11);
 }
+.ticket-card.selectable-card { position: relative; padding-left: 2.6rem; }
+.ticket-select-check {
+  position: absolute;
+  top: 1.1rem;
+  left: 1.1rem;
+  width: 1.1rem;
+  height: 1.1rem;
+  cursor: pointer;
+}
+.ticket-select-check input { width: 1.1rem; height: 1.1rem; cursor: pointer; }
+
+.bulk-action-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.6rem 0.9rem;
+  margin-bottom: 1rem;
+}
+.bulk-action-bar select { max-width: 12rem; }
+
 .ticket-card.prio-low { border-left-color: var(--muted); }
 .ticket-card.prio-medium { border-left-color: var(--primary); }
 .ticket-card.prio-high { border-left-color: var(--warning); }
