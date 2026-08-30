@@ -122,6 +122,7 @@
     truck: '<rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>',
     megaphone: '<path d="M3 11v2a1 1 0 0 0 1 1h2l4 4V6L6 10H4a1 1 0 0 0-1 1z"/><path d="M15 8a3 3 0 0 1 0 6"/><path d="M17.5 5.5a7 7 0 0 1 0 11"/>',
     chevronDown: '<polyline points="6 9 12 15 18 9"/>',
+    message: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
   };
 
   const CATEGORY_ICON_CHOICES = ['ticket', 'wifi', 'globe', 'printer', 'mail', 'monitor', 'server', 'phone', 'grid', 'lock', 'shield', 'users', 'laptop', 'tablet', 'package', 'bulb', 'flame', 'truck', 'megaphone'];
@@ -294,8 +295,25 @@
       account_locale_label: 'Lingua account', account_locale_hint: 'Le email inviate a questo account useranno questa lingua',
       btn_create_account: 'Crea account', role_agent_option: 'Agente', role_admin_option: 'Amministratore',
       admin_categories_title: 'Categorie ticket', admin_categories_hint: 'Personalizza le categorie disponibili nel modulo di apertura ticket, la loro icona e il team a cui vengono assegnate di default.',
-      field_category_name: 'Nome categoria', field_icon: 'Icona', field_default_team: 'Team predefinito', option_none: 'Nessuno', btn_add: 'Aggiungi',
+      field_category_name: 'Nome categoria', field_icon: 'Icona', field_default_team: 'Team predefinito', option_none: 'Nessuno', option_select_placeholder: 'Seleziona...', btn_add: 'Aggiungi', yes_label: 'Sì', no_label: 'No',
+      canned_picker_placeholder: 'Risposta rapida...', btn_insert: 'Inserisci',
       admin_groups_title: 'Gruppi di assegnazione', admin_groups_hint: 'Ogni gruppo ha un proprio SLA (ore per risposta/risoluzione) e orario di lavoro: fuori da quella fascia, e nel weekend, l\'SLA resta in pausa e riprende al turno successivo.',
+      admin_automations_title: 'Automazioni', admin_automations_hint: 'Regole "se succede X allora fai Y": alla creazione o aggiornamento di un ticket, se le condizioni combaciano, le azioni scelte vengono applicate automaticamente.',
+      field_rule_name: 'Nome regola', field_rule_trigger: 'Quando si attiva', trigger_created: 'Alla creazione del ticket', trigger_updated: 'Quando il ticket viene aggiornato',
+      rule_conditions_label: 'Condizioni (tutte opzionali)', field_group_condition: 'Gruppo del ticket',
+      rule_actions_label: 'Azioni', action_set_status: 'Imposta stato', action_set_priority: 'Imposta priorità',
+      action_assign_group: 'Assegna al gruppo', action_assign_user: 'Assegna all\'utente',
+      action_add_note: 'Aggiungi nota interna', action_add_note_placeholder: 'Testo della nota interna da aggiungere automaticamente',
+      btn_create_rule: 'Crea regola', rule_no_conditions: 'Nessuna condizione (si applica sempre)', no_rules_hint: 'Nessuna regola di automazione configurata.',
+      toast_rule_updated: 'Regola aggiornata', toast_rule_deleted: 'Regola eliminata', toast_rule_added: 'Regola creata',
+      admin_custom_fields_title: 'Campi personalizzati', admin_custom_fields_hint: 'Aggiungi campi extra al modulo di apertura ticket, globali oppure specifici per una categoria.',
+      field_field_name: 'Nome campo', field_field_type: 'Tipo', field_type_text: 'Testo', field_type_number: 'Numero', field_type_textarea: 'Testo lungo', field_type_select: 'Scelta', field_type_checkbox: 'Casella di spunta',
+      field_field_options: 'Opzioni (separate da virgola)', field_field_options_placeholder: 'Es: Bassa, Media, Alta', field_field_category: 'Categoria', field_global_option: 'Globale (tutte le categorie)',
+      field_required_label: 'Obbligatorio', btn_add_field: 'Aggiungi campo', no_fields_hint: 'Nessun campo personalizzato configurato.',
+      toast_field_added: 'Campo aggiunto', toast_field_deleted: 'Campo eliminato',
+      admin_canned_title: 'Risposte rapide', admin_canned_hint: 'Testi pronti che il personale può inserire velocemente nei commenti dei ticket.',
+      field_canned_title: 'Titolo', field_canned_body: 'Testo della risposta', btn_add_canned: 'Aggiungi risposta rapida', no_canned_hint: 'Nessuna risposta rapida configurata.',
+      toast_canned_added: 'Risposta rapida aggiunta', toast_canned_deleted: 'Risposta rapida eliminata',
       field_group_name: 'Nome gruppo', field_parent_group: 'Gruppo padre', option_no_parent: 'Nessuno (primo livello)',
       field_response_hours: 'Risposta (h)', field_resolve_hours: 'Risoluzione (h)', field_shift_start: 'Inizio turno', field_shift_end: 'Fine turno',
       btn_create_group: 'Crea gruppo', delete_group_title: 'Elimina gruppo', shift_from_label: 'Turno dalle', shift_to_label: 'alle',
@@ -447,8 +465,25 @@
       account_locale_label: 'Account language', account_locale_hint: 'Emails sent to this account will use this language',
       btn_create_account: 'Create account', role_agent_option: 'Agent', role_admin_option: 'Administrator',
       admin_categories_title: 'Ticket categories', admin_categories_hint: 'Customize the categories available in the ticket form, their icon, and the team they are assigned to by default.',
-      field_category_name: 'Category name', field_icon: 'Icon', field_default_team: 'Default team', option_none: 'None', btn_add: 'Add',
+      field_category_name: 'Category name', field_icon: 'Icon', field_default_team: 'Default team', option_none: 'None', option_select_placeholder: 'Select...', btn_add: 'Add', yes_label: 'Yes', no_label: 'No',
+      canned_picker_placeholder: 'Canned response...', btn_insert: 'Insert',
       admin_groups_title: 'Assignment groups', admin_groups_hint: 'Each group has its own SLA (response/resolution hours) and working hours: outside that window, and on weekends, the SLA pauses and resumes on the next shift.',
+      admin_automations_title: 'Automations', admin_automations_hint: '"If X happens then do Y" rules: on ticket creation or update, if the conditions match, the chosen actions are applied automatically.',
+      field_rule_name: 'Rule name', field_rule_trigger: 'When it fires', trigger_created: 'On ticket creation', trigger_updated: 'When the ticket is updated',
+      rule_conditions_label: 'Conditions (all optional)', field_group_condition: 'Ticket group',
+      rule_actions_label: 'Actions', action_set_status: 'Set status', action_set_priority: 'Set priority',
+      action_assign_group: 'Assign to group', action_assign_user: 'Assign to user',
+      action_add_note: 'Add internal note', action_add_note_placeholder: 'Internal note text to add automatically',
+      btn_create_rule: 'Create rule', rule_no_conditions: 'No conditions (always applies)', no_rules_hint: 'No automation rules configured.',
+      toast_rule_updated: 'Rule updated', toast_rule_deleted: 'Rule deleted', toast_rule_added: 'Rule created',
+      admin_custom_fields_title: 'Custom fields', admin_custom_fields_hint: 'Add extra fields to the ticket creation form, either global or scoped to a specific category.',
+      field_field_name: 'Field name', field_field_type: 'Type', field_type_text: 'Text', field_type_number: 'Number', field_type_textarea: 'Long text', field_type_select: 'Choice', field_type_checkbox: 'Checkbox',
+      field_field_options: 'Options (comma-separated)', field_field_options_placeholder: 'E.g: Low, Medium, High', field_field_category: 'Category', field_global_option: 'Global (all categories)',
+      field_required_label: 'Required', btn_add_field: 'Add field', no_fields_hint: 'No custom fields configured.',
+      toast_field_added: 'Field added', toast_field_deleted: 'Field deleted',
+      admin_canned_title: 'Canned responses', admin_canned_hint: 'Ready-made text that staff can quickly insert into ticket comments.',
+      field_canned_title: 'Title', field_canned_body: 'Response text', btn_add_canned: 'Add canned response', no_canned_hint: 'No canned responses configured.',
+      toast_canned_added: 'Canned response added', toast_canned_deleted: 'Canned response deleted',
       field_group_name: 'Group name', field_parent_group: 'Parent group', option_no_parent: 'None (top level)',
       field_response_hours: 'Response (h)', field_resolve_hours: 'Resolution (h)', field_shift_start: 'Shift start', field_shift_end: 'Shift end',
       btn_create_group: 'Create group', delete_group_title: 'Delete group', shift_from_label: 'Shift from', shift_to_label: 'to',
@@ -1734,10 +1769,15 @@
 
   async function renderNewTicket() {
     let categories = [];
+    let customFields = [];
     try {
       const data = await api('/categories');
       categories = data.categories;
     } catch { categories = []; }
+    try {
+      const data = await api('/custom-fields');
+      customFields = data.fields;
+    } catch { customFields = []; }
 
     appEl.innerHTML = `
       <div class="view-header">
@@ -1769,6 +1809,7 @@
             <p class="hint" id="categorySelectedHint"></p>
             <div id="categoryTree" class="category-tree"></div>
           </div>
+          <div id="customFieldsContainer"></div>
           <div class="field">
             <label for="subject">${t('field_subject')}</label>
             <input id="subject" type="text" required maxlength="200" placeholder="${t('field_subject_placeholder')}" />
@@ -1806,6 +1847,52 @@
       categorySelectedHint.textContent = selectedCategory ? `${t('category_selected_label')} ${selectedCategory}` : '';
     }
 
+    const customFieldsContainer = document.getElementById('customFieldsContainer');
+
+    function renderCustomFieldInput(field) {
+      const required = field.required ? 'required' : '';
+      if (field.field_type === 'textarea') {
+        return `<textarea id="cf-${field.id}" ${required}></textarea>`;
+      }
+      if (field.field_type === 'select') {
+        return `<select id="cf-${field.id}" ${required}>
+          <option value="">${t('option_select_placeholder')}</option>
+          ${field.options.map((o) => `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join('')}
+        </select>`;
+      }
+      if (field.field_type === 'checkbox') {
+        return `<label class="checkbox-field"><input type="checkbox" id="cf-${field.id}" /><span>${escapeHtml(field.name)}</span></label>`;
+      }
+      const inputType = field.field_type === 'number' ? 'number' : 'text';
+      return `<input type="${inputType}" id="cf-${field.id}" ${required} />`;
+    }
+
+    function renderCustomFieldsSection() {
+      const applicable = customFields.filter((f) => !f.category_id || f.category_name === selectedCategory);
+      if (!applicable.length) {
+        customFieldsContainer.innerHTML = '';
+        return;
+      }
+      customFieldsContainer.innerHTML = applicable.map((field) => `
+        <div class="field">
+          ${field.field_type === 'checkbox' ? renderCustomFieldInput(field) : `
+            <label for="cf-${field.id}">${escapeHtml(field.name)}${field.required ? ' *' : ''}</label>
+            ${renderCustomFieldInput(field)}
+          `}
+        </div>`).join('');
+    }
+
+    function collectCustomFieldValues() {
+      const applicable = customFields.filter((f) => !f.category_id || f.category_name === selectedCategory);
+      const values = {};
+      applicable.forEach((field) => {
+        const el = document.getElementById(`cf-${field.id}`);
+        if (!el) return;
+        values[field.id] = field.field_type === 'checkbox' ? el.checked : el.value;
+      });
+      return values;
+    }
+
     function renderCategoryTree(filterText) {
       const q = (filterText || '').trim().toLowerCase();
       const rows = macroCategories.map((macro) => {
@@ -1841,6 +1928,7 @@
             selectedCategory = btn.dataset.category;
             updateCategorySelectedHint();
             renderCategoryTree(categorySearchInput.value);
+            renderCustomFieldsSection();
             return;
           }
           const macroId = Number(btn.closest('.category-macro').dataset.macroId);
@@ -1853,12 +1941,14 @@
           selectedCategory = btn.dataset.category;
           updateCategorySelectedHint();
           renderCategoryTree(categorySearchInput.value);
+          renderCustomFieldsSection();
         });
       });
     }
 
     updateCategorySelectedHint();
     renderCategoryTree('');
+    renderCustomFieldsSection();
     categorySearchInput.addEventListener('input', () => renderCategoryTree(categorySearchInput.value));
 
     guardForm(document.getElementById('newTicketForm'), async () => {
@@ -1870,6 +1960,7 @@
         priority: document.getElementById('priority').value,
         type: document.getElementById('type').value,
         description: document.getElementById('description').value.trim(),
+        customFields: collectCustomFieldValues(),
       };
       try {
         const { ticket } = await api('/tickets', { method: 'POST', body });
@@ -1891,7 +1982,7 @@
       return;
     }
 
-    const { ticket, activity } = data;
+    const { ticket, activity, customFieldValues } = data;
     const readOnly = !!state.viewAs;
     const isOwner = ticket.created_by === state.user.id;
     const canEditFields = (isOwner || isStaff()) && !readOnly;
@@ -2004,6 +2095,14 @@
               ${ticket.asset_name ? ` · ${t('field_linked_asset')} ${escapeHtml(ticket.asset_name)}` : ''}
             </p>
             ${canReopen ? `<button id="reopenBtn" class="btn btn-sm btn-ghost">${icon('refresh')} ${t('reopen_ticket')}</button>` : ''}
+            ${customFieldValues && customFieldValues.length ? `
+              <div class="custom-fields-summary">
+                ${customFieldValues.map((f) => `
+                  <div class="custom-field-row">
+                    <span class="custom-field-name">${escapeHtml(f.name)}</span>
+                    <span class="custom-field-value">${f.field_type === 'checkbox' ? (f.value === '1' ? t('yes_label') : t('no_label')) : escapeHtml(f.value || '')}</span>
+                  </div>`).join('')}
+              </div>` : ''}
           </div>
 
           <div class="card">
@@ -2013,6 +2112,11 @@
             </div>
             ${readOnly ? `<p class="hint">${t('readonly_no_comments')}</p>` : `
             <form id="commentForm" class="form-grid" style="max-width:none;margin-top:1rem">
+              ${isStaff() ? `
+              <div class="canned-picker" id="cannedPicker" hidden>
+                <select id="cannedSelect"><option value="">${t('canned_picker_placeholder')}</option></select>
+                <button type="button" id="cannedInsertBtn" class="btn btn-ghost btn-sm">${t('btn_insert')}</button>
+              </div>` : ''}
               <div class="field">
                 <label for="commentMsg">${t('add_comment_label')}</label>
                 <textarea id="commentMsg" required placeholder="${t('comment_placeholder')}"></textarea>
@@ -2028,6 +2132,24 @@
         </div>
         <div>${staffPanel}</div>
       </div>`;
+
+    const cannedPicker = document.getElementById('cannedPicker');
+    if (cannedPicker) {
+      api('/canned-responses').then(({ responses }) => {
+        if (!responses.length) return;
+        const cannedSelect = document.getElementById('cannedSelect');
+        cannedSelect.innerHTML = `<option value="">${t('canned_picker_placeholder')}</option>` +
+          responses.map((r) => `<option value="${r.id}">${escapeHtml(r.title)}</option>`).join('');
+        cannedPicker.hidden = false;
+        document.getElementById('cannedInsertBtn').addEventListener('click', () => {
+          const selected = responses.find((r) => String(r.id) === cannedSelect.value);
+          if (!selected) return;
+          const msgEl = document.getElementById('commentMsg');
+          msgEl.value = msgEl.value ? `${msgEl.value}\n${selected.body}` : selected.body;
+          msgEl.focus();
+        });
+      }).catch(() => {});
+    }
 
     if (document.getElementById('commentForm')) guardForm(document.getElementById('commentForm'), async () => {
       const msgEl = document.getElementById('commentMsg');
@@ -2302,6 +2424,80 @@
           </form>
           <p class="error-text" id="groupError"></p>
           <div id="groupsList" class="spinner-row">${t('loading')}</div>
+        </div>
+        <div class="card admin-grid-full">
+          <h3 class="section-title" style="margin-top:0">${icon('activity')} ${t('admin_automations_title')}</h3>
+          <p class="hint">${t('admin_automations_hint')}</p>
+          <form id="newRuleForm" class="form-grid" style="max-width:none;margin:0.75rem 0">
+            <div class="field-row">
+              <div class="field"><label for="ruleName">${t('field_rule_name')}</label><input id="ruleName" required /></div>
+              <div class="field"><label for="ruleTrigger">${t('field_rule_trigger')}</label>
+                <select id="ruleTrigger">
+                  <option value="created">${t('trigger_created')}</option>
+                  <option value="updated">${t('trigger_updated')}</option>
+                </select>
+              </div>
+            </div>
+            <p class="hint" style="margin:0.2rem 0 0;font-weight:600">${t('rule_conditions_label')}</p>
+            <div class="field-row">
+              <div class="field"><label for="condStatus">${t('dim_status')}</label><select id="condStatus"><option value="">${t('option_none')}</option>${Object.entries(statusLabels()).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select></div>
+              <div class="field"><label for="condPriority">${t('dim_priority')}</label><select id="condPriority"><option value="">${t('option_none')}</option>${Object.entries(priorityLabels()).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label for="condType">${t('dim_type')}</label><select id="condType"><option value="">${t('option_none')}</option>${Object.entries(typeLabels()).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select></div>
+              <div class="field"><label for="condCategory">${t('field_category')}</label><select id="condCategory"><option value="">${t('option_none')}</option></select></div>
+            </div>
+            <div class="field"><label for="condGroup">${t('field_group_condition')}</label><select id="condGroup"><option value="">${t('option_none')}</option></select></div>
+            <p class="hint" style="margin:0.2rem 0 0;font-weight:600">${t('rule_actions_label')}</p>
+            <div class="field-row">
+              <div class="field"><label for="actionStatus">${t('action_set_status')}</label><select id="actionStatus"><option value="">${t('option_none')}</option>${Object.entries(statusLabels()).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select></div>
+              <div class="field"><label for="actionPriority">${t('action_set_priority')}</label><select id="actionPriority"><option value="">${t('option_none')}</option>${Object.entries(priorityLabels()).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label for="actionGroup">${t('action_assign_group')}</label><select id="actionGroup"><option value="">${t('option_none')}</option></select></div>
+              <div class="field"><label for="actionUser">${t('action_assign_user')}</label><select id="actionUser"><option value="">${t('option_none')}</option></select></div>
+            </div>
+            <div class="field"><label for="actionNote">${t('action_add_note')}</label><textarea id="actionNote" rows="2" placeholder="${t('action_add_note_placeholder')}"></textarea></div>
+            <p class="error-text" id="ruleError"></p>
+            <div><button class="btn btn-sm" type="submit">${t('btn_create_rule')}</button></div>
+          </form>
+          <div id="rulesList" class="spinner-row">${t('loading')}</div>
+        </div>
+        <div class="card admin-grid-full">
+          <h3 class="section-title" style="margin-top:0">${icon('edit')} ${t('admin_custom_fields_title')}</h3>
+          <p class="hint">${t('admin_custom_fields_hint')}</p>
+          <form id="newFieldForm" style="display:flex;flex-wrap:wrap;gap:0.6rem;align-items:flex-end;margin:0.75rem 0">
+            <div class="field" style="flex:1 1 12rem"><label for="newFieldName">${t('field_field_name')}</label><input id="newFieldName" required /></div>
+            <div class="field" style="flex:0 0 9rem"><label for="newFieldType">${t('field_field_type')}</label>
+              <select id="newFieldType">
+                <option value="text">${t('field_type_text')}</option>
+                <option value="number">${t('field_type_number')}</option>
+                <option value="textarea">${t('field_type_textarea')}</option>
+                <option value="select">${t('field_type_select')}</option>
+                <option value="checkbox">${t('field_type_checkbox')}</option>
+              </select>
+            </div>
+            <div class="field" style="flex:1 1 12rem" id="newFieldOptionsWrap" hidden>
+              <label for="newFieldOptions">${t('field_field_options')}</label>
+              <input id="newFieldOptions" placeholder="${t('field_field_options_placeholder')}" />
+            </div>
+            <div class="field" style="flex:1 1 12rem"><label for="newFieldCategory">${t('field_field_category')}</label><select id="newFieldCategory"><option value="">${t('field_global_option')}</option></select></div>
+            <label class="checkbox-field"><input type="checkbox" id="newFieldRequired" /><span>${t('field_required_label')}</span></label>
+            <button class="btn btn-sm" type="submit">${t('btn_add_field')}</button>
+          </form>
+          <p class="error-text" id="fieldError"></p>
+          <div id="fieldsList" class="spinner-row">${t('loading')}</div>
+        </div>
+        <div class="card admin-grid-full">
+          <h3 class="section-title" style="margin-top:0">${icon('message')} ${t('admin_canned_title')}</h3>
+          <p class="hint">${t('admin_canned_hint')}</p>
+          <form id="newCannedForm" class="form-grid" style="max-width:none;margin:0.75rem 0">
+            <div class="field"><label for="newCannedTitle">${t('field_canned_title')}</label><input id="newCannedTitle" required /></div>
+            <div class="field"><label for="newCannedBody">${t('field_canned_body')}</label><textarea id="newCannedBody" rows="3" required></textarea></div>
+            <div><button class="btn btn-sm" type="submit">${t('btn_add_canned')}</button></div>
+          </form>
+          <p class="error-text" id="cannedError"></p>
+          <div id="cannedList" class="spinner-row">${t('loading')}</div>
         </div>
       </div>` : ''}
       <div id="usersWrap" class="card spinner-row">${t('loading')}</div>`;
@@ -2678,6 +2874,266 @@
       });
 
       loadCategories();
+
+      function ruleBadge(labelKey) {
+        return `<span class="badge badge-in_progress">${t(labelKey)}</span>`;
+      }
+
+      async function loadRuleFormOptions() {
+        try {
+          const [{ categories }, { groups }, { users }] = await Promise.all([api('/categories'), api('/groups'), api('/users')]);
+          const catOptions = categories.slice().sort((a, b) => a.name.localeCompare(b.name))
+            .map((c) => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join('');
+          document.getElementById('condCategory').innerHTML = `<option value="">${t('option_none')}</option>${catOptions}`;
+
+          const groupOpts = groupOptionsHtml(groups, '', t('option_none'));
+          document.getElementById('condGroup').innerHTML = groupOpts;
+          document.getElementById('actionGroup').innerHTML = groupOpts;
+
+          const staff = users.filter((u) => u.role === 'agent' || u.role === 'admin').sort((a, b) => a.name.localeCompare(b.name));
+          document.getElementById('actionUser').innerHTML = `<option value="">${t('option_none')}</option>` +
+            staff.map((u) => `<option value="${u.id}">${escapeHtml(u.name)}</option>`).join('');
+        } catch {}
+      }
+
+      function ruleConditionSummary(rule) {
+        const parts = [];
+        if (rule.cond_status) parts.push(`${t('dim_status')} = ${statusLabels()[rule.cond_status] || rule.cond_status}`);
+        if (rule.cond_priority) parts.push(`${t('dim_priority')} = ${priorityLabels()[rule.cond_priority] || rule.cond_priority}`);
+        if (rule.cond_type) parts.push(`${t('dim_type')} = ${typeLabels()[rule.cond_type] || rule.cond_type}`);
+        if (rule.cond_category) parts.push(`${t('field_category')} = "${rule.cond_category}"`);
+        if (rule.cond_group_name) parts.push(`${t('field_group_condition')} = "${rule.cond_group_name}"`);
+        return parts.length ? parts.join(' · ') : t('rule_no_conditions');
+      }
+
+      function ruleActionSummary(rule) {
+        const parts = [];
+        if (rule.action_set_status) parts.push(`${t('action_set_status')} → ${statusLabels()[rule.action_set_status] || rule.action_set_status}`);
+        if (rule.action_set_priority) parts.push(`${t('action_set_priority')} → ${priorityLabels()[rule.action_set_priority] || rule.action_set_priority}`);
+        if (rule.action_assign_group_name) parts.push(`${t('action_assign_group')} → "${rule.action_assign_group_name}"`);
+        if (rule.action_assign_user_name) parts.push(`${t('action_assign_user')} → "${rule.action_assign_user_name}"`);
+        if (rule.action_note) parts.push(t('action_add_note'));
+        return parts.join(' · ');
+      }
+
+      async function loadRules() {
+        const listEl = document.getElementById('rulesList');
+        listEl.className = 'spinner-row';
+        listEl.textContent = t('loading');
+        try {
+          const { rules } = await api('/automations');
+          listEl.className = '';
+          listEl.innerHTML = rules.length ? rules.map((rule) => `
+            <div class="rule-row ${rule.enabled ? '' : 'rule-disabled'}">
+              <div class="rule-row-head">
+                <label class="checkbox-field">
+                  <input type="checkbox" class="ruleEnabledToggle" data-id="${rule.id}" ${rule.enabled ? 'checked' : ''} />
+                  <strong>${escapeHtml(rule.name)}</strong>
+                </label>
+                ${ruleBadge(rule.trigger_event === 'created' ? 'trigger_created' : 'trigger_updated')}
+                <button type="button" class="icon-btn deleteRuleBtn" data-id="${rule.id}" title="${t('delete_category_title')}">${icon('trash')}</button>
+              </div>
+              <p class="hint" style="margin:0.3rem 0 0"><strong>${t('rule_conditions_label')}:</strong> ${ruleConditionSummary(rule)}</p>
+              <p class="hint" style="margin:0.15rem 0 0"><strong>${t('rule_actions_label')}:</strong> ${ruleActionSummary(rule)}</p>
+            </div>`).join('') : `<p class="hint">${t('no_rules_hint')}</p>`;
+
+          listEl.querySelectorAll('.ruleEnabledToggle').forEach((cb) => {
+            cb.addEventListener('change', async () => {
+              try {
+                await api(`/automations/${cb.dataset.id}`, { method: 'PATCH', body: { enabled: cb.checked } });
+                showToast(t('toast_rule_updated'), 'success');
+                loadRules();
+              } catch (err) {
+                showToast(err.message, 'error');
+                loadRules();
+              }
+            });
+          });
+          listEl.querySelectorAll('.deleteRuleBtn').forEach((btn) => {
+            btn.addEventListener('click', async () => {
+              try {
+                await api(`/automations/${btn.dataset.id}`, { method: 'DELETE' });
+                showToast(t('toast_rule_deleted'), 'success');
+                loadRules();
+              } catch (err) {
+                showToast(err.message, 'error');
+              }
+            });
+          });
+        } catch (err) {
+          listEl.className = '';
+          listEl.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
+        }
+      }
+
+      guardForm(document.getElementById('newRuleForm'), async () => {
+        const errEl = document.getElementById('ruleError');
+        errEl.textContent = '';
+        const name = document.getElementById('ruleName').value.trim();
+        if (!name) { errEl.textContent = t('field_rule_name'); return; }
+        try {
+          await api('/automations', {
+            method: 'POST',
+            body: {
+              name,
+              triggerEvent: document.getElementById('ruleTrigger').value,
+              condStatus: document.getElementById('condStatus').value || null,
+              condPriority: document.getElementById('condPriority').value || null,
+              condType: document.getElementById('condType').value || null,
+              condCategory: document.getElementById('condCategory').value || null,
+              condGroupId: document.getElementById('condGroup').value || null,
+              actionSetStatus: document.getElementById('actionStatus').value || null,
+              actionSetPriority: document.getElementById('actionPriority').value || null,
+              actionAssignGroupId: document.getElementById('actionGroup').value || null,
+              actionAssignUserId: document.getElementById('actionUser').value || null,
+              actionNote: document.getElementById('actionNote').value.trim() || null,
+            },
+          });
+          document.getElementById('newRuleForm').reset();
+          showToast(t('toast_rule_added'), 'success');
+          loadRules();
+        } catch (err) {
+          errEl.textContent = err.message;
+        }
+      });
+
+      loadRuleFormOptions();
+      loadRules();
+
+      const fieldTypeLabelKeys = { text: 'field_type_text', number: 'field_type_number', textarea: 'field_type_textarea', select: 'field_type_select', checkbox: 'field_type_checkbox' };
+
+      async function loadFieldFormOptions() {
+        try {
+          const { categories } = await api('/categories');
+          const catOptions = categories.slice().sort((a, b) => a.name.localeCompare(b.name))
+            .map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+          document.getElementById('newFieldCategory').innerHTML = `<option value="">${t('field_global_option')}</option>${catOptions}`;
+        } catch {}
+      }
+
+      async function loadFields() {
+        const listEl = document.getElementById('fieldsList');
+        listEl.className = 'spinner-row';
+        listEl.textContent = t('loading');
+        try {
+          const { fields } = await api('/custom-fields');
+          listEl.className = '';
+          listEl.innerHTML = fields.length ? fields.map((field) => `
+            <div class="rule-row">
+              <div class="rule-row-head">
+                <strong>${escapeHtml(field.name)}</strong>
+                <span class="badge badge-in_progress">${t(fieldTypeLabelKeys[field.field_type] || 'field_type_text')}</span>
+                ${field.required ? `<span class="badge badge-urgent">${t('field_required_label')}</span>` : ''}
+                <button type="button" class="icon-btn deleteFieldBtn" data-id="${field.id}" title="${t('delete_category_title')}">${icon('trash')}</button>
+              </div>
+              <p class="hint" style="margin:0.3rem 0 0">${field.category_name ? `${t('field_field_category')}: ${escapeHtml(field.category_name)}` : t('field_global_option')}${field.options.length ? ` · ${field.options.join(', ')}` : ''}</p>
+            </div>`).join('') : `<p class="hint">${t('no_fields_hint')}</p>`;
+
+          listEl.querySelectorAll('.deleteFieldBtn').forEach((btn) => {
+            btn.addEventListener('click', async () => {
+              try {
+                await api(`/custom-fields/${btn.dataset.id}`, { method: 'DELETE' });
+                showToast(t('toast_field_deleted'), 'success');
+                loadFields();
+              } catch (err) {
+                showToast(err.message, 'error');
+              }
+            });
+          });
+        } catch (err) {
+          listEl.className = '';
+          listEl.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
+        }
+      }
+
+      const newFieldTypeSel = document.getElementById('newFieldType');
+      const newFieldOptionsWrap = document.getElementById('newFieldOptionsWrap');
+      newFieldTypeSel.addEventListener('change', () => {
+        newFieldOptionsWrap.hidden = newFieldTypeSel.value !== 'select';
+      });
+
+      guardForm(document.getElementById('newFieldForm'), async () => {
+        const errEl = document.getElementById('fieldError');
+        errEl.textContent = '';
+        const name = document.getElementById('newFieldName').value.trim();
+        const fieldType = newFieldTypeSel.value;
+        const optionsRaw = document.getElementById('newFieldOptions').value;
+        try {
+          await api('/custom-fields', {
+            method: 'POST',
+            body: {
+              name,
+              fieldType,
+              options: fieldType === 'select' ? optionsRaw.split(',').map((o) => o.trim()).filter(Boolean) : undefined,
+              categoryId: document.getElementById('newFieldCategory').value || null,
+              required: document.getElementById('newFieldRequired').checked,
+            },
+          });
+          document.getElementById('newFieldForm').reset();
+          newFieldOptionsWrap.hidden = true;
+          showToast(t('toast_field_added'), 'success');
+          loadFields();
+        } catch (err) {
+          errEl.textContent = err.message;
+        }
+      });
+
+      loadFieldFormOptions();
+      loadFields();
+
+      async function loadCannedResponses() {
+        const listEl = document.getElementById('cannedList');
+        listEl.className = 'spinner-row';
+        listEl.textContent = t('loading');
+        try {
+          const { responses } = await api('/canned-responses');
+          listEl.className = '';
+          listEl.innerHTML = responses.length ? responses.map((r) => `
+            <div class="rule-row">
+              <div class="rule-row-head">
+                <strong>${escapeHtml(r.title)}</strong>
+                <button type="button" class="icon-btn deleteCannedBtn" data-id="${r.id}" title="${t('delete_category_title')}">${icon('trash')}</button>
+              </div>
+              <p class="hint" style="margin:0.3rem 0 0;white-space:pre-wrap">${escapeHtml(r.body)}</p>
+            </div>`).join('') : `<p class="hint">${t('no_canned_hint')}</p>`;
+
+          listEl.querySelectorAll('.deleteCannedBtn').forEach((btn) => {
+            btn.addEventListener('click', async () => {
+              try {
+                await api(`/canned-responses/${btn.dataset.id}`, { method: 'DELETE' });
+                showToast(t('toast_canned_deleted'), 'success');
+                loadCannedResponses();
+              } catch (err) {
+                showToast(err.message, 'error');
+              }
+            });
+          });
+        } catch (err) {
+          listEl.className = '';
+          listEl.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
+        }
+      }
+
+      guardForm(document.getElementById('newCannedForm'), async () => {
+        const errEl = document.getElementById('cannedError');
+        errEl.textContent = '';
+        try {
+          await api('/canned-responses', {
+            method: 'POST',
+            body: {
+              title: document.getElementById('newCannedTitle').value.trim(),
+              body: document.getElementById('newCannedBody').value.trim(),
+            },
+          });
+          document.getElementById('newCannedForm').reset();
+          showToast(t('toast_canned_added'), 'success');
+          loadCannedResponses();
+        } catch (err) {
+          errEl.textContent = err.message;
+        }
+      });
+
+      loadCannedResponses();
     }
 
     let allUsersCache = [];

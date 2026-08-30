@@ -542,6 +542,7 @@ body:not(.role-customer):not(.role-agent):not(.role-admin) .nav-toggle { display
 @media (max-width: 640px) { .field-row { grid-template-columns: 1fr; } }
 
 .field { display: flex; flex-direction: column; gap: 0.35rem; }
+.field[hidden] { display: none; }
 .field label { font-weight: 600; font-size: 0.9rem; }
 .field input, .field textarea {
   padding: 0.65rem 0.75rem;
@@ -865,6 +866,31 @@ body:not(.role-customer):not(.role-agent):not(.role-admin) .nav-toggle { display
 .category-sub-list { padding: 0.3rem 0.7rem 0.5rem; }
 .category-sub-list .category-row:first-child { font-weight: 700; }
 .category-sub-list .category-row:not(:first-child) { padding-left: 1.8rem; }
+
+.rule-row {
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 0.5rem;
+}
+.rule-row.rule-disabled { opacity: 0.55; }
+.rule-row-head { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+.rule-row-head .checkbox-field { margin-right: auto; }
+
+.custom-fields-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  margin-top: 0.85rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed var(--border);
+}
+.custom-field-row { display: flex; flex-direction: column; gap: 0.1rem; font-size: 0.83rem; }
+.custom-field-name { color: var(--muted); }
+.custom-field-value { font-weight: 600; }
+
+.canned-picker { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem; }
+.canned-picker select { flex: 1; }
 
 .category-row {
   display: flex;

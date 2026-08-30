@@ -124,6 +124,48 @@ async function setupSchema() {
         message TEXT NOT NULL,
         created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now'))
       )`,
+      `CREATE TABLE IF NOT EXISTS automation_rules (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        enabled INTEGER NOT NULL DEFAULT 1,
+        trigger_event TEXT NOT NULL CHECK (trigger_event IN ('created', 'updated')),
+        cond_status TEXT,
+        cond_priority TEXT,
+        cond_category TEXT,
+        cond_type TEXT,
+        cond_group_id INTEGER REFERENCES groups(id) ON DELETE SET NULL,
+        action_set_status TEXT,
+        action_set_priority TEXT,
+        action_assign_group_id INTEGER REFERENCES groups(id) ON DELETE SET NULL,
+        action_assign_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        action_note TEXT,
+        position INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS custom_fields (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        field_type TEXT NOT NULL DEFAULT 'text' CHECK (field_type IN ('text', 'number', 'textarea', 'select', 'checkbox')),
+        options TEXT,
+        category_id INTEGER REFERENCES categories(id) ON DELETE CASCADE,
+        required INTEGER NOT NULL DEFAULT 0,
+        position INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS ticket_custom_values (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+        field_id INTEGER NOT NULL REFERENCES custom_fields(id) ON DELETE CASCADE,
+        value TEXT,
+        UNIQUE(ticket_id, field_id)
+      )`,
+      `CREATE TABLE IF NOT EXISTS canned_responses (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        body TEXT NOT NULL,
+        created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`,
       'CREATE INDEX IF NOT EXISTS idx_tickets_created_by ON tickets(created_by)',
       'CREATE INDEX IF NOT EXISTS idx_tickets_assigned_to ON tickets(assigned_to)',
       'CREATE INDEX IF NOT EXISTS idx_comments_ticket_id ON comments(ticket_id)',
@@ -131,6 +173,7 @@ async function setupSchema() {
       'CREATE INDEX IF NOT EXISTS idx_assets_assigned_to ON assets(assigned_to)',
       'CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id)',
       'CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log(created_at)',
+      'CREATE INDEX IF NOT EXISTS idx_ticket_custom_values_ticket_id ON ticket_custom_values(ticket_id)',
     ],
     'write'
   );

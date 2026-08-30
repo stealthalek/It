@@ -138,6 +138,75 @@ async function defaultGroupForCategory(categoryName) {
   return row ? row.default_group_id : null;
 }
 
+function parseFieldOptions(raw) {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+async function applicableCustomFields(categoryName) {
+  const category = categoryName ? await db.get('SELECT id FROM categories WHERE name = ?', [categoryName]) : null;
+  const fields = category
+    ? await db.all('SELECT * FROM custom_fields WHERE category_id IS NULL OR category_id = ? ORDER BY position ASC', [category.id])
+    : await db.all('SELECT * FROM custom_fields WHERE category_id IS NULL ORDER BY position ASC');
+  return fields;
+}
+
+async function validateCustomFieldValues(categoryName, customFieldsInput) {
+  const fields = await applicableCustomFields(categoryName);
+  const values = customFieldsInput && typeof customFieldsInput === 'object' ? customFieldsInput : {};
+
+  for (const field of fields) {
+    const raw = values[field.id];
+    const provided = raw !== undefined && raw !== null && String(raw).trim() !== '';
+
+    if (field.required && field.field_type !== 'checkbox' && !provided) {
+      return `Il campo "${field.name}" è obbligatorio`;
+    }
+    if (field.field_type === 'select' && provided) {
+      const options = parseFieldOptions(field.options);
+      if (!options.includes(String(raw))) {
+        return `Valore non valido per il campo "${field.name}"`;
+      }
+    }
+    if (field.field_type === 'number' && provided && Number.isNaN(Number(raw))) {
+      return `Il campo "${field.name}" deve essere numerico`;
+    }
+  }
+  return null;
+}
+
+async function saveCustomFieldValues(ticketId, categoryName, customFieldsInput) {
+  const fields = await applicableCustomFields(categoryName);
+  const values = customFieldsInput && typeof customFieldsInput === 'object' ? customFieldsInput : {};
+
+  for (const field of fields) {
+    const raw = values[field.id];
+    if (raw === undefined) continue;
+    const stored = field.field_type === 'checkbox' ? (raw ? '1' : '0') : String(raw).trim();
+    await db.run(
+      `INSERT INTO ticket_custom_values (ticket_id, field_id, value) VALUES (?, ?, ?)
+       ON CONFLICT(ticket_id, field_id) DO UPDATE SET value = excluded.value`,
+      [ticketId, field.id, stored]
+    );
+  }
+}
+
+async function listCustomValues(ticketId) {
+  return db.all(
+    `SELECT f.id AS field_id, f.name, f.field_type, f.options, f.required, v.value
+     FROM ticket_custom_values v
+     JOIN custom_fields f ON f.id = v.field_id
+     WHERE v.ticket_id = ?
+     ORDER BY f.position ASC`,
+    [ticketId]
+  ).then((rows) => rows.map((r) => ({ ...r, options: parseFieldOptions(r.options) })));
+}
+
 async function notifyStaffOfNewTicket(ticket) {
   const staff = await db.all("SELECT id, group_id, is_super_admin FROM users WHERE role IN ('agent', 'admin')");
   const recipients = staff.filter((u) => u.id !== ticket.created_by && (u.is_super_admin || !ticket.group_id || u.group_id === ticket.group_id));
@@ -158,6 +227,72 @@ async function logEvent(ticketId, actorId, message) {
     [Number(info.lastInsertRowid)]
   );
   realtime.broadcastActivityItem(ticketId, { kind: 'event', ...row });
+}
+
+async function runAutomationRules(ticketId, triggerEvent, actorId) {
+  const rules = await db.all(
+    `SELECT r.*, grpAction.name AS action_assign_group_name, u.name AS action_assign_user_name
+     FROM automation_rules r
+     LEFT JOIN groups grpAction ON grpAction.id = r.action_assign_group_id
+     LEFT JOIN users u ON u.id = r.action_assign_user_id
+     WHERE r.enabled = 1 AND r.trigger_event = ?
+     ORDER BY r.position ASC, r.id ASC`,
+    [triggerEvent]
+  );
+  if (!rules.length) return;
+
+  for (const rule of rules) {
+    const ticket = await db.get(`${TICKET_SELECT} WHERE t.id = ?`, [ticketId]);
+    if (!ticket) return;
+    if (rule.cond_status && rule.cond_status !== ticket.status) continue;
+    if (rule.cond_priority && rule.cond_priority !== ticket.priority) continue;
+    if (rule.cond_category && rule.cond_category !== ticket.category) continue;
+    if (rule.cond_type && rule.cond_type !== ticket.type) continue;
+    if (rule.cond_group_id && rule.cond_group_id !== ticket.group_id) continue;
+
+    const updates = [];
+    const params = [];
+    const events = [];
+
+    if (rule.action_set_status && rule.action_set_status !== ticket.status) {
+      updates.push('status = ?');
+      params.push(rule.action_set_status);
+      events.push(`Stato impostato automaticamente a "${STATUS_LABELS[rule.action_set_status]}" (regola "${rule.name}")`);
+      if (rule.action_set_status === 'resolved') updates.push("resolved_at = datetime('now')");
+    }
+    if (rule.action_set_priority && rule.action_set_priority !== ticket.priority) {
+      updates.push('priority = ?');
+      params.push(rule.action_set_priority);
+      events.push(`Priorità impostata automaticamente a "${PRIORITY_LABELS[rule.action_set_priority]}" (regola "${rule.name}")`);
+    }
+    if (rule.action_assign_group_id && rule.action_assign_group_id !== ticket.group_id) {
+      updates.push('group_id = ?');
+      params.push(rule.action_assign_group_id);
+      events.push(`Gruppo impostato automaticamente a "${rule.action_assign_group_name || rule.action_assign_group_id}" (regola "${rule.name}")`);
+    }
+    if (rule.action_assign_user_id && rule.action_assign_user_id !== ticket.assigned_to) {
+      updates.push('assigned_to = ?');
+      params.push(rule.action_assign_user_id);
+      events.push(`Assegnato automaticamente a "${rule.action_assign_user_name || rule.action_assign_user_id}" (regola "${rule.name}")`);
+    }
+
+    if (updates.length) {
+      updates.push("updated_at = datetime('now')");
+      params.push(ticketId);
+      await db.run(`UPDATE tickets SET ${updates.join(', ')} WHERE id = ?`, params);
+      for (const message of events) {
+        await logEvent(ticketId, actorId, message);
+      }
+    }
+    if (rule.action_note) {
+      await db.run('INSERT INTO comments (ticket_id, user_id, message, is_internal) VALUES (?, ?, ?, 1)', [
+        ticketId, actorId, `${rule.action_note} (nota automatica — regola "${rule.name}")`,
+      ]);
+    }
+  }
+
+  const finalTicket = await db.get(`${TICKET_SELECT} WHERE t.id = ?`, [ticketId]);
+  if (finalTicket) realtime.broadcastTicketUpdate(ticketId, withSla(finalTicket));
 }
 
 async function listActivity(ticketId, includeInternal) {
@@ -261,7 +396,7 @@ router.get(
 router.post(
   '/',
   asyncHandler(async (req, res) => {
-    const { subject, description, priority, category, type } = req.body || {};
+    const { subject, description, priority, category, type, customFields } = req.body || {};
 
     if (!subject || !subject.trim()) {
       return res.status(400).json({ error: 'L\'oggetto è obbligatorio' });
@@ -274,13 +409,20 @@ router.post(
     const finalCategory = await resolveCategory(category && category.trim());
     const autoGroupId = await defaultGroupForCategory(finalCategory);
 
+    const customFieldsError = await validateCustomFieldValues(finalCategory, customFields);
+    if (customFieldsError) {
+      return res.status(400).json({ error: customFieldsError });
+    }
+
     const info = await db.run(
       'INSERT INTO tickets (subject, description, priority, type, category, created_by, group_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
       [subject.trim(), description.trim(), finalPriority, finalType, finalCategory, req.user.id, autoGroupId]
     );
 
     const ticketId = Number(info.lastInsertRowid);
+    await saveCustomFieldValues(ticketId, finalCategory, customFields);
     await logEvent(ticketId, req.user.id, 'Ticket creato');
+    await runAutomationRules(ticketId, 'created', req.user.id);
 
     const ticket = await db.get(`${TICKET_SELECT} WHERE t.id = ?`, [ticketId]);
     notifyStaffOfNewTicket(ticket).catch(() => {});
@@ -295,7 +437,8 @@ router.get(
     if (!ticket) return;
 
     const activity = await listActivity(ticket.id, isStaff(req.user));
-    res.json({ ticket: withSla(ticket), activity });
+    const customFieldValues = await listCustomValues(ticket.id);
+    res.json({ ticket: withSla(ticket), activity, customFieldValues });
   })
 );
 
@@ -459,16 +602,33 @@ router.patch(
       }
     }
 
-    if (updates.length === 0) {
+    let customFieldsUpdated = false;
+    if ((isOwner || isStaff(req.user)) && body.customFields !== undefined) {
+      const targetCategory = updates.some((u) => u.startsWith('category')) ? await resolveCategory(body.category.trim()) : ticket.category;
+      const customFieldsError = await validateCustomFieldValues(targetCategory, body.customFields);
+      if (customFieldsError) {
+        return res.status(400).json({ error: customFieldsError });
+      }
+      customFieldsUpdated = true;
+    }
+
+    if (updates.length === 0 && !customFieldsUpdated) {
       return res.status(400).json({ error: 'Nessuna modifica valida fornita' });
     }
 
-    updates.push("updated_at = datetime('now')");
-    params.push(ticket.id);
-    await db.run(`UPDATE tickets SET ${updates.join(', ')} WHERE id = ?`, params);
+    if (updates.length > 0) {
+      updates.push("updated_at = datetime('now')");
+      params.push(ticket.id);
+      await db.run(`UPDATE tickets SET ${updates.join(', ')} WHERE id = ?`, params);
+    }
+    if (customFieldsUpdated) {
+      const targetCategory = updates.some((u) => u.startsWith('category')) ? await resolveCategory(body.category.trim()) : ticket.category;
+      await saveCustomFieldValues(ticket.id, targetCategory, body.customFields);
+    }
     for (const message of events) {
       await logEvent(ticket.id, req.user.id, message);
     }
+    await runAutomationRules(ticket.id, 'updated', req.user.id);
 
     const updated = withSla(await db.get(`${TICKET_SELECT} WHERE t.id = ?`, [ticket.id]));
     realtime.broadcastTicketUpdate(ticket.id, updated);
@@ -546,6 +706,7 @@ router.post(
         [pausedNow, ticket.id]
       );
       await logEvent(ticket.id, req.user.id, `Stato cambiato automaticamente da "${STATUS_LABELS.waiting_customer}" a "${STATUS_LABELS.in_progress}" (risposta del richiedente)`);
+      await runAutomationRules(ticket.id, 'updated', req.user.id);
       const updated = withSla(await db.get(`${TICKET_SELECT} WHERE t.id = ?`, [ticket.id]));
       realtime.broadcastTicketUpdate(ticket.id, updated);
     }

@@ -18,6 +18,9 @@ const assetRoutes = require('./routes/assets');
 const settingsRoutes = require('./routes/settings');
 const notificationRoutes = require('./routes/notifications');
 const auditRoutes = require('./routes/audit');
+const automationRoutes = require('./routes/automations');
+const customFieldRoutes = require('./routes/custom-fields');
+const cannedResponseRoutes = require('./routes/canned-responses');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -43,6 +46,9 @@ app.use('/api/assets', assetRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/audit', auditRoutes);
+app.use('/api/automations', automationRoutes);
+app.use('/api/custom-fields', customFieldRoutes);
+app.use('/api/canned-responses', cannedResponseRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() });
