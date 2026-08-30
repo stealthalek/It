@@ -736,6 +736,36 @@ router.post(
   })
 );
 
+router.post(
+  '/:id/rating',
+  asyncHandler(async (req, res) => {
+    const ticket = await getTicketOr404(req, res);
+    if (!ticket) return;
+
+    if (ticket.created_by !== req.user.id) {
+      return res.status(403).json({ error: 'Solo il richiedente può valutare il ticket' });
+    }
+    if (!['resolved', 'closed'].includes(ticket.status)) {
+      return res.status(400).json({ error: 'Il ticket deve essere risolto per poter essere valutato' });
+    }
+    const { rating, comment } = req.body || {};
+    const ratingNum = Number(rating);
+    if (!Number.isInteger(ratingNum) || ratingNum < 1 || ratingNum > 5) {
+      return res.status(400).json({ error: 'Valutazione non valida (1-5)' });
+    }
+
+    const finalComment = comment && comment.trim() ? comment.trim().slice(0, 1000) : null;
+    await db.run("UPDATE tickets SET rating = ?, rating_comment = ?, rated_at = datetime('now') WHERE id = ?", [
+      ratingNum, finalComment, ticket.id,
+    ]);
+    await logEvent(ticket.id, req.user.id, `Ticket valutato: ${ratingNum}/5${finalComment ? ` — "${finalComment}"` : ''}`);
+
+    const updated = withSla(await db.get(`${TICKET_SELECT} WHERE t.id = ?`, [ticket.id]));
+    realtime.broadcastTicketUpdate(ticket.id, updated);
+    res.json({ ticket: updated });
+  })
+);
+
 const ATTACHMENT_MAX_BYTES = 5 * 1024 * 1024;
 const ATTACHMENT_ALLOWED_MIME = new Set([
   'image/png', 'image/jpeg', 'image/gif', 'image/webp',

@@ -125,6 +125,7 @@
     message: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
     paperclip: '<path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>',
     file: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>',
+    star: '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>',
   };
 
   const CATEGORY_ICON_CHOICES = ['ticket', 'wifi', 'globe', 'printer', 'mail', 'monitor', 'server', 'phone', 'grid', 'lock', 'shield', 'users', 'laptop', 'tablet', 'package', 'bulb', 'flame', 'truck', 'megaphone'];
@@ -230,6 +231,9 @@
       btn_save: 'Salva', btn_cancel: 'Annulla', btn_delete: 'Elimina', btn_add: 'Aggiungi', btn_search: 'Cerca', btn_download: 'Scarica',
       attachments_title: 'Allegati', btn_add_attachment: 'Aggiungi allegato', no_attachments_hint: 'Nessun allegato.',
       attachment_too_large: 'File troppo grande (max 5 MB)', toast_attachment_added: 'Allegato aggiunto', toast_attachment_deleted: 'Allegato eliminato',
+      rating_title: 'Valutazione', rated_on_label: 'Valutato il', btn_edit_rating: 'Modifica valutazione',
+      rating_comment_placeholder: 'Un commento facoltativo sul servizio ricevuto...', btn_submit_rating: 'Invia valutazione',
+      rating_required_hint: 'Seleziona una valutazione da 1 a 5 stelle', toast_rating_submitted: 'Valutazione inviata, grazie!',
       loading: 'Caricamento...', no_results: 'Nessun risultato.', unassigned_label: 'Non assegnato',
       lang_updated: 'Lingua aggiornata', by_label: 'Di', assigned_to_label: 'Assegnato a', no_tickets_found: 'Nessun ticket trovato.',
       back_to_list: 'Torna alla lista', edit_subject_desc: 'Modifica oggetto e descrizione',
@@ -402,6 +406,9 @@
       btn_save: 'Save', btn_cancel: 'Cancel', btn_delete: 'Delete', btn_add: 'Add', btn_search: 'Search', btn_download: 'Download',
       attachments_title: 'Attachments', btn_add_attachment: 'Add attachment', no_attachments_hint: 'No attachments.',
       attachment_too_large: 'File too large (max 5 MB)', toast_attachment_added: 'Attachment added', toast_attachment_deleted: 'Attachment deleted',
+      rating_title: 'Rating', rated_on_label: 'Rated on', btn_edit_rating: 'Edit rating',
+      rating_comment_placeholder: 'An optional comment about the service received...', btn_submit_rating: 'Submit rating',
+      rating_required_hint: 'Select a rating from 1 to 5 stars', toast_rating_submitted: 'Rating submitted, thank you!',
       loading: 'Loading...', no_results: 'No results.', unassigned_label: 'Unassigned',
       lang_updated: 'Language updated', by_label: 'By', assigned_to_label: 'Assigned to', no_tickets_found: 'No tickets found.',
       back_to_list: 'Back to list', edit_subject_desc: 'Edit subject and description',
@@ -2121,6 +2128,12 @@
             ` : ''}
           </div>
 
+          ${(ticket.rating || (isOwner && !isStaff() && !readOnly && ['resolved', 'closed'].includes(ticket.status))) ? `
+          <div class="card" style="margin-bottom:1rem">
+            <h3 class="section-title" style="margin-top:0">${icon('star')} ${t('rating_title')}</h3>
+            <div id="ratingContent"></div>
+          </div>` : ''}
+
           <div class="card">
             <h3 class="section-title" style="margin-top:0">${t('activity_title')}</h3>
             <div id="activityList" class="activity-timeline">
@@ -2236,6 +2249,68 @@
     }
 
     loadAttachments();
+
+    const ratingContent = document.getElementById('ratingContent');
+    if (ratingContent) {
+      const canRate = isOwner && !isStaff() && !readOnly && ['resolved', 'closed'].includes(ticket.status);
+
+      function renderStars(value, interactive) {
+        return `<div class="star-rating ${interactive ? 'interactive' : ''}">
+          ${[1, 2, 3, 4, 5].map((n) => `<button type="button" class="star-btn ${n <= value ? 'filled' : ''}" data-star="${n}" ${interactive ? '' : 'disabled'}>${icon('star')}</button>`).join('')}
+        </div>`;
+      }
+
+      function renderRatingReadonly() {
+        ratingContent.innerHTML = `
+          ${renderStars(ticket.rating, false)}
+          ${ticket.rating_comment ? `<p class="hint" style="margin:0.4rem 0 0">"${escapeHtml(ticket.rating_comment)}"</p>` : ''}
+          <p class="hint" style="margin:0.2rem 0 0">${t('rated_on_label')} ${formatDate(ticket.rated_at)}</p>
+          ${canRate ? `<button type="button" id="editRatingBtn" class="btn btn-ghost btn-sm" style="margin-top:0.5rem">${t('btn_edit_rating')}</button>` : ''}
+        `;
+        const editBtn = document.getElementById('editRatingBtn');
+        if (editBtn) editBtn.addEventListener('click', () => renderRatingForm(ticket.rating, ticket.rating_comment));
+      }
+
+      function renderRatingForm(initialValue, initialComment) {
+        let selected = initialValue || 0;
+        ratingContent.innerHTML = `
+          ${renderStars(selected, true)}
+          <textarea id="ratingComment" rows="2" placeholder="${t('rating_comment_placeholder')}" style="margin-top:0.5rem">${escapeHtml(initialComment || '')}</textarea>
+          <p class="error-text" id="ratingError"></p>
+          <div style="margin-top:0.4rem"><button type="button" id="submitRatingBtn" class="btn btn-sm">${t('btn_submit_rating')}</button></div>
+        `;
+        const starsEl = ratingContent.querySelector('.star-rating');
+        starsEl.querySelectorAll('.star-btn').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            selected = Number(btn.dataset.star);
+            starsEl.querySelectorAll('.star-btn').forEach((b) => b.classList.toggle('filled', Number(b.dataset.star) <= selected));
+          });
+        });
+        document.getElementById('submitRatingBtn').addEventListener('click', async () => {
+          const errEl = document.getElementById('ratingError');
+          errEl.textContent = '';
+          if (!selected) { errEl.textContent = t('rating_required_hint'); return; }
+          try {
+            const { ticket: updated } = await api(`/tickets/${ticket.id}/rating`, {
+              method: 'POST', body: { rating: selected, comment: document.getElementById('ratingComment').value },
+            });
+            ticket.rating = updated.rating;
+            ticket.rating_comment = updated.rating_comment;
+            ticket.rated_at = updated.rated_at;
+            showToast(t('toast_rating_submitted'), 'success');
+            renderRatingReadonly();
+          } catch (err) {
+            errEl.textContent = err.message;
+          }
+        });
+      }
+
+      if (ticket.rating) {
+        renderRatingReadonly();
+      } else {
+        renderRatingForm(0, '');
+      }
+    }
 
     const attachmentInput = document.getElementById('attachmentInput');
     const attachmentUploadBtn = document.getElementById('attachmentUploadBtn');

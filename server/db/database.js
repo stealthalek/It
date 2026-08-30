@@ -326,6 +326,17 @@ async function migrate() {
       SELECT id, subject, description, status, priority, type, category, created_by, assigned_to, created_at, updated_at, group_id, resolved_at, asset_id, waiting_since, sla_paused_ms FROM tickets_old`);
     await run('DROP TABLE tickets_old');
   }
+
+  const ticketCols3 = await all('PRAGMA table_info(tickets)');
+  if (!ticketCols3.some((c) => c.name === 'rating')) {
+    await run('ALTER TABLE tickets ADD COLUMN rating INTEGER');
+  }
+  if (!ticketCols3.some((c) => c.name === 'rating_comment')) {
+    await run('ALTER TABLE tickets ADD COLUMN rating_comment TEXT');
+  }
+  if (!ticketCols3.some((c) => c.name === 'rated_at')) {
+    await run('ALTER TABLE tickets ADD COLUMN rated_at TEXT');
+  }
 }
 
 async function seedDefaultGroups() {

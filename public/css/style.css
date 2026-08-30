@@ -906,6 +906,21 @@ body:not(.role-customer):not(.role-agent):not(.role-admin) .nav-toggle { display
 .attachment-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .attachment-meta { font-size: 0.78rem; color: var(--muted); }
 
+.star-rating { display: flex; gap: 0.15rem; }
+.star-btn {
+  background: none;
+  border: none;
+  padding: 0.1rem;
+  cursor: default;
+  color: var(--border);
+  line-height: 0;
+}
+.star-btn.filled { color: #f5a623; }
+.star-btn .icon { fill: none; stroke: currentColor; width: 1.3rem; height: 1.3rem; }
+.star-btn.filled .icon { fill: currentColor; }
+.star-rating.interactive .star-btn { cursor: pointer; transition: transform 0.1s ease; }
+.star-rating.interactive .star-btn:hover { transform: scale(1.15); }
+
 .category-row {
   display: flex;
   flex-wrap: wrap;
