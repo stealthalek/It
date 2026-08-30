@@ -270,6 +270,7 @@
       search_hint: 'Cerca per numero ticket, parola chiave o richiedente: i risultati compaiono mentre scrivi.',
       search_placeholder_full: 'Numero ticket, parola chiave, richiedente...', all_groups_option: 'Tutti i gruppi', all_tags_option: 'Tutte le etichette',
       filter_assigned_to_label: 'Assegnati a', filter_created_by_label: 'Aperti da', assets_assigned_title: 'Asset assegnati', no_assets_assigned: 'Nessun asset assegnato.',
+      assets_search_placeholder: 'Cerca per nome o tag...',
       report_hint: 'Volumi, tempi di risoluzione e rispetto SLA per gruppo e per agente.',
       chart_volume_by_group: 'Volume ticket per gruppo', chart_avg_resolution: 'Tempo medio di risoluzione (ore) per gruppo',
       chart_sla_compliance: 'SLA rispettata per gruppo (%)', chart_load_by_agent: 'Carico ticket per agente',
@@ -461,6 +462,7 @@
       search_hint: 'Search by ticket number, keyword or requester: results appear as you type.',
       search_placeholder_full: 'Ticket number, keyword, requester...', all_groups_option: 'All groups', all_tags_option: 'All tags',
       filter_assigned_to_label: 'Assigned to', filter_created_by_label: 'Opened by', assets_assigned_title: 'Assigned assets', no_assets_assigned: 'No assets assigned.',
+      assets_search_placeholder: 'Search by name or tag...',
       report_hint: 'Volumes, resolution times and SLA compliance by group and agent.',
       chart_volume_by_group: 'Ticket volume by group', chart_avg_resolution: 'Average resolution time (hours) by group',
       chart_sla_compliance: 'SLA compliance by group (%)', chart_load_by_agent: 'Ticket load by agent',
@@ -2180,7 +2182,7 @@
               ${t('created_by')} ${escapeHtml(ticket.creator_name)} ${t('on_date')} ${formatDate(ticket.created_at)}
               ${ticket.assignee_name ? ` · ${t('assigned_to_label')} ${escapeHtml(ticket.assignee_name)}` : ''}
               ${groupLabel(ticket) ? ` · ${t('group_label_prefix')} ${escapeHtml(groupLabel(ticket))}` : ''}
-              ${ticket.asset_name ? ` · ${t('field_linked_asset')} ${escapeHtml(ticket.asset_name)}` : ''}
+              ${ticket.asset_name ? ` · ${t('field_linked_asset')} ${isStaff() ? `<a href="#/assets" id="ticketAssetLink">${escapeHtml(ticket.asset_name)}</a>` : escapeHtml(ticket.asset_name)}` : ''}
             </p>
             <div id="tagsWrap" class="tags-wrap"></div>
             ${canReopen ? `<button id="reopenBtn" class="btn btn-sm btn-ghost">${icon('refresh')} ${t('reopen_ticket')}</button>` : ''}
@@ -2547,6 +2549,13 @@
         showToast(err.message, 'error');
       }
     });
+
+    const ticketAssetLink = document.getElementById('ticketAssetLink');
+    if (ticketAssetLink) {
+      ticketAssetLink.addEventListener('click', () => {
+        sessionStorage.setItem('ticketing_assets_query', ticket.asset_tag || ticket.asset_name);
+      });
+    }
 
     const editToggleBtn = document.getElementById('editToggleBtn');
     const editCancelBtn = document.getElementById('editCancelBtn');
@@ -4053,6 +4062,7 @@
         </form>
       </div>
       <div class="filters">
+        <input id="assetQueryFilter" type="search" placeholder="${t('assets_search_placeholder')}" style="flex:1 1 220px" />
         <select id="assetStatusFilter">
           <option value="">${t('filter_all_statuses')}</option>
           ${Object.entries(assetStatusLabels()).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
@@ -4066,6 +4076,7 @@
     } catch { usersCache = []; }
 
     const statusFilter = document.getElementById('assetStatusFilter');
+    const queryFilter = document.getElementById('assetQueryFilter');
 
     async function loadAssets() {
       const wrap = document.getElementById('assetsWrap');
@@ -4074,6 +4085,7 @@
       try {
         const params = new URLSearchParams();
         if (statusFilter.value) params.set('status', statusFilter.value);
+        if (queryFilter.value.trim()) params.set('q', queryFilter.value.trim());
         const { assets } = await api(`/assets?${params.toString()}`);
         wrap.className = 'card';
         wrap.innerHTML = assets.length ? `
@@ -4151,6 +4163,17 @@
     }
 
     statusFilter.addEventListener('change', loadAssets);
+    let assetQueryDebounce;
+    queryFilter.addEventListener('input', () => {
+      clearTimeout(assetQueryDebounce);
+      assetQueryDebounce = setTimeout(loadAssets, 200);
+    });
+
+    const presetAssetQuery = sessionStorage.getItem('ticketing_assets_query');
+    if (presetAssetQuery) {
+      sessionStorage.removeItem('ticketing_assets_query');
+      queryFilter.value = presetAssetQuery;
+    }
 
     guardForm(document.getElementById('newAssetForm'), async () => {
       try {

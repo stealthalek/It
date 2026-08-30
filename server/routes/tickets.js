@@ -32,6 +32,7 @@ const TICKET_SELECT = `
     grp.work_start_hour AS work_start_hour,
     grp.work_end_hour AS work_end_hour,
     asset.name AS asset_name,
+    asset.tag AS asset_tag,
     (SELECT GROUP_CONCAT(tg.name, ',') FROM ticket_tags tt JOIN tags tg ON tg.id = tt.tag_id WHERE tt.ticket_id = t.id) AS tag_names
   FROM tickets t
   JOIN users creator ON creator.id = t.created_by
