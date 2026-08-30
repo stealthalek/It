@@ -1,3 +1,16 @@
+const db = require('./db/database');
+
+let holidaySet = new Set();
+
+async function loadHolidays() {
+  const rows = await db.all('SELECT date FROM holidays');
+  holidaySet = new Set(rows.map((r) => r.date));
+}
+
+function dateKey(ms) {
+  return new Date(ms).toISOString().slice(0, 10);
+}
+
 function businessMillisBetween(startMs, endMs, startHour, endHour) {
   if (endMs <= startMs || endHour <= startHour) return 0;
   const MS_PER_DAY = 24 * 3600 * 1000;
@@ -7,7 +20,7 @@ function businessMillisBetween(startMs, endMs, startHour, endHour) {
   let cursor = dayStart.getTime();
   while (cursor < endMs) {
     const dayOfWeek = new Date(cursor).getUTCDay();
-    if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+    if (dayOfWeek >= 1 && dayOfWeek <= 5 && !holidaySet.has(dateKey(cursor))) {
       const windowStart = cursor + startHour * 3600 * 1000;
       const windowEnd = cursor + endHour * 3600 * 1000;
       const overlapStart = Math.max(windowStart, startMs);
@@ -62,4 +75,4 @@ function withSla(ticket) {
   return { ...ticket, sla_status: computeSlaStatus(ticket), sla_remaining_ms: computeSlaRemaining(ticket) };
 }
 
-module.exports = { businessMillisBetween, pausedMillisSoFar, computeSlaStatus, computeSlaRemaining, withSla };
+module.exports = { businessMillisBetween, pausedMillisSoFar, computeSlaStatus, computeSlaRemaining, withSla, loadHolidays };

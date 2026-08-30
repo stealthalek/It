@@ -201,6 +201,12 @@ async function setupSchema() {
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         PRIMARY KEY (ticket_id, user_id)
       )`,
+      `CREATE TABLE IF NOT EXISTS holidays (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT NOT NULL UNIQUE,
+        name TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`,
       `CREATE TABLE IF NOT EXISTS ticket_templates (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,

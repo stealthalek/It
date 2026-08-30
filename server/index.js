@@ -23,6 +23,8 @@ const customFieldRoutes = require('./routes/custom-fields');
 const cannedResponseRoutes = require('./routes/canned-responses');
 const tagRoutes = require('./routes/tags');
 const ticketTemplateRoutes = require('./routes/ticket-templates');
+const holidayRoutes = require('./routes/holidays');
+const { loadHolidays } = require('./sla');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -53,6 +55,7 @@ app.use('/api/custom-fields', customFieldRoutes);
 app.use('/api/canned-responses', cannedResponseRoutes);
 app.use('/api/tags', tagRoutes);
 app.use('/api/ticket-templates', ticketTemplateRoutes);
+app.use('/api/holidays', holidayRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() });
@@ -83,6 +86,7 @@ async function main() {
     process.exit(1);
   }
   await db.initDb();
+  await loadHolidays();
   startAutoCloseScheduler();
   httpServer.listen(PORT, '0.0.0.0', () => {
     console.log(`Piattaforma di ticketing in ascolto su http://0.0.0.0:${PORT}`);

@@ -332,6 +332,9 @@
       admin_templates_title: 'Modelli ticket', admin_templates_hint: 'Modelli predefiniti per velocizzare l\'apertura di richieste ricorrenti, selezionabili dall\'utente nel modulo di nuovo ticket.',
       field_template_name: 'Nome modello', btn_add_template: 'Aggiungi modello', no_templates_hint: 'Nessun modello configurato.',
       toast_template_added: 'Modello aggiunto', toast_template_deleted: 'Modello eliminato',
+      admin_holidays_title: 'Giorni festivi', admin_holidays_hint: 'Le date qui indicate vengono escluse dal calcolo delle ore lavorative per l\'SLA, oltre ai fine settimana.',
+      field_date: 'Data', field_holiday_name: 'Nome festività', btn_add_holiday: 'Aggiungi festività', no_holidays_hint: 'Nessuna festività configurata.',
+      toast_holiday_added: 'Festività aggiunta', toast_holiday_deleted: 'Festività rimossa',
       field_group_name: 'Nome gruppo', field_parent_group: 'Gruppo padre', option_no_parent: 'Nessuno (primo livello)',
       field_response_hours: 'Risposta (h)', field_resolve_hours: 'Risoluzione (h)', field_shift_start: 'Inizio turno', field_shift_end: 'Fine turno',
       btn_create_group: 'Crea gruppo', delete_group_title: 'Elimina gruppo', shift_from_label: 'Turno dalle', shift_to_label: 'alle',
@@ -518,6 +521,9 @@
       admin_templates_title: 'Ticket templates', admin_templates_hint: 'Preset templates to speed up opening recurring requests, selectable by users on the new-ticket form.',
       field_template_name: 'Template name', btn_add_template: 'Add template', no_templates_hint: 'No templates configured.',
       toast_template_added: 'Template added', toast_template_deleted: 'Template deleted',
+      admin_holidays_title: 'Holidays', admin_holidays_hint: 'Dates listed here are excluded from SLA business-hours calculations, in addition to weekends.',
+      field_date: 'Date', field_holiday_name: 'Holiday name', btn_add_holiday: 'Add holiday', no_holidays_hint: 'No holidays configured.',
+      toast_holiday_added: 'Holiday added', toast_holiday_deleted: 'Holiday removed',
       field_group_name: 'Group name', field_parent_group: 'Parent group', option_no_parent: 'None (top level)',
       field_response_hours: 'Response (h)', field_resolve_hours: 'Resolution (h)', field_shift_start: 'Shift start', field_shift_end: 'Shift end',
       btn_create_group: 'Create group', delete_group_title: 'Delete group', shift_from_label: 'Shift from', shift_to_label: 'to',
@@ -2887,6 +2893,17 @@
           <p class="error-text" id="templateError"></p>
           <div id="templatesList" class="spinner-row">${t('loading')}</div>
         </div>
+        <div class="card admin-grid-full">
+          <h3 class="section-title" style="margin-top:0">${icon('activity')} ${t('admin_holidays_title')}</h3>
+          <p class="hint">${t('admin_holidays_hint')}</p>
+          <form id="newHolidayForm" style="display:flex;flex-wrap:wrap;gap:0.6rem;align-items:flex-end;margin:0.75rem 0">
+            <div class="field" style="flex:0 0 10rem"><label for="newHolidayDate">${t('field_date')}</label><input id="newHolidayDate" type="date" required /></div>
+            <div class="field" style="flex:1 1 12rem"><label for="newHolidayName">${t('field_holiday_name')}</label><input id="newHolidayName" required placeholder="es. Ferragosto" /></div>
+            <button class="btn btn-sm" type="submit">${t('btn_add_holiday')}</button>
+          </form>
+          <p class="error-text" id="holidayError"></p>
+          <div id="holidaysList" class="spinner-row">${t('loading')}</div>
+        </div>
       </div>` : ''}
       <div id="usersWrap" class="card spinner-row">${t('loading')}</div>`;
 
@@ -3591,6 +3608,60 @@
 
       loadTemplateCategoryOptions();
       loadTemplates();
+
+      async function loadHolidays() {
+        const listEl = document.getElementById('holidaysList');
+        listEl.className = 'spinner-row';
+        listEl.textContent = t('loading');
+        try {
+          const { holidays } = await api('/holidays');
+          listEl.className = '';
+          listEl.innerHTML = holidays.length ? holidays.map((h) => `
+            <div class="rule-row">
+              <div class="rule-row-head">
+                <strong>${new Date(`${h.date}T00:00:00Z`).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' })}</strong>
+                <span>${escapeHtml(h.name)}</span>
+                <button type="button" class="icon-btn deleteHolidayBtn" data-id="${h.id}" title="${t('delete_category_title')}">${icon('trash')}</button>
+              </div>
+            </div>`).join('') : `<p class="hint">${t('no_holidays_hint')}</p>`;
+
+          listEl.querySelectorAll('.deleteHolidayBtn').forEach((btn) => {
+            btn.addEventListener('click', async () => {
+              try {
+                await api(`/holidays/${btn.dataset.id}`, { method: 'DELETE' });
+                showToast(t('toast_holiday_deleted'), 'success');
+                loadHolidays();
+              } catch (err) {
+                showToast(err.message, 'error');
+              }
+            });
+          });
+        } catch (err) {
+          listEl.className = '';
+          listEl.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
+        }
+      }
+
+      guardForm(document.getElementById('newHolidayForm'), async () => {
+        const errEl = document.getElementById('holidayError');
+        errEl.textContent = '';
+        try {
+          await api('/holidays', {
+            method: 'POST',
+            body: {
+              date: document.getElementById('newHolidayDate').value,
+              name: document.getElementById('newHolidayName').value.trim(),
+            },
+          });
+          document.getElementById('newHolidayForm').reset();
+          showToast(t('toast_holiday_added'), 'success');
+          loadHolidays();
+        } catch (err) {
+          errEl.textContent = err.message;
+        }
+      });
+
+      loadHolidays();
     }
 
     let allUsersCache = [];
