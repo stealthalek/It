@@ -387,6 +387,9 @@ async function migrate() {
   if (!ticketCols3.some((c) => c.name === 'first_response_at')) {
     await run('ALTER TABLE tickets ADD COLUMN first_response_at TEXT');
   }
+  if (!ticketCols3.some((c) => c.name === 'on_behalf_of')) {
+    await run('ALTER TABLE tickets ADD COLUMN on_behalf_of INTEGER REFERENCES users(id) ON DELETE SET NULL');
+  }
 }
 
 async function seedDefaultGroups() {

@@ -33,6 +33,8 @@ const TICKET_SELECT = `
     grp.work_end_hour AS work_end_hour,
     asset.name AS asset_name,
     asset.tag AS asset_tag,
+    onBehalf.name AS on_behalf_name,
+    onBehalf.email AS on_behalf_email,
     (SELECT GROUP_CONCAT(tg.name, ',') FROM ticket_tags tt JOIN tags tg ON tg.id = tt.tag_id WHERE tt.ticket_id = t.id) AS tag_names
   FROM tickets t
   JOIN users creator ON creator.id = t.created_by
@@ -40,6 +42,7 @@ const TICKET_SELECT = `
   LEFT JOIN groups grp ON grp.id = t.group_id
   LEFT JOIN groups grpParent ON grpParent.id = grp.parent_id
   LEFT JOIN assets asset ON asset.id = t.asset_id
+  LEFT JOIN users onBehalf ON onBehalf.id = t.on_behalf_of
 `;
 
 function isStaff(user) {
@@ -47,7 +50,7 @@ function isStaff(user) {
 }
 
 function canAccessTicket(user, ticket) {
-  if (!isStaff(user)) return ticket.created_by === user.id;
+  if (!isStaff(user)) return ticket.created_by === user.id || ticket.on_behalf_of === user.id;
   if (user.is_super_admin) return true;
   if (!ticket.group_id) return true;
   return ticket.group_id === user.group_id;
@@ -290,8 +293,8 @@ router.get(
     const params = [];
 
     if (!isStaff(req.user)) {
-      clauses.push('t.created_by = ?');
-      params.push(req.user.id);
+      clauses.push('(t.created_by = ? OR t.on_behalf_of = ?)');
+      params.push(req.user.id, req.user.id);
     } else if (assigned === 'me') {
       clauses.push('t.assigned_to = ?');
       params.push(req.user.id);
@@ -372,7 +375,7 @@ router.get(
 router.post(
   '/',
   asyncHandler(async (req, res) => {
-    const { subject, description, priority, category, type, customFields } = req.body || {};
+    const { subject, description, priority, category, type, customFields, onBehalfOf } = req.body || {};
 
     if (!subject || !subject.trim()) {
       return res.status(400).json({ error: 'L\'oggetto è obbligatorio' });
@@ -390,18 +393,32 @@ router.post(
       return res.status(400).json({ error: customFieldsError });
     }
 
+    let beneficiary = null;
+    if (onBehalfOf && Number(onBehalfOf) !== req.user.id) {
+      beneficiary = await db.get('SELECT id, name FROM users WHERE id = ?', [Number(onBehalfOf)]);
+      if (!beneficiary) {
+        return res.status(400).json({ error: 'Utente selezionato non valido' });
+      }
+    }
+
     const info = await db.run(
-      'INSERT INTO tickets (subject, description, priority, type, category, created_by, group_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [subject.trim(), description.trim(), finalPriority, finalType, finalCategory, req.user.id, autoGroupId]
+      'INSERT INTO tickets (subject, description, priority, type, category, created_by, group_id, on_behalf_of) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [subject.trim(), description.trim(), finalPriority, finalType, finalCategory, req.user.id, autoGroupId, beneficiary ? beneficiary.id : null]
     );
 
     const ticketId = Number(info.lastInsertRowid);
     await saveCustomFieldValues(ticketId, finalCategory, customFields);
-    await logEvent(ticketId, req.user.id, 'Ticket creato');
+    await logEvent(ticketId, req.user.id, beneficiary ? `Ticket aperto da ${req.user.name} per conto di ${beneficiary.name}` : 'Ticket creato');
     await runAutomationRules(ticketId, 'created', req.user.id);
 
     const ticket = await db.get(`${TICKET_SELECT} WHERE t.id = ?`, [ticketId]);
     notifyStaffOfNewTicket(ticket).catch(() => {});
+    if (beneficiary) {
+      notifyUser(beneficiary.id, ticket.id, {
+        it: `${req.user.name} ha aperto il ticket #${ticket.id} per tuo conto: ${ticket.subject}`,
+        en: `${req.user.name} opened ticket #${ticket.id} on your behalf: ${ticket.subject}`,
+      }).catch(() => {});
+    }
     res.status(201).json({ ticket: withSla(ticket) });
   })
 );

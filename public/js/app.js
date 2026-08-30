@@ -377,6 +377,7 @@
       new_ticket_title: 'Nuovo ticket', new_ticket_hint: 'Raccontaci il problema: bastano pochi campi, il resto lo segue il nostro team.',
       field_request_type: 'Tipo di richiesta', type_incident_suffix: '— qualcosa non funziona', type_task_suffix: '— richiesta pianificabile',
       field_template: 'Parti da un modello', template_blank_option: 'Nessun modello (parti da zero)',
+      field_on_behalf_of: 'Apri per conto di', on_behalf_of_none: 'Per me stesso', on_behalf_of_label: 'per conto di',
       field_category: 'Categoria', field_subject_placeholder: 'Un breve titolo per il problema', field_urgency: 'Quanto è urgente?',
       category_search_placeholder: 'Cerca una categoria (es. laptop, arredamento, marketing...)',
       category_selected_label: 'Categoria selezionata:', field_parent_category: 'Categoria principale',
@@ -574,6 +575,7 @@
       new_ticket_title: 'New ticket', new_ticket_hint: 'Tell us about the problem: just a few fields, our team takes care of the rest.',
       field_request_type: 'Request type', type_incident_suffix: '— something isn\'t working', type_task_suffix: '— schedulable request',
       field_template: 'Start from a template', template_blank_option: 'No template (start from scratch)',
+      field_on_behalf_of: 'Open on behalf of', on_behalf_of_none: 'For myself', on_behalf_of_label: 'on behalf of',
       field_category: 'Category', field_subject_placeholder: 'A short title for the issue', field_urgency: 'How urgent is it?',
       category_search_placeholder: 'Search a category (e.g. laptop, furniture, marketing...)',
       category_selected_label: 'Selected category:', field_parent_category: 'Parent category',
@@ -1917,7 +1919,7 @@
         <p class="ticket-desc">${escapeHtml(tk.description)}</p>
         ${tk.tag_names ? `<div class="tag-chips">${tk.tag_names.split(',').map((n) => `<span class="tag-chip">${escapeHtml(n)}</span>`).join('')}</div>` : ''}
         <div class="ticket-meta">
-          ${t('by_label')} ${escapeHtml(tk.creator_name)} · ${formatDate(tk.updated_at)}
+          ${t('by_label')} ${escapeHtml(tk.creator_name)}${tk.on_behalf_name ? ` ${t('on_behalf_of_label')} ${escapeHtml(tk.on_behalf_name)}` : ''} · ${formatDate(tk.updated_at)}
           ${tk.assignee_name ? ` · ${t('assigned_to_label')} ${escapeHtml(tk.assignee_name)}` : ''}
           ${groupLabel(tk) ? ` · ${escapeHtml(groupLabel(tk))}` : ''}
         </div>
@@ -1968,6 +1970,11 @@
       const data = await api('/ticket-templates');
       templates = data.templates;
     } catch { templates = []; }
+    let otherUsers = [];
+    try {
+      const data = await api('/users');
+      otherUsers = data.users.filter((u) => u.id !== state.user.id);
+    } catch { otherUsers = []; }
 
     appEl.innerHTML = `
       <div class="view-header">
@@ -2008,6 +2015,14 @@
             <div id="categoryTree" class="category-tree"></div>
           </div>
           <div id="customFieldsContainer"></div>
+          ${otherUsers.length ? `
+          <div class="field">
+            <label for="onBehalfOfSelect">${t('field_on_behalf_of')}</label>
+            <select id="onBehalfOfSelect">
+              <option value="">${t('on_behalf_of_none')}</option>
+              ${otherUsers.map((u) => `<option value="${u.id}">${escapeHtml(u.name)} · ${escapeHtml(u.email)}</option>`).join('')}
+            </select>
+          </div>` : ''}
           <div class="field">
             <label for="subject">${t('field_subject')}</label>
             <input id="subject" type="text" required maxlength="200" placeholder="${t('field_subject_placeholder')}" />
@@ -2172,6 +2187,7 @@
     guardForm(document.getElementById('newTicketForm'), async () => {
       const errEl = document.getElementById('newTicketError');
       errEl.textContent = '';
+      const onBehalfOfEl = document.getElementById('onBehalfOfSelect');
       const body = {
         subject: document.getElementById('subject').value.trim(),
         category: selectedCategory,
@@ -2179,6 +2195,7 @@
         type: document.getElementById('type').value,
         description: document.getElementById('description').value.trim(),
         customFields: collectCustomFieldValues(),
+        onBehalfOf: onBehalfOfEl && onBehalfOfEl.value ? Number(onBehalfOfEl.value) : undefined,
       };
       try {
         const { ticket } = await api('/tickets', { method: 'POST', body });
@@ -2315,7 +2332,7 @@
               </form>
             ` : `<p style="white-space:pre-wrap">${escapeHtml(ticket.description)}</p>`}
             <p class="ticket-meta">
-              ${t('created_by')} ${escapeHtml(ticket.creator_name)} ${t('on_date')} ${formatDate(ticket.created_at)}
+              ${t('created_by')} ${escapeHtml(ticket.creator_name)}${ticket.on_behalf_name ? ` ${t('on_behalf_of_label')} ${escapeHtml(ticket.on_behalf_name)}` : ''} ${t('on_date')} ${formatDate(ticket.created_at)}
               ${ticket.assignee_name ? ` · ${t('assigned_to_label')} ${escapeHtml(ticket.assignee_name)}` : ''}
               ${groupLabel(ticket) ? ` · ${t('group_label_prefix')} ${escapeHtml(groupLabel(ticket))}` : ''}
               ${ticket.asset_name ? ` · ${t('field_linked_asset')} ${isStaff() ? `<a href="#/assets" id="ticketAssetLink">${escapeHtml(ticket.asset_name)}</a>` : escapeHtml(ticket.asset_name)}` : ''}
