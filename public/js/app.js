@@ -5,6 +5,7 @@
     token: localStorage.getItem('ticketing_token') || null,
     user: null,
     viewAs: null,
+    adminSection: null,
   };
 
   let dashboardAutoTimer = null;
@@ -452,6 +453,9 @@
       onboarding_item_pending: 'Da fare', onboarding_item_done: 'Completato', onboarding_item_skipped: 'Saltato',
       onboarding_kind_checkbox: 'Attivazione semplice', onboarding_kind_license: 'Con licenza', onboarding_kind_copy_user: 'Copia utenza da collega', onboarding_kind_asset: 'Genera asset',
       onboarding_callout_title: 'Devi far entrare una nuova persona in azienda?', onboarding_callout_hint: 'Avvia una pratica di onboarding: postazione, accessi e account, tutto tracciato in un unico posto.',
+      admin_section_overview: 'Panoramica', admin_section_users: 'Utenti', admin_section_groups: 'Gruppi e organigramma',
+      admin_section_catalog: 'Catalogo e campi', admin_section_automation: 'Automazione', admin_section_onboarding: 'Onboarding',
+      admin_section_org: 'Organizzazione',
     },
     en: {
       nav_dashboard: 'Tickets', nav_new: 'New ticket', nav_search: 'Search', nav_backlog: 'Backlog',
@@ -679,6 +683,9 @@
       onboarding_item_pending: 'To do', onboarding_item_done: 'Done', onboarding_item_skipped: 'Skipped',
       onboarding_kind_checkbox: 'Simple activation', onboarding_kind_license: 'With license', onboarding_kind_copy_user: 'Copy entitlements from colleague', onboarding_kind_asset: 'Generate asset',
       onboarding_callout_title: 'Bringing a new person on board?', onboarding_callout_hint: 'Start an onboarding request: workstation, access and accounts, all tracked in one place.',
+      admin_section_overview: 'Overview', admin_section_users: 'Users', admin_section_groups: 'Groups and org chart',
+      admin_section_catalog: 'Catalog and fields', admin_section_automation: 'Automation', admin_section_onboarding: 'Onboarding',
+      admin_section_org: 'Organization',
     },
   };
   const LANG_LABELS = { it: 'Italiano', en: 'English' };
@@ -3089,11 +3096,39 @@
       return;
     }
     const isAdmin = state.user.role === 'admin';
+    const ADMIN_SECTIONS = [
+      { key: 'overview', icon: 'grid', label: t('admin_section_overview') },
+      { key: 'users', icon: 'users', label: t('admin_section_users') },
+      { key: 'groups', icon: 'shield', label: t('admin_section_groups') },
+      { key: 'catalog', icon: 'ticket', label: t('admin_section_catalog') },
+      { key: 'automation', icon: 'activity', label: t('admin_section_automation') },
+      { key: 'onboarding', icon: 'userCircle', label: t('admin_section_onboarding') },
+      { key: 'org', icon: 'globe', label: t('admin_section_org') },
+    ];
+    const activeSection = isAdmin ? (ADMIN_SECTIONS.some((s) => s.key === state.adminSection) ? state.adminSection : 'overview') : 'users';
+
+    function adminTabsHtml() {
+      return `<div class="admin-tabs">${ADMIN_SECTIONS.map((s) => `
+        <button type="button" class="admin-tab ${activeSection === s.key ? 'active' : ''}" data-admin-section="${s.key}">${icon(s.icon, 'nav-icon')} ${s.label}</button>
+      `).join('')}</div>`;
+    }
+
     appEl.innerHTML = `
       <div class="view-header"><h1>${icon('shield')} ${t('admin_title')}</h1></div>
+      ${isAdmin ? adminTabsHtml() : ''}
+      ${isAdmin && activeSection === 'overview' ? `
+      <div class="admin-overview-grid" id="adminOverviewGrid">
+        ${ADMIN_SECTIONS.filter((s) => s.key !== 'overview').map((s) => `
+          <button type="button" class="admin-overview-tile" data-admin-section="${s.key}">
+            ${icon(s.icon)}
+            <span class="admin-overview-tile-label">${s.label}</span>
+            <span class="admin-overview-tile-count" data-count-for="${s.key}"></span>
+          </button>
+        `).join('')}
+      </div>` : ''}
       ${isAdmin ? `
       <div class="admin-grid" style="margin-bottom:1.25rem">
-        <div class="card">
+        <div class="card" data-admin-panel="users" ${activeSection === 'users' ? '' : 'hidden'}>
           <h3 class="section-title" style="margin-top:0">${icon('plus')} ${t('admin_create_staff_title')}</h3>
           <form id="createStaffForm" class="form-grid" style="max-width:none">
             <div class="field"><label for="newName">${t('field_name')}</label><input id="newName" required /></div>
@@ -3130,7 +3165,7 @@
           </form>
           <div id="tempPasswordBox"></div>
         </div>
-        <div class="card admin-grid-full">
+        <div class="card admin-grid-full" data-admin-panel="catalog" ${activeSection === 'catalog' ? '' : 'hidden'}>
           <h3 class="section-title" style="margin-top:0">${icon('ticket')} ${t('admin_categories_title')}</h3>
           <p class="hint">${t('admin_categories_hint')}</p>
           <form id="newCategoryForm" style="display:flex;flex-wrap:wrap;gap:0.6rem;align-items:flex-end;margin:0.75rem 0">
@@ -3146,7 +3181,7 @@
           <p class="error-text" id="categoryError"></p>
           <div id="categoriesList" class="spinner-row">${t('loading')}</div>
         </div>
-        <div class="card admin-grid-full">
+        <div class="card admin-grid-full" data-admin-panel="groups" ${activeSection === 'groups' ? '' : 'hidden'}>
           <h3 class="section-title" style="margin-top:0">${icon('users')} ${t('admin_groups_title')}</h3>
           <p class="hint">${t('admin_groups_hint')}</p>
           <form id="newGroupForm" style="display:flex;flex-wrap:wrap;gap:0.6rem;align-items:flex-end;margin:0.75rem 0">
@@ -3166,7 +3201,7 @@
           </div>
           <div id="groupsList" class="spinner-row">${t('loading')}</div>
         </div>
-        <div class="card admin-grid-full">
+        <div class="card admin-grid-full" data-admin-panel="automation" ${activeSection === 'automation' ? '' : 'hidden'}>
           <h3 class="section-title" style="margin-top:0">${icon('activity')} ${t('admin_automations_title')}</h3>
           <p class="hint">${t('admin_automations_hint')}</p>
           <form id="newRuleForm" class="form-grid" style="max-width:none;margin:0.75rem 0">
@@ -3204,7 +3239,7 @@
           </form>
           <div id="rulesList" class="spinner-row">${t('loading')}</div>
         </div>
-        <div class="card admin-grid-full">
+        <div class="card admin-grid-full" data-admin-panel="catalog" ${activeSection === 'catalog' ? '' : 'hidden'}>
           <h3 class="section-title" style="margin-top:0">${icon('edit')} ${t('admin_custom_fields_title')}</h3>
           <p class="hint">${t('admin_custom_fields_hint')}</p>
           <form id="newFieldForm" style="display:flex;flex-wrap:wrap;gap:0.6rem;align-items:flex-end;margin:0.75rem 0">
@@ -3229,7 +3264,7 @@
           <p class="error-text" id="fieldError"></p>
           <div id="fieldsList" class="spinner-row">${t('loading')}</div>
         </div>
-        <div class="card admin-grid-full">
+        <div class="card admin-grid-full" data-admin-panel="automation" ${activeSection === 'automation' ? '' : 'hidden'}>
           <h3 class="section-title" style="margin-top:0">${icon('message')} ${t('admin_canned_title')}</h3>
           <p class="hint">${t('admin_canned_hint')}</p>
           <form id="newCannedForm" class="form-grid" style="max-width:none;margin:0.75rem 0">
@@ -3240,7 +3275,7 @@
           <p class="error-text" id="cannedError"></p>
           <div id="cannedList" class="spinner-row">${t('loading')}</div>
         </div>
-        <div class="card admin-grid-full">
+        <div class="card admin-grid-full" data-admin-panel="automation" ${activeSection === 'automation' ? '' : 'hidden'}>
           <h3 class="section-title" style="margin-top:0">${icon('plus')} ${t('admin_templates_title')}</h3>
           <p class="hint">${t('admin_templates_hint')}</p>
           <form id="newTemplateForm" class="form-grid" style="max-width:none;margin:0.75rem 0">
@@ -3259,7 +3294,7 @@
           <p class="error-text" id="templateError"></p>
           <div id="templatesList" class="spinner-row">${t('loading')}</div>
         </div>
-        <div class="card admin-grid-full">
+        <div class="card admin-grid-full" data-admin-panel="org" ${activeSection === 'org' ? '' : 'hidden'}>
           <h3 class="section-title" style="margin-top:0">${icon('activity')} ${t('admin_holidays_title')}</h3>
           <p class="hint">${t('admin_holidays_hint')}</p>
           <form id="newHolidayForm" style="display:flex;flex-wrap:wrap;gap:0.6rem;align-items:flex-end;margin:0.75rem 0">
@@ -3270,7 +3305,7 @@
           <p class="error-text" id="holidayError"></p>
           <div id="holidaysList" class="spinner-row">${t('loading')}</div>
         </div>
-        <div class="card admin-grid-full">
+        <div class="card admin-grid-full" data-admin-panel="onboarding" ${activeSection === 'onboarding' ? '' : 'hidden'}>
           <h3 class="section-title" style="margin-top:0">${icon('userCircle')} ${t('admin_onboarding_title')}</h3>
           <p class="hint">${t('admin_onboarding_hint')}</p>
           <form id="newOnbItemForm" class="form-grid" style="max-width:none;margin:0.75rem 0">
@@ -3295,7 +3330,40 @@
           <div id="onbItemTypesList" class="spinner-row">${t('loading')}</div>
         </div>
       </div>` : ''}
-      <div id="usersWrap" class="card spinner-row">${t('loading')}</div>`;
+      <div id="usersWrap" class="card spinner-row" ${isAdmin && activeSection !== 'users' ? 'hidden' : ''}>${t('loading')}</div>`;
+
+    if (isAdmin) {
+      document.querySelectorAll('[data-admin-section]').forEach((el) => {
+        el.addEventListener('click', () => {
+          state.adminSection = el.dataset.adminSection;
+          renderAdmin();
+        });
+      });
+
+      async function loadAdminOverviewCounts() {
+        try {
+          const [{ groups }, { categories }, { rules }, { requests }] = await Promise.all([
+            api('/groups'),
+            api('/categories'),
+            api('/automations').catch(() => ({ rules: [] })),
+            api('/onboarding').catch(() => ({ requests: [] })),
+          ]);
+          const counts = {
+            users: '',
+            groups: `${groups.length}`,
+            catalog: `${categories.length}`,
+            automation: `${rules.length}`,
+            onboarding: `${requests.filter((r) => r.status === 'open' || r.status === 'in_progress').length}`,
+            org: '',
+          };
+          Object.entries(counts).forEach(([key, value]) => {
+            const el = document.querySelector(`[data-count-for="${key}"]`);
+            if (el) el.textContent = value;
+          });
+        } catch {}
+      }
+      if (activeSection === 'overview') loadAdminOverviewCounts();
+    }
 
     if (isAdmin) {
       let groupOptionsCache = [];
