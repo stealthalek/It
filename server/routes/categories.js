@@ -6,12 +6,18 @@ const asyncHandler = require('../middleware/asyncHandler');
 const router = express.Router();
 router.use(authenticate);
 
-const CATEGORY_SELECT = 'SELECT id, name, icon, default_group_id FROM categories';
+const CATEGORY_SELECT = `
+  SELECT
+    cat.id, cat.name, cat.icon, cat.default_group_id, cat.parent_id,
+    parent.name AS parent_name
+  FROM categories cat
+  LEFT JOIN categories parent ON parent.id = cat.parent_id
+`;
 
 router.get(
   '/',
   asyncHandler(async (req, res) => {
-    const categories = await db.all(`${CATEGORY_SELECT} ORDER BY name ASC`);
+    const categories = await db.all(`${CATEGORY_SELECT} ORDER BY cat.name ASC`);
     res.json({ categories });
   })
 );
@@ -20,7 +26,7 @@ router.post(
   '/',
   requireRole('admin'),
   asyncHandler(async (req, res) => {
-    const { name, icon, defaultGroupId } = req.body || {};
+    const { name, icon, defaultGroupId, parentId } = req.body || {};
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Il nome della categoria è obbligatorio' });
     }
@@ -39,12 +45,25 @@ router.post(
       finalGroupId = group.id;
     }
 
-    const info = await db.run('INSERT INTO categories (name, icon, default_group_id) VALUES (?, ?, ?)', [
+    let finalParentId = null;
+    if (parentId) {
+      const parent = await db.get('SELECT id, parent_id FROM categories WHERE id = ?', [parentId]);
+      if (!parent) {
+        return res.status(400).json({ error: 'Categoria principale non valida' });
+      }
+      if (parent.parent_id) {
+        return res.status(400).json({ error: 'Non è possibile creare una sottocategoria di una sottocategoria' });
+      }
+      finalParentId = parent.id;
+    }
+
+    const info = await db.run('INSERT INTO categories (name, icon, default_group_id, parent_id) VALUES (?, ?, ?, ?)', [
       name.trim(),
       icon && icon.trim() ? icon.trim() : 'ticket',
       finalGroupId,
+      finalParentId,
     ]);
-    const category = await db.get(`${CATEGORY_SELECT} WHERE id = ?`, [Number(info.lastInsertRowid)]);
+    const category = await db.get(`${CATEGORY_SELECT} WHERE cat.id = ?`, [Number(info.lastInsertRowid)]);
     res.status(201).json({ category });
   })
 );
@@ -85,7 +104,7 @@ router.patch(
 
     params.push(req.params.id);
     await db.run(`UPDATE categories SET ${updates.join(', ')} WHERE id = ?`, params);
-    const updated = await db.get(`${CATEGORY_SELECT} WHERE id = ?`, [req.params.id]);
+    const updated = await db.get(`${CATEGORY_SELECT} WHERE cat.id = ?`, [req.params.id]);
     res.json({ category: updated });
   })
 );
@@ -97,6 +116,11 @@ router.delete(
     const category = await db.get('SELECT * FROM categories WHERE id = ?', [req.params.id]);
     if (!category) {
       return res.status(404).json({ error: 'Categoria non trovata' });
+    }
+
+    const hasChildren = await db.get('SELECT COUNT(*) AS n FROM categories WHERE parent_id = ?', [req.params.id]);
+    if (hasChildren.n > 0) {
+      return res.status(400).json({ error: 'Eliminare prima le sottocategorie' });
     }
 
     const inUse = await db.get('SELECT COUNT(*) AS n FROM tickets WHERE category = ?', [category.name]);
