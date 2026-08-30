@@ -6,6 +6,39 @@ const { logAudit } = require('../audit');
 
 const router = express.Router();
 
+const DEFAULT_INVITE_TEMPLATES = {
+  it: {
+    subject: 'Il tuo accesso a {{org}}',
+    body: [
+      'Ciao {{name}},',
+      '',
+      'è stato creato per te un account su {{org}}.',
+      '',
+      'Email di accesso: {{email}}',
+      'Password temporanea: {{password}}',
+      '',
+      'Accedi e cambia la password dal tuo profilo appena possibile.',
+      '',
+      '— {{org}}',
+    ].join('\n'),
+  },
+  en: {
+    subject: 'Your access to {{org}}',
+    body: [
+      'Hi {{name}},',
+      '',
+      'an account has been created for you on {{org}}.',
+      '',
+      'Login email: {{email}}',
+      'Temporary password: {{password}}',
+      '',
+      'Sign in and change your password from your profile as soon as possible.',
+      '',
+      '— {{org}}',
+    ].join('\n'),
+  },
+};
+
 router.get(
   '/',
   asyncHandler(async (req, res) => {
@@ -60,6 +93,7 @@ router.get(
     res.json({
       it: { subject: row?.invite_subject_it || '', body: row?.invite_body_it || '' },
       en: { subject: row?.invite_subject_en || '', body: row?.invite_body_en || '' },
+      defaults: DEFAULT_INVITE_TEMPLATES,
     });
   })
 );

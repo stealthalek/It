@@ -574,6 +574,22 @@ body:not(.role-customer):not(.role-agent):not(.role-admin) .nav-toggle { display
 .success-text { color: var(--success); font-size: 0.9rem; }
 .hint { color: var(--muted); font-size: 0.85rem; }
 
+.pw-strength-wrap { margin-top: 0.4rem; }
+.pw-strength-bar { height: 5px; border-radius: 999px; background: var(--border); overflow: hidden; }
+.pw-strength-fill { height: 100%; border-radius: 999px; transition: width 0.2s ease, background-color 0.2s ease; }
+.pw-strength-fill.pw-strength-weak { background: var(--danger); }
+.pw-strength-fill.pw-strength-medium { background: var(--warning); }
+.pw-strength-fill.pw-strength-strong { background: var(--success); }
+.pw-strength-label { display: inline-block; margin-top: 0.25rem; font-size: 0.8rem; font-weight: 600; }
+.pw-strength-label.pw-strength-weak { color: var(--danger); }
+.pw-strength-label.pw-strength-medium { color: var(--warning); }
+.pw-strength-label.pw-strength-strong { color: var(--success); }
+.pw-req-list { list-style: none; margin: 0.3rem 0 0; padding: 0; display: flex; flex-direction: column; gap: 0.15rem; }
+.pw-req-list li { display: flex; align-items: center; gap: 0.35rem; font-size: 0.8rem; color: var(--muted); }
+.pw-req-list li .icon { opacity: 0.35; }
+.pw-req-list li.pw-req-met { color: var(--success); }
+.pw-req-list li.pw-req-met .icon { opacity: 1; color: var(--success); }
+
 .auth-wrap {
   position: relative;
   isolation: isolate;

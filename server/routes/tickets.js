@@ -693,14 +693,19 @@ router.patch(
       }
     }
 
-    const isOwner = ticket.created_by === req.user.id;
+    const isOwner = ticket.created_by === req.user.id || ticket.on_behalf_of === req.user.id;
     if (isOwner && !isStaff(req.user)) {
       const wantsReopen = body.status === 'open' && ['resolved', 'closed'].includes(ticket.status);
+      const wantsCancel = body.status === 'closed' && ['open', 'in_progress', 'waiting_customer'].includes(ticket.status);
       if (wantsReopen) {
         updates.push('status = ?');
         params.push('open');
         if (ticket.resolved_at) updates.push('resolved_at = NULL');
         events.push('Ticket riaperto dal richiedente');
+      } else if (wantsCancel) {
+        updates.push('status = ?');
+        params.push('closed');
+        events.push('Ticket annullato dal richiedente');
       } else if (body.status !== undefined) {
         return res.status(403).json({ error: 'Non puoi impostare questo stato' });
       }

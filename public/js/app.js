@@ -241,6 +241,7 @@
       back_to_list: 'Torna alla lista', edit_subject_desc: 'Modifica oggetto e descrizione',
       field_subject: 'Oggetto', field_description: 'Descrizione', btn_save_changes: 'Salva modifiche',
       created_by: 'Creato da', on_date: 'il', reopen_ticket: 'Riapri ticket',
+      cancel_ticket_btn: 'Annulla richiesta', confirm_cancel_ticket: 'Annullare questa richiesta? Il ticket verrà chiuso.',
       activity_title: 'Attività', no_activity: 'Nessuna attività ancora.',
       readonly_no_comments: 'Modalità sola lettura: non è possibile inviare commenti.',
       add_comment_label: 'Aggiungi un commento', comment_placeholder: 'Scrivi una risposta...',
@@ -249,6 +250,7 @@
       delete_ticket_btn: 'Elimina ticket', no_group_option: 'Nessun gruppo', no_asset_option: 'Nessun asset',
       confirm_delete_ticket: 'Eliminare definitivamente questo ticket?',
       toast_ticket_updated: 'Ticket aggiornato', toast_ticket_reopened: 'Ticket riaperto', toast_ticket_deleted: 'Ticket eliminato',
+      toast_ticket_cancelled: 'Richiesta annullata',
       toast_comment_added: 'Commento aggiunto', new_message_toast: 'Nuovo messaggio nel ticket',
       presence_staff: 'Un tecnico sta seguendo questo ticket in questo momento',
       presence_customer: 'Il richiedente sta visualizzando questo ticket in questo momento',
@@ -368,12 +370,15 @@
       invite_email_title: 'Email di invito account',
       invite_email_hint: 'Personalizza l\'oggetto e il testo dell\'email automatica inviata quando crei un nuovo account staff. Lasciala vuota per usare il testo predefinito. Segnaposto disponibili:',
       field_subject: 'Oggetto', field_email_body: 'Testo email', btn_save_template: 'Salva modello', toast_template_updated: 'Modello email aggiornato',
+      btn_reset_default: 'Ripristina predefinito', toast_template_reset: 'Modello ripristinato al predefinito', default_template_title: 'Modello predefinito',
       not_found_text: 'Pagina non trovata.', back_to_dashboard: 'Torna alla dashboard', placeholder_default: '(predefinito)',
       impersonate_search_label: 'Cerca una persona da vedere in sola lettura',
       notifications_title: 'Notifiche', mark_all_read: 'Segna tutte come lette', no_notifications: 'Nessuna notifica.',
       confirm_password_label: 'Conferma password', no_data_available: 'Nessun dato disponibile.', send_request_btn: 'Invia richiesta',
-      show_password_label: 'Mostra password', password_min_hint: 'Almeno 8 caratteri, con lettere e numeri',
+      show_password_label: 'Mostra password',
       passwords_mismatch: 'Le password non coincidono', toast_welcome_back: 'Bentornato', toast_account_created: 'Account creato, benvenuto',
+      passwords_match_ok: 'Le password coincidono', pw_strength_weak: 'Debole', pw_strength_medium: 'Media', pw_strength_strong: 'Forte',
+      pw_req_length: 'Almeno 8 caratteri', pw_req_letter_number: 'Almeno una lettera e un numero',
       new_ticket_title: 'Nuovo ticket', new_ticket_hint: 'Raccontaci il problema: bastano pochi campi, il resto lo segue il nostro team.',
       field_request_type: 'Tipo di richiesta', type_incident_suffix: '— qualcosa non funziona', type_task_suffix: '— richiesta pianificabile',
       field_template: 'Parti da un modello', template_blank_option: 'Nessun modello (parti da zero)',
@@ -394,6 +399,7 @@
       password_reset_success_msg: 'Password reimpostata.',
       new_temp_password_hint: 'Nuova password temporanea (comunicala in modo sicuro, non sarà più visibile):',
       toast_password_reset: 'Password reimpostata', settings_title: 'Impostazioni',
+      btn_copy: 'Copia', toast_copied: 'Copiato negli appunti', toast_copy_failed: 'Impossibile copiare',
       motion_fluid_label: 'Animazioni fluide', toast_accent_updated: 'Colore aggiornato', toast_motion_updated: 'Preferenza animazioni aggiornata',
       desktop_notif_label: 'Notifiche desktop', desktop_notif_hint: 'Ricevi un avviso pop-up del sistema operativo per nuovi ticket e commenti, anche a scheda non attiva.',
       toast_desktop_notif_enabled: 'Notifiche desktop attivate', toast_desktop_notif_disabled: 'Notifiche desktop disattivate',
@@ -439,6 +445,7 @@
       back_to_list: 'Back to list', edit_subject_desc: 'Edit subject and description',
       field_subject: 'Subject', field_description: 'Description', btn_save_changes: 'Save changes',
       created_by: 'Created by', on_date: 'on', reopen_ticket: 'Reopen ticket',
+      cancel_ticket_btn: 'Cancel request', confirm_cancel_ticket: 'Cancel this request? The ticket will be closed.',
       activity_title: 'Activity', no_activity: 'No activity yet.',
       readonly_no_comments: 'Read-only mode: comments cannot be sent.',
       add_comment_label: 'Add a comment', comment_placeholder: 'Write a reply...',
@@ -447,6 +454,7 @@
       delete_ticket_btn: 'Delete ticket', no_group_option: 'No group', no_asset_option: 'No asset',
       confirm_delete_ticket: 'Permanently delete this ticket?',
       toast_ticket_updated: 'Ticket updated', toast_ticket_reopened: 'Ticket reopened', toast_ticket_deleted: 'Ticket deleted',
+      toast_ticket_cancelled: 'Request cancelled',
       toast_comment_added: 'Comment added', new_message_toast: 'New message on the ticket',
       presence_staff: 'A technician is currently viewing this ticket',
       presence_customer: 'The requester is currently viewing this ticket',
@@ -566,12 +574,15 @@
       invite_email_title: 'Account invite email',
       invite_email_hint: 'Customize the subject and text of the automatic email sent when you create a new staff account. Leave it empty to use the default text. Available placeholders:',
       field_subject: 'Subject', field_email_body: 'Email text', btn_save_template: 'Save template', toast_template_updated: 'Template updated',
+      btn_reset_default: 'Reset to default', toast_template_reset: 'Template reset to default', default_template_title: 'Default template',
       not_found_text: 'Page not found.', back_to_dashboard: 'Back to dashboard', placeholder_default: '(default)',
       impersonate_search_label: 'Search for a person to view read-only',
       notifications_title: 'Notifications', mark_all_read: 'Mark all as read', no_notifications: 'No notifications.',
       confirm_password_label: 'Confirm password', no_data_available: 'No data available.', send_request_btn: 'Send request',
-      show_password_label: 'Show password', password_min_hint: 'At least 8 characters, with letters and numbers',
+      show_password_label: 'Show password',
       passwords_mismatch: 'Passwords do not match', toast_welcome_back: 'Welcome back', toast_account_created: 'Account created, welcome',
+      passwords_match_ok: 'Passwords match', pw_strength_weak: 'Weak', pw_strength_medium: 'Medium', pw_strength_strong: 'Strong',
+      pw_req_length: 'At least 8 characters', pw_req_letter_number: 'At least one letter and one number',
       new_ticket_title: 'New ticket', new_ticket_hint: 'Tell us about the problem: just a few fields, our team takes care of the rest.',
       field_request_type: 'Request type', type_incident_suffix: '— something isn\'t working', type_task_suffix: '— schedulable request',
       field_template: 'Start from a template', template_blank_option: 'No template (start from scratch)',
@@ -592,6 +603,7 @@
       password_reset_success_msg: 'Password reset.',
       new_temp_password_hint: 'New temporary password (share it securely, it will not be shown again):',
       toast_password_reset: 'Password reset', settings_title: 'Settings',
+      btn_copy: 'Copy', toast_copied: 'Copied to clipboard', toast_copy_failed: 'Could not copy',
       motion_fluid_label: 'Smooth animations', toast_accent_updated: 'Color updated', toast_motion_updated: 'Animation preference updated',
       desktop_notif_label: 'Desktop notifications', desktop_notif_hint: 'Get an OS-level pop-up alert for new tickets and comments, even when the tab is not active.',
       toast_desktop_notif_enabled: 'Desktop notifications enabled', toast_desktop_notif_disabled: 'Desktop notifications disabled',
@@ -1330,7 +1342,7 @@
                 <input id="password" type="password" required minlength="8" autocomplete="new-password" />
                 <button type="button" id="pwToggle" class="icon-btn password-toggle" aria-label="${t('show_password_label')}"></button>
               </div>
-              <span class="hint">${t('password_min_hint')}</span>
+              <div id="pwStrengthMeter" class="pw-strength-wrap"></div>
             </div>
             <div class="field">
               <label for="password2">${t('confirm_password_label')}</label>
@@ -1338,6 +1350,7 @@
                 <input id="password2" type="password" required minlength="8" autocomplete="new-password" />
                 <button type="button" id="pwToggle2" class="icon-btn password-toggle" aria-label="${t('show_password_label')}"></button>
               </div>
+              <span class="hint" id="pwMatchHint"></span>
             </div>
             <p class="error-text" id="registerError"></p>
             <button class="btn btn-block" type="submit">${t('register_submit')}</button>
@@ -1349,6 +1362,8 @@
 
     attachPasswordToggle('password', 'pwToggle');
     attachPasswordToggle('password2', 'pwToggle2');
+    attachPasswordStrength('password', 'pwStrengthMeter');
+    attachPasswordMatch('password', 'password2', 'pwMatchHint');
     renderSsoButtons('ssoContainer');
 
     guardForm(document.getElementById('registerForm'), async () => {
@@ -1372,6 +1387,57 @@
         errEl.textContent = err.message;
       }
     });
+  }
+
+  function passwordStrengthScore(pw) {
+    let score = 0;
+    if (pw.length >= 8) score++;
+    if (pw.length >= 12) score++;
+    if (/[a-z]/.test(pw) && /[A-Z]/.test(pw)) score++;
+    if (/[0-9]/.test(pw)) score++;
+    if (/[^a-zA-Z0-9]/.test(pw)) score++;
+    return score;
+  }
+
+  function attachPasswordStrength(inputId, meterId) {
+    const input = document.getElementById(inputId);
+    const meter = document.getElementById(meterId);
+    if (!input || !meter) return;
+    function update() {
+      const pw = input.value;
+      if (!pw) { meter.innerHTML = ''; return; }
+      const score = passwordStrengthScore(pw);
+      const level = score <= 1 ? { label: t('pw_strength_weak'), cls: 'pw-strength-weak', pct: 33 }
+        : score <= 3 ? { label: t('pw_strength_medium'), cls: 'pw-strength-medium', pct: 66 }
+        : { label: t('pw_strength_strong'), cls: 'pw-strength-strong', pct: 100 };
+      meter.innerHTML = `
+        <div class="pw-strength-bar"><div class="pw-strength-fill ${level.cls}" style="width:${level.pct}%"></div></div>
+        <span class="pw-strength-label ${level.cls}">${level.label}</span>
+        <ul class="pw-req-list">
+          <li class="${pw.length >= 8 ? 'pw-req-met' : ''}">${icon('check', 'badge-icon')}${t('pw_req_length')}</li>
+          <li class="${/[a-zA-Z]/.test(pw) && /[0-9]/.test(pw) ? 'pw-req-met' : ''}">${icon('check', 'badge-icon')}${t('pw_req_letter_number')}</li>
+        </ul>`;
+    }
+    input.addEventListener('input', update);
+  }
+
+  function attachPasswordMatch(pw1Id, pw2Id, targetId) {
+    const pw1 = document.getElementById(pw1Id);
+    const pw2 = document.getElementById(pw2Id);
+    const target = document.getElementById(targetId);
+    if (!pw1 || !pw2 || !target) return;
+    function update() {
+      if (!pw2.value) { target.textContent = ''; target.className = 'hint'; return; }
+      if (pw1.value === pw2.value) {
+        target.textContent = t('passwords_match_ok');
+        target.className = 'success-text';
+      } else {
+        target.textContent = t('passwords_mismatch');
+        target.className = 'error-text';
+      }
+    }
+    pw1.addEventListener('input', update);
+    pw2.addEventListener('input', update);
   }
 
   function isStaff() {
@@ -2223,9 +2289,10 @@
     let isWatching = !!data.isWatching;
     let ticketWatchers = watchers || [];
     const readOnly = !!state.viewAs;
-    const isOwner = ticket.created_by === state.user.id;
+    const isOwner = ticket.created_by === state.user.id || ticket.on_behalf_of === state.user.id;
     const canEditFields = (isOwner || isStaff()) && !readOnly;
     const canReopen = isOwner && !isStaff() && ['resolved', 'closed'].includes(ticket.status) && !readOnly;
+    const canCancel = isOwner && !isStaff() && ['open', 'in_progress', 'waiting_customer'].includes(ticket.status) && !readOnly;
 
     let staffPanel = '';
     let assigneesOptions = '';
@@ -2339,6 +2406,7 @@
             </p>
             <div id="tagsWrap" class="tags-wrap"></div>
             ${canReopen ? `<button id="reopenBtn" class="btn btn-sm btn-ghost">${icon('refresh')} ${t('reopen_ticket')}</button>` : ''}
+            ${canCancel ? `<button id="cancelTicketBtn" class="btn btn-sm btn-ghost">${icon('trash', 'badge-icon')} ${t('cancel_ticket_btn')}</button>` : ''}
             ${customFieldValues && customFieldValues.length ? `
               <div class="custom-fields-summary">
                 ${customFieldValues.map((f) => `
@@ -2789,6 +2857,20 @@
         try {
           await api(`/tickets/${ticket.id}`, { method: 'PATCH', body: { status: 'open' } });
           showToast(t('toast_ticket_reopened'), 'success');
+          renderTicketDetail(id);
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      });
+    }
+
+    const cancelTicketBtn = document.getElementById('cancelTicketBtn');
+    if (cancelTicketBtn) {
+      cancelTicketBtn.addEventListener('click', async () => {
+        if (!confirm(t('confirm_cancel_ticket'))) return;
+        try {
+          await api(`/tickets/${ticket.id}`, { method: 'PATCH', body: { status: 'closed' } });
+          showToast(t('toast_ticket_cancelled'), 'success');
           renderTicketDetail(id);
         } catch (err) {
           showToast(err.message, 'error');
@@ -3354,7 +3436,14 @@
             <div class="divider"></div>
             <p class="success-text">${t('account_created_for')} ${escapeHtml(user.name)}.</p>
             <p class="hint">${t('temp_password_hint')}</p>
-            <p class="card" style="font-family:monospace;font-size:1rem;padding:0.6rem 0.9rem;display:inline-block">${escapeHtml(tempPassword)}</p>`;
+            <p class="card" style="font-family:monospace;font-size:1rem;padding:0.6rem 0.9rem;display:inline-flex;align-items:center;gap:0.6rem">
+              ${escapeHtml(tempPassword)}
+              <button type="button" id="copyTempPwBtn2" class="icon-btn" title="${t('btn_copy')}">${icon('copy', 'badge-icon')}</button>
+            </p>`;
+          document.getElementById('copyTempPwBtn2').addEventListener('click', async () => {
+            try { await navigator.clipboard.writeText(tempPassword); showToast(t('toast_copied'), 'success'); }
+            catch { showToast(t('toast_copy_failed'), 'error'); }
+          });
           e.target.reset();
           showToast(t('toast_staff_created'), 'success');
           loadUsersTable();
@@ -4104,7 +4193,14 @@
             <div class="divider"></div>
             <p class="success-text">${t('password_reset_success_msg')}</p>
             <p class="hint">${t('new_temp_password_hint')}</p>
-            <p class="card" style="font-family:monospace;font-size:1rem;padding:0.6rem 0.9rem;display:inline-block">${escapeHtml(tempPassword)}</p>`;
+            <p class="card" style="font-family:monospace;font-size:1rem;padding:0.6rem 0.9rem;display:inline-flex;align-items:center;gap:0.6rem">
+              ${escapeHtml(tempPassword)}
+              <button type="button" id="copyTempPwBtn" class="icon-btn" title="${t('btn_copy')}">${icon('copy', 'badge-icon')}</button>
+            </p>`;
+          document.getElementById('copyTempPwBtn').addEventListener('click', async () => {
+            try { await navigator.clipboard.writeText(tempPassword); showToast(t('toast_copied'), 'success'); }
+            catch { showToast(t('toast_copy_failed'), 'error'); }
+          });
           showToast(t('toast_password_reset'), 'success');
         } catch (err) {
           showToast(err.message, 'error');
@@ -4517,9 +4613,18 @@
         </select>
       </div>
       <div id="searchPersonChip"></div>
+      <div class="report-export-bar">
+        <button type="button" id="searchExportCsvBtn" class="btn btn-ghost">${icon('download')} ${t('btn_export_csv')}</button>
+        <button type="button" id="searchExportExcelBtn" class="btn btn-ghost">${icon('download')} ${t('btn_export_excel')}</button>
+        <span class="hint" id="searchResultCount"></span>
+      </div>
       <div id="searchResults" class="ticket-grid"></div>`;
 
     const resultsEl = document.getElementById('searchResults');
+    const searchResultCountEl = document.getElementById('searchResultCount');
+    const searchExportCsvBtn = document.getElementById('searchExportCsvBtn');
+    const searchExportExcelBtn = document.getElementById('searchExportExcelBtn');
+    let currentSearchTickets = [];
     const personChipEl = document.getElementById('searchPersonChip');
     const qEl = document.getElementById('searchQuery');
     const typeEl = document.getElementById('searchType');
@@ -4556,12 +4661,59 @@
       if (personFilter) params.set(personFilter.param, personFilter.id);
       try {
         const { tickets } = await api(`/tickets?${params.toString()}`);
+        currentSearchTickets = tickets;
+        searchResultCountEl.textContent = `${t('report_export_count_label')} ${tickets.length}`;
         renderTicketList(resultsEl, tickets);
       } catch (err) {
         resultsEl.className = '';
         resultsEl.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
       }
     }
+
+    function buildSearchExportRows() {
+      return currentSearchTickets.map((tk) => ({
+        [t('report_col_subject')]: tk.subject,
+        [t('report_col_type')]: typeLabels()[tk.type] || tk.type,
+        [t('report_col_status')]: statusLabels()[tk.status] || tk.status,
+        [t('report_col_priority')]: priorityLabels()[tk.priority] || tk.priority,
+        [t('report_col_group')]: tk.group_name || t('no_group_label'),
+        [t('report_col_requester')]: tk.creator_name,
+        [t('report_col_requester_email')]: tk.creator_email,
+        [t('report_col_assignee')]: tk.assignee_name || '',
+        [t('report_col_created')]: tk.created_at,
+        [t('report_col_resolved')]: tk.resolved_at || '',
+        [t('report_col_sla')]: tk.sla_status ? (slaLabels()[tk.sla_status] || tk.sla_status) : '',
+      }));
+    }
+
+    searchExportCsvBtn.addEventListener('click', () => {
+      const rows = buildSearchExportRows();
+      if (!rows.length) { showToast(t('toast_export_no_data'), 'error'); return; }
+      const headers = Object.keys(rows[0]);
+      const lines = [headers.join(',')].concat(rows.map((r) => headers.map((h) => csvEscape(r[h])).join(',')));
+      const blob = new Blob([`﻿${lines.join('\r\n')}`], { type: 'text/csv;charset=utf-8;' });
+      downloadBlob(blob, exportFilename('team-tickets', 'csv'));
+    });
+
+    searchExportExcelBtn.addEventListener('click', async () => {
+      const rows = buildSearchExportRows();
+      if (!rows.length) { showToast(t('toast_export_no_data'), 'error'); return; }
+      const originalLabel = searchExportExcelBtn.innerHTML;
+      searchExportExcelBtn.disabled = true;
+      searchExportExcelBtn.innerHTML = `${icon('download')} ${t('loading')}`;
+      try {
+        if (!window.XLSX) await loadScriptOnce('vendor/xlsx.full.min.js');
+        const sheet = window.XLSX.utils.json_to_sheet(rows);
+        const wb = window.XLSX.utils.book_new();
+        window.XLSX.utils.book_append_sheet(wb, sheet, t('nav_search'));
+        window.XLSX.writeFile(wb, exportFilename('team-tickets', 'xlsx'));
+      } catch {
+        showToast(t('toast_export_failed'), 'error');
+      } finally {
+        searchExportExcelBtn.disabled = false;
+        searchExportExcelBtn.innerHTML = originalLabel;
+      }
+    });
 
     qEl.addEventListener('input', () => {
       clearTimeout(debounceTimer);
@@ -4823,6 +4975,9 @@
   }
 
   async function renderAudit() {
+    let groups = [];
+    try { groups = (await api('/groups')).groups; } catch { groups = []; }
+
     appEl.innerHTML = `
       <div class="view-header">
         <div>
@@ -4838,6 +4993,7 @@
           <option value="ticket">${t('audit_filter_ticket')}</option>
           <option value="admin">${t('audit_filter_admin')}</option>
         </select>
+        <select id="auditGroupFilter">${groupOptionsHtml(groups, '', t('all_groups_option'))}</select>
         <input type="search" id="auditSearch" placeholder="${t('audit_search_placeholder')}" style="flex:1 1 16rem" />
       </div>
       <div class="report-export-bar">
@@ -4851,6 +5007,7 @@
     const dateFromEl = document.getElementById('auditDateFrom');
     const dateToEl = document.getElementById('auditDateTo');
     const kindFilterEl = document.getElementById('auditKindFilter');
+    const groupFilterEl = document.getElementById('auditGroupFilter');
     const searchEl = document.getElementById('auditSearch');
     const resultCountEl = document.getElementById('auditResultCount');
     const exportCsvBtn = document.getElementById('auditExportCsvBtn');
@@ -4905,6 +5062,7 @@
       const params = new URLSearchParams();
       if (dateFromEl.value) params.set('from', dateFromEl.value);
       if (dateToEl.value) params.set('to', dateToEl.value);
+      if (groupFilterEl.value) params.set('group', groupFilterEl.value);
       if (searchEl.value.trim()) params.set('q', searchEl.value.trim());
       try {
         const { entries } = await api(`/audit?${params.toString()}`);
@@ -4918,6 +5076,7 @@
 
     dateFromEl.addEventListener('change', load);
     dateToEl.addEventListener('change', load);
+    groupFilterEl.addEventListener('change', load);
     kindFilterEl.addEventListener('change', renderList);
     searchEl.addEventListener('input', () => {
       clearTimeout(debounceTimer);
@@ -4988,10 +5147,12 @@
             <div class="field">
               <label for="newPassword">${t('new_password_label')}</label>
               <input id="newPassword" type="password" required minlength="8" autocomplete="new-password" />
+              <div id="newPwStrengthMeter" class="pw-strength-wrap"></div>
             </div>
             <div class="field">
               <label for="newPassword2">${t('confirm_new_password_label')}</label>
               <input id="newPassword2" type="password" required minlength="8" autocomplete="new-password" />
+              <span class="hint" id="newPwMatchHint"></span>
             </div>
             <p class="error-text" id="pwError"></p>
             <div><button class="btn btn-sm" type="submit">${t('btn_update_password')}</button></div>
@@ -5033,6 +5194,9 @@
         }
       }).catch(() => {});
     }
+
+    attachPasswordStrength('newPassword', 'newPwStrengthMeter');
+    attachPasswordMatch('newPassword', 'newPassword2', 'newPwMatchHint');
 
     guardForm(document.getElementById('pwForm'), async (e) => {
       const errEl = document.getElementById('pwError');
@@ -5137,9 +5301,17 @@
           <form id="inviteTemplateForm" class="form-grid" style="max-width:none">
             <div class="field"><label for="inviteSubject">${t('field_subject')}</label><input id="inviteSubject" placeholder="${t('placeholder_default')}" /></div>
             <div class="field"><label for="inviteBody">${t('field_email_body')}</label><textarea id="inviteBody" rows="6" placeholder="${t('placeholder_default')}"></textarea></div>
-            <div><button class="btn btn-sm" type="submit">${t('btn_save_template')}</button></div>
+            <div style="display:flex;gap:0.6rem">
+              <button class="btn btn-sm" type="submit">${t('btn_save_template')}</button>
+              <button type="button" id="inviteTemplateResetBtn" class="btn btn-sm btn-ghost">${t('btn_reset_default')}</button>
+            </div>
           </form>
           <p class="error-text" id="inviteTemplateError"></p>
+          <div class="card" style="background:var(--surface-alt);margin-top:1rem">
+            <h4 class="section-title" style="margin-top:0;font-size:0.85rem">${t('default_template_title')}</h4>
+            <div class="field"><label>${t('field_subject')}</label><p id="inviteDefaultSubject" style="white-space:pre-wrap"></p></div>
+            <div class="field"><label>${t('field_email_body')}</label><p id="inviteDefaultBody" style="white-space:pre-wrap"></p></div>
+          </div>
         </div>` : ''}
       </div>`;
 
@@ -5261,11 +5433,21 @@
       });
 
       let inviteTemplates = { it: { subject: '', body: '' }, en: { subject: '', body: '' } };
+      let inviteDefaults = { it: { subject: '', body: '' }, en: { subject: '', body: '' } };
       let inviteTemplateLocale = 'it';
+
+      function renderDefaultPreview() {
+        const def = inviteDefaults[inviteTemplateLocale] || { subject: '', body: '' };
+        document.getElementById('inviteDefaultSubject').textContent = def.subject;
+        document.getElementById('inviteDefaultBody').textContent = def.body;
+      }
+
       api('/settings/invite-template').then((data) => {
         inviteTemplates = data;
+        inviteDefaults = data.defaults || inviteDefaults;
         document.getElementById('inviteSubject').value = inviteTemplates.it.subject;
         document.getElementById('inviteBody').value = inviteTemplates.it.body;
+        renderDefaultPreview();
       }).catch(() => {});
 
       document.querySelectorAll('#inviteTemplateTabs .tab-btn').forEach((btn) => {
@@ -5275,6 +5457,7 @@
           inviteTemplateLocale = btn.dataset.locale;
           document.getElementById('inviteSubject').value = inviteTemplates[inviteTemplateLocale].subject;
           document.getElementById('inviteBody').value = inviteTemplates[inviteTemplateLocale].body;
+          renderDefaultPreview();
         });
       });
 
@@ -5287,6 +5470,20 @@
           await api('/settings/invite-template', { method: 'PATCH', body: { locale: inviteTemplateLocale, subject, body } });
           inviteTemplates[inviteTemplateLocale] = { subject, body };
           showToast(t('toast_template_updated'), 'success');
+        } catch (err) {
+          errEl.textContent = err.message;
+        }
+      });
+
+      document.getElementById('inviteTemplateResetBtn').addEventListener('click', async () => {
+        const errEl = document.getElementById('inviteTemplateError');
+        errEl.textContent = '';
+        try {
+          await api('/settings/invite-template', { method: 'PATCH', body: { locale: inviteTemplateLocale, subject: '', body: '' } });
+          inviteTemplates[inviteTemplateLocale] = { subject: '', body: '' };
+          document.getElementById('inviteSubject').value = '';
+          document.getElementById('inviteBody').value = '';
+          showToast(t('toast_template_reset'), 'success');
         } catch (err) {
           errEl.textContent = err.message;
         }
