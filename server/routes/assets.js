@@ -8,7 +8,7 @@ const router = express.Router();
 router.use(authenticate);
 router.use(requireRole('agent', 'admin'));
 
-const TYPES = ['laptop', 'desktop', 'monitor', 'telefono', 'altro'];
+const TYPES = ['laptop', 'desktop', 'monitor', 'telefono', 'tablet', 'altro'];
 const STATUSES = ['disponibile', 'in_uso', 'in_riparazione', 'dismesso'];
 const ASSIGNMENT_TYPES = ['permanente', 'prestito'];
 
@@ -21,12 +21,16 @@ const ASSET_SELECT = `
 router.get(
   '/',
   asyncHandler(async (req, res) => {
-    const { status, q } = req.query;
+    const { status, q, assignedTo } = req.query;
     const clauses = [];
     const params = [];
     if (status && STATUSES.includes(status)) {
       clauses.push('a.status = ?');
       params.push(status);
+    }
+    if (assignedTo && /^\d+$/.test(assignedTo)) {
+      clauses.push('a.assigned_to = ?');
+      params.push(Number(assignedTo));
     }
     if (q && q.trim()) {
       clauses.push('(a.name LIKE ? OR a.tag LIKE ?)');
@@ -64,6 +68,55 @@ router.post(
     const asset = await db.get(`${ASSET_SELECT} WHERE a.id = ?`, [Number(info.lastInsertRowid)]);
     logAudit(req.user.id, 'asset', asset.id, `Creato asset "${asset.name}"${asset.assignee_name ? `, assegnato a "${asset.assignee_name}"` : ''}`).catch(() => {});
     res.status(201).json({ asset });
+  })
+);
+
+router.patch(
+  '/bulk',
+  asyncHandler(async (req, res) => {
+    const { ids, status, assignmentType, tagPrefix } = req.body || {};
+    if (!Array.isArray(ids) || !ids.length || !ids.every((id) => Number.isInteger(id))) {
+      return res.status(400).json({ error: 'Elenco asset non valido' });
+    }
+    if (status !== undefined && !STATUSES.includes(status)) {
+      return res.status(400).json({ error: 'Stato non valido' });
+    }
+    if (assignmentType !== undefined && !ASSIGNMENT_TYPES.includes(assignmentType)) {
+      return res.status(400).json({ error: 'Tipo di assegnazione non valido' });
+    }
+    const trimmedPrefix = tagPrefix && tagPrefix.trim();
+    if (status === undefined && assignmentType === undefined && !trimmedPrefix) {
+      return res.status(400).json({ error: 'Nessuna modifica valida fornita' });
+    }
+
+    const placeholders = ids.map(() => '?').join(',');
+    const rows = await db.all(`SELECT id, tag FROM assets WHERE id IN (${placeholders})`, ids);
+
+    await Promise.all(rows.map((row) => {
+      const updates = [];
+      const params = [];
+      if (status !== undefined) {
+        updates.push('status = ?');
+        params.push(status);
+      }
+      if (assignmentType !== undefined) {
+        updates.push('assignment_type = ?');
+        params.push(assignmentType);
+      }
+      if (trimmedPrefix && row.tag) {
+        const idx = row.tag.indexOf('-');
+        const rest = idx >= 0 ? row.tag.slice(idx + 1) : row.tag;
+        updates.push('tag = ?');
+        params.push(`${trimmedPrefix}${rest}`);
+      }
+      if (!updates.length) return Promise.resolve();
+      params.push(row.id);
+      return db.run(`UPDATE assets SET ${updates.join(', ')} WHERE id = ?`, params);
+    }));
+
+    const updated = await db.all(`${ASSET_SELECT} WHERE a.id IN (${placeholders})`, ids);
+    logAudit(req.user.id, 'asset', null, `Modifica di massa su ${rows.length} asset`).catch(() => {});
+    res.json({ assets: updated });
   })
 );
 

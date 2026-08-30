@@ -151,6 +151,22 @@ Quando uno staff member contrassegna un ticket come **risolto**, il cliente può
    - `SMTP_FROM` (opzionale, indirizzo mittente mostrato al destinatario; se omesso usa `SMTP_USER`)
 3. Render riavvia automaticamente il servizio: da questo momento, ogni volta che un ticket passa a "Risolto", il cliente riceve un'email.
 
+### Esempio: instradare tutte le email tramite un account Gmail dedicato (es. infotickting@gmail.com)
+
+Per far sì che tutte le email in uscita della piattaforma (inviti, notifiche di risoluzione, reset password) partano da un unico indirizzo Gmail aziendale:
+
+1. Accedi a quell'account Gmail e attiva la verifica in due passaggi da [myaccount.google.com/security](https://myaccount.google.com/security), se non è già attiva (obbligatoria per generare una password per le app).
+2. Vai su [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords), scegli un nome a piacere (es. "Ticketing") e genera la password: Google mostra una stringa di 16 caratteri, da copiare subito (non sarà più visibile dopo).
+3. Su Render, servizio backend → **Environment**, imposta:
+   - `SMTP_HOST` = `smtp.gmail.com`
+   - `SMTP_PORT` = `465`
+   - `SMTP_USER` = l'indirizzo Gmail dedicato
+   - `SMTP_PASS` = la password per le app da 16 caratteri appena generata (**mai** la password normale dell'account)
+   - `SMTP_FROM` = lo stesso indirizzo, se vuoi che compaia esplicitamente come mittente
+4. Salva: Render ridistribuisce il servizio e da quel momento ogni email automatica della piattaforma parte da quell'indirizzo.
+
+La ricezione delle risposte (email in arrivo che diventano commenti automatici sul ticket) non è ancora implementata: al momento la piattaforma invia solo notifiche in uscita, il cliente risponde restando comunque sulla piattaforma stessa.
+
 ## Variabili d'ambiente
 
 | Variabile | Descrizione | Default |

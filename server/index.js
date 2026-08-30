@@ -18,13 +18,21 @@ const assetRoutes = require('./routes/assets');
 const settingsRoutes = require('./routes/settings');
 const notificationRoutes = require('./routes/notifications');
 const auditRoutes = require('./routes/audit');
+const automationRoutes = require('./routes/automations');
+const customFieldRoutes = require('./routes/custom-fields');
+const cannedResponseRoutes = require('./routes/canned-responses');
+const tagRoutes = require('./routes/tags');
+const ticketTemplateRoutes = require('./routes/ticket-templates');
+const holidayRoutes = require('./routes/holidays');
+const onboardingRoutes = require('./routes/onboarding');
+const { loadHolidays } = require('./sla');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: false }));
 app.use(cors());
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '8mb' }));
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -43,6 +51,13 @@ app.use('/api/assets', assetRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/audit', auditRoutes);
+app.use('/api/automations', automationRoutes);
+app.use('/api/custom-fields', customFieldRoutes);
+app.use('/api/canned-responses', cannedResponseRoutes);
+app.use('/api/tags', tagRoutes);
+app.use('/api/ticket-templates', ticketTemplateRoutes);
+app.use('/api/holidays', holidayRoutes);
+app.use('/api/onboarding', onboardingRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() });
@@ -73,6 +88,7 @@ async function main() {
     process.exit(1);
   }
   await db.initDb();
+  await loadHolidays();
   startAutoCloseScheduler();
   httpServer.listen(PORT, '0.0.0.0', () => {
     console.log(`Piattaforma di ticketing in ascolto su http://0.0.0.0:${PORT}`);

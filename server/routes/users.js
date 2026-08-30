@@ -81,7 +81,7 @@ router.post(
 
     let finalManagerId = null;
     if (managerId) {
-      const manager = await db.get("SELECT id FROM users WHERE id = ? AND role IN ('agent', 'admin')", [managerId]);
+      const manager = await db.get('SELECT id FROM users WHERE id = ?', [managerId]);
       if (!manager) {
         return res.status(400).json({ error: 'Manager non valido' });
       }
@@ -222,7 +222,7 @@ router.patch(
     const { managerId } = req.body || {};
     let finalManagerId = null;
     if (managerId) {
-      const manager = await db.get("SELECT id FROM users WHERE id = ? AND role IN ('agent', 'admin')", [managerId]);
+      const manager = await db.get('SELECT id FROM users WHERE id = ?', [managerId]);
       if (!manager) {
         return res.status(400).json({ error: 'Manager non valido' });
       }

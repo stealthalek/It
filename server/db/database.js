@@ -124,6 +124,154 @@ async function setupSchema() {
         message TEXT NOT NULL,
         created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now'))
       )`,
+      `CREATE TABLE IF NOT EXISTS automation_rules (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        enabled INTEGER NOT NULL DEFAULT 1,
+        trigger_event TEXT NOT NULL CHECK (trigger_event IN ('created', 'updated')),
+        cond_status TEXT,
+        cond_priority TEXT,
+        cond_category TEXT,
+        cond_type TEXT,
+        cond_group_id INTEGER REFERENCES groups(id) ON DELETE SET NULL,
+        action_set_status TEXT,
+        action_set_priority TEXT,
+        action_assign_group_id INTEGER REFERENCES groups(id) ON DELETE SET NULL,
+        action_assign_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        action_note TEXT,
+        position INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS custom_fields (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        field_type TEXT NOT NULL DEFAULT 'text' CHECK (field_type IN ('text', 'number', 'textarea', 'select', 'checkbox')),
+        options TEXT,
+        category_id INTEGER REFERENCES categories(id) ON DELETE CASCADE,
+        required INTEGER NOT NULL DEFAULT 0,
+        position INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS ticket_custom_values (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+        field_id INTEGER NOT NULL REFERENCES custom_fields(id) ON DELETE CASCADE,
+        value TEXT,
+        UNIQUE(ticket_id, field_id)
+      )`,
+      `CREATE TABLE IF NOT EXISTS canned_responses (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        body TEXT NOT NULL,
+        created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS ticket_attachments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+        comment_id INTEGER REFERENCES comments(id) ON DELETE CASCADE,
+        uploaded_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        file_name TEXT NOT NULL,
+        mime_type TEXT NOT NULL,
+        size_bytes INTEGER NOT NULL,
+        data TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS tags (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL UNIQUE,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS ticket_tags (
+        ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+        tag_id INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+        PRIMARY KEY (ticket_id, tag_id)
+      )`,
+      `CREATE TABLE IF NOT EXISTS ticket_links (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+        linked_ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+        created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        UNIQUE(ticket_id, linked_ticket_id)
+      )`,
+      `CREATE TABLE IF NOT EXISTS ticket_watchers (
+        ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        PRIMARY KEY (ticket_id, user_id)
+      )`,
+      `CREATE TABLE IF NOT EXISTS holidays (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT NOT NULL UNIQUE,
+        name TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS ticket_templates (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        category TEXT,
+        subject TEXT NOT NULL,
+        description TEXT NOT NULL,
+        priority TEXT CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
+        type TEXT CHECK (type IN ('incident', 'task')),
+        position INTEGER NOT NULL DEFAULT 0,
+        created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS onboarding_item_types (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        item_key TEXT NOT NULL UNIQUE,
+        label_it TEXT NOT NULL,
+        label_en TEXT NOT NULL,
+        kind TEXT NOT NULL DEFAULT 'checkbox' CHECK (kind IN ('checkbox', 'license', 'copy_user', 'asset')),
+        asset_type TEXT,
+        default_group_id INTEGER REFERENCES groups(id) ON DELETE SET NULL,
+        enabled INTEGER NOT NULL DEFAULT 1,
+        position INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS onboarding_requests (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        employee_name TEXT NOT NULL,
+        employee_email TEXT,
+        start_date TEXT,
+        employee_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        requested_by INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'in_progress', 'completed', 'cancelled')),
+        notes TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS onboarding_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        request_id INTEGER NOT NULL REFERENCES onboarding_requests(id) ON DELETE CASCADE,
+        item_type_id INTEGER REFERENCES onboarding_item_types(id) ON DELETE SET NULL,
+        item_key TEXT NOT NULL,
+        label_it TEXT NOT NULL,
+        label_en TEXT NOT NULL,
+        kind TEXT NOT NULL DEFAULT 'checkbox' CHECK (kind IN ('checkbox', 'license', 'copy_user', 'asset')),
+        asset_type TEXT,
+        assigned_group_id INTEGER REFERENCES groups(id) ON DELETE SET NULL,
+        status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'done', 'skipped')),
+        copy_from_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        license_note TEXT,
+        notes TEXT,
+        asset_id INTEGER REFERENCES assets(id) ON DELETE SET NULL,
+        completed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        completed_at TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS onboarding_attachments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        request_id INTEGER NOT NULL REFERENCES onboarding_requests(id) ON DELETE CASCADE,
+        uploaded_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        file_name TEXT NOT NULL,
+        mime_type TEXT NOT NULL,
+        size_bytes INTEGER NOT NULL,
+        data TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`,
       'CREATE INDEX IF NOT EXISTS idx_tickets_created_by ON tickets(created_by)',
       'CREATE INDEX IF NOT EXISTS idx_tickets_assigned_to ON tickets(assigned_to)',
       'CREATE INDEX IF NOT EXISTS idx_comments_ticket_id ON comments(ticket_id)',
@@ -131,12 +279,132 @@ async function setupSchema() {
       'CREATE INDEX IF NOT EXISTS idx_assets_assigned_to ON assets(assigned_to)',
       'CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id)',
       'CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log(created_at)',
+      'CREATE INDEX IF NOT EXISTS idx_ticket_custom_values_ticket_id ON ticket_custom_values(ticket_id)',
+      'CREATE INDEX IF NOT EXISTS idx_ticket_attachments_ticket_id ON ticket_attachments(ticket_id)',
+      'CREATE INDEX IF NOT EXISTS idx_ticket_tags_tag_id ON ticket_tags(tag_id)',
+      'CREATE INDEX IF NOT EXISTS idx_ticket_links_linked_ticket_id ON ticket_links(linked_ticket_id)',
+      'CREATE INDEX IF NOT EXISTS idx_onboarding_items_request_id ON onboarding_items(request_id)',
+      'CREATE INDEX IF NOT EXISTS idx_onboarding_items_group_id ON onboarding_items(assigned_group_id)',
+      'CREATE INDEX IF NOT EXISTS idx_onboarding_attachments_request_id ON onboarding_attachments(request_id)',
     ],
     'write'
   );
 }
 
+async function rebuildTableIfDangling(tableName, danglingRef, createSql, columns) {
+  const info = await get("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?", [tableName]);
+  if (!info || !info.sql.includes(danglingRef)) return;
+  await run(createSql);
+  await run(`INSERT INTO ${tableName}_fixed (${columns}) SELECT ${columns} FROM ${tableName}`);
+  await run(`DROP TABLE ${tableName}`);
+  await run(`ALTER TABLE ${tableName}_fixed RENAME TO ${tableName}`);
+}
+
+async function repairDanglingTicketReferences() {
+  const stale = await all(
+    "SELECT name FROM sqlite_master WHERE type = 'table' AND sql LIKE '%tickets_old%'"
+  );
+  if (!stale.length) return;
+
+  await run('PRAGMA foreign_keys = OFF');
+  await rebuildTableIfDangling(
+    'comments', 'tickets_old',
+    `CREATE TABLE comments_fixed (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      message TEXT NOT NULL,
+      is_internal INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now'))
+    )`,
+    'id, ticket_id, user_id, message, is_internal, created_at'
+  );
+  await rebuildTableIfDangling(
+    'ticket_events', 'tickets_old',
+    `CREATE TABLE ticket_events_fixed (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+      actor_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      message TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now'))
+    )`,
+    'id, ticket_id, actor_id, message, created_at'
+  );
+  await rebuildTableIfDangling(
+    'notifications', 'tickets_old',
+    `CREATE TABLE notifications_fixed (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      ticket_id INTEGER REFERENCES tickets(id) ON DELETE CASCADE,
+      message TEXT NOT NULL,
+      is_read INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now'))
+    )`,
+    'id, user_id, ticket_id, message, is_read, created_at'
+  );
+  await rebuildTableIfDangling(
+    'ticket_custom_values', 'tickets_old',
+    `CREATE TABLE ticket_custom_values_fixed (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+      field_id INTEGER NOT NULL REFERENCES custom_fields(id) ON DELETE CASCADE,
+      value TEXT,
+      UNIQUE(ticket_id, field_id)
+    )`,
+    'id, ticket_id, field_id, value'
+  );
+  await rebuildTableIfDangling(
+    'ticket_attachments', 'tickets_old',
+    `CREATE TABLE ticket_attachments_fixed (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+      comment_id INTEGER REFERENCES comments(id) ON DELETE CASCADE,
+      uploaded_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      file_name TEXT NOT NULL,
+      mime_type TEXT NOT NULL,
+      size_bytes INTEGER NOT NULL,
+      data TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )`,
+    'id, ticket_id, comment_id, uploaded_by, file_name, mime_type, size_bytes, data, created_at'
+  );
+  await rebuildTableIfDangling(
+    'ticket_tags', 'tickets_old',
+    `CREATE TABLE ticket_tags_fixed (
+      ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+      tag_id INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+      PRIMARY KEY (ticket_id, tag_id)
+    )`,
+    'ticket_id, tag_id'
+  );
+  await rebuildTableIfDangling(
+    'ticket_links', 'tickets_old',
+    `CREATE TABLE ticket_links_fixed (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+      linked_ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+      created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(ticket_id, linked_ticket_id)
+    )`,
+    'id, ticket_id, linked_ticket_id, created_by, created_at'
+  );
+  await rebuildTableIfDangling(
+    'ticket_watchers', 'tickets_old',
+    `CREATE TABLE ticket_watchers_fixed (
+      ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (ticket_id, user_id)
+    )`,
+    'ticket_id, user_id, created_at'
+  );
+  await run('PRAGMA foreign_keys = ON');
+}
+
 async function migrate() {
+  await repairDanglingTicketReferences();
+
   const groupCols = await all('PRAGMA table_info(groups)');
   if (groupCols.length && !groupCols.some((c) => c.name === 'parent_id')) {
     await run('ALTER TABLE groups ADD COLUMN parent_id INTEGER REFERENCES groups(id) ON DELETE SET NULL');
@@ -248,8 +516,8 @@ async function migrate() {
 
   const ticketsTable = await get("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'tickets'");
   if (ticketsTable && ticketsTable.sql && !ticketsTable.sql.includes('waiting_customer')) {
-    await run('ALTER TABLE tickets RENAME TO tickets_old');
-    await run(`CREATE TABLE tickets (
+    await run('PRAGMA foreign_keys = OFF');
+    await run(`CREATE TABLE tickets_new (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       subject TEXT NOT NULL,
       description TEXT NOT NULL,
@@ -267,9 +535,88 @@ async function migrate() {
       waiting_since TEXT,
       sla_paused_ms INTEGER NOT NULL DEFAULT 0
     )`);
-    await run(`INSERT INTO tickets (id, subject, description, status, priority, type, category, created_by, assigned_to, created_at, updated_at, group_id, resolved_at, asset_id, waiting_since, sla_paused_ms)
-      SELECT id, subject, description, status, priority, type, category, created_by, assigned_to, created_at, updated_at, group_id, resolved_at, asset_id, waiting_since, sla_paused_ms FROM tickets_old`);
-    await run('DROP TABLE tickets_old');
+    await run(`INSERT INTO tickets_new (id, subject, description, status, priority, type, category, created_by, assigned_to, created_at, updated_at, group_id, resolved_at, asset_id, waiting_since, sla_paused_ms)
+      SELECT id, subject, description, status, priority, type, category, created_by, assigned_to, created_at, updated_at, group_id, resolved_at, asset_id, waiting_since, sla_paused_ms FROM tickets`);
+    await run('DROP TABLE tickets');
+    await run('ALTER TABLE tickets_new RENAME TO tickets');
+    await run('PRAGMA foreign_keys = ON');
+  }
+
+  const ticketCols3 = await all('PRAGMA table_info(tickets)');
+  if (!ticketCols3.some((c) => c.name === 'rating')) {
+    await run('ALTER TABLE tickets ADD COLUMN rating INTEGER');
+  }
+  if (!ticketCols3.some((c) => c.name === 'rating_comment')) {
+    await run('ALTER TABLE tickets ADD COLUMN rating_comment TEXT');
+  }
+  if (!ticketCols3.some((c) => c.name === 'rated_at')) {
+    await run('ALTER TABLE tickets ADD COLUMN rated_at TEXT');
+  }
+  if (!ticketCols3.some((c) => c.name === 'sla_warned_at')) {
+    await run('ALTER TABLE tickets ADD COLUMN sla_warned_at TEXT');
+  }
+  if (!ticketCols3.some((c) => c.name === 'first_response_at')) {
+    await run('ALTER TABLE tickets ADD COLUMN first_response_at TEXT');
+  }
+  if (!ticketCols3.some((c) => c.name === 'on_behalf_of')) {
+    await run('ALTER TABLE tickets ADD COLUMN on_behalf_of INTEGER REFERENCES users(id) ON DELETE SET NULL');
+  }
+
+  const groupCols3 = await all('PRAGMA table_info(groups)');
+  if (!groupCols3.some((c) => c.name === 'manager_id')) {
+    await run('ALTER TABLE groups ADD COLUMN manager_id INTEGER REFERENCES users(id) ON DELETE SET NULL');
+  }
+
+  const assetsTable = await get("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'assets'");
+  if (assetsTable && assetsTable.sql && !assetsTable.sql.includes("'tablet'")) {
+    await run('PRAGMA foreign_keys = OFF');
+    await run(`CREATE TABLE assets_new (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      asset_type TEXT NOT NULL DEFAULT 'altro' CHECK (asset_type IN ('laptop', 'desktop', 'monitor', 'telefono', 'tablet', 'altro')),
+      tag TEXT,
+      status TEXT NOT NULL DEFAULT 'disponibile' CHECK (status IN ('disponibile', 'in_uso', 'in_riparazione', 'dismesso')),
+      assignment_type TEXT NOT NULL DEFAULT 'permanente' CHECK (assignment_type IN ('permanente', 'prestito')),
+      assigned_to INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      due_date TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )`);
+    await run(`INSERT INTO assets_new (id, name, asset_type, tag, status, assignment_type, assigned_to, due_date, created_at)
+      SELECT id, name, asset_type, tag, status, assignment_type, assigned_to, due_date, created_at FROM assets`);
+    await run('DROP TABLE assets');
+    await run('ALTER TABLE assets_new RENAME TO assets');
+    await run('PRAGMA foreign_keys = ON');
+  }
+
+  const onboardingTypeCount = await get('SELECT COUNT(*) AS n FROM onboarding_item_types');
+  if (onboardingTypeCount.n === 0) {
+    await seedOnboardingItemTypes();
+  }
+}
+
+async function seedOnboardingItemTypes() {
+  const groupIdByName = {};
+  (await all('SELECT id, name FROM groups')).forEach((g) => { groupIdByName[g.name] = g.id; });
+  const g = (name) => groupIdByName[name] || null;
+
+  const items = [
+    ['active_directory', 'Active Directory', 'Active Directory', 'checkbox', null, g('Security')],
+    ['mailbox', 'Mailbox', 'Mailbox', 'license', null, g('Service Desk')],
+    ['vpn', 'VPN', 'VPN', 'checkbox', null, g('Network')],
+    ['jde', 'JDE', 'JDE', 'copy_user', null, g('Service Desk')],
+    ['crm', 'CRM', 'CRM', 'copy_user', null, g('Service Desk')],
+    ['business_object', 'Business Object', 'Business Object', 'copy_user', null, g('Service Desk')],
+    ['faberwam', 'FaberWAM', 'FaberWAM', 'copy_user', null, g('Service Desk')],
+    ['laptop', 'Laptop', 'Laptop', 'asset', 'laptop', g('Endpoint')],
+    ['smartphone', 'Smartphone', 'Smartphone', 'asset', 'telefono', g('Endpoint')],
+    ['tablet', 'Tablet', 'Tablet', 'asset', 'tablet', g('Endpoint')],
+  ];
+  for (let i = 0; i < items.length; i += 1) {
+    const [key, labelIt, labelEn, kind, assetType, groupId] = items[i];
+    await run(
+      'INSERT INTO onboarding_item_types (item_key, label_it, label_en, kind, asset_type, default_group_id, position) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [key, labelIt, labelEn, kind, assetType, groupId, i]
+    );
   }
 }
 
@@ -396,11 +743,153 @@ async function seedAppSettings() {
   }
 }
 
+async function seedDefaultAssets() {
+  const row = await get('SELECT COUNT(*) AS n FROM assets');
+  if (row.n > 0) return;
+
+  const items = [
+    ['Laptop Dell Latitude 5440', 'laptop', 'ITA-LT-0001'],
+    ['Laptop Dell Latitude 5440', 'laptop', 'ITA-LT-0002'],
+    ['Laptop Dell Latitude 5440', 'laptop', 'ITA-LT-0003'],
+    ['Laptop Lenovo ThinkPad T14', 'laptop', 'ITA-LT-0004'],
+    ['Laptop Lenovo ThinkPad T14', 'laptop', 'ITA-LT-0005'],
+    ['MacBook Pro 14"', 'laptop', 'ITA-LT-0006'],
+    ['MacBook Air 13"', 'laptop', 'ITA-LT-0007'],
+    ['Desktop HP EliteDesk 800', 'desktop', 'ITA-DT-0001'],
+    ['Desktop HP EliteDesk 800', 'desktop', 'ITA-DT-0002'],
+    ['Desktop Dell OptiPlex 7010', 'desktop', 'ITA-DT-0003'],
+    ['Workstation Dell Precision 3660', 'desktop', 'ITA-DT-0004'],
+    ['Monitor Dell UltraSharp 24"', 'monitor', 'ITA-MN-0001'],
+    ['Monitor Dell UltraSharp 24"', 'monitor', 'ITA-MN-0002'],
+    ['Monitor Dell UltraSharp 27"', 'monitor', 'ITA-MN-0003'],
+    ['Monitor LG 27" 4K', 'monitor', 'ITA-MN-0004'],
+    ['Monitor LG 27" 4K', 'monitor', 'ITA-MN-0005'],
+    ['iPhone 14', 'telefono', 'ITA-PH-0001'],
+    ['iPhone 14', 'telefono', 'ITA-PH-0002'],
+    ['iPhone 15 Pro', 'telefono', 'ITA-PH-0003'],
+    ['Samsung Galaxy S23', 'telefono', 'ITA-PH-0004'],
+    ['Samsung Galaxy A54', 'telefono', 'ITA-PH-0005'],
+    ['Stampante multifunzione HP LaserJet', 'altro', 'ITA-PR-0001'],
+    ['Stampante multifunzione Canon', 'altro', 'ITA-PR-0002'],
+    ['Router Wi-Fi Ubiquiti UniFi', 'altro', 'ITA-NW-0001'],
+    ['Switch di rete Cisco 24 porte', 'altro', 'ITA-NW-0002'],
+    ['Webcam Logitech Brio', 'altro', 'ITA-AC-0001'],
+    ['Cuffie Jabra Evolve2', 'altro', 'ITA-AC-0002'],
+    ['Docking station Dell WD19', 'altro', 'ITA-AC-0003'],
+    ['Tablet iPad Air', 'altro', 'ITA-TB-0001'],
+    ['Proiettore Epson sala riunioni', 'altro', 'ITA-AC-0004'],
+  ];
+
+  for (let i = 0; i < items.length; i += 1) {
+    const [name, assetType, tag] = items[i];
+    const status = i % 11 === 0 ? 'in_riparazione' : i % 5 === 3 ? 'in_uso' : 'disponibile';
+    await run('INSERT INTO assets (name, asset_type, tag, status, assignment_type) VALUES (?, ?, ?, ?, ?)', [
+      name, assetType, tag, status, 'permanente',
+    ]);
+  }
+}
+
+async function seedDefaultTags() {
+  const row = await get('SELECT COUNT(*) AS n FROM tags');
+  if (row.n > 0) return;
+
+  const tags = [
+    'urgente', 'hardware', 'software', 'rete', 'sicurezza', 'vip',
+    'recidivo', 'in-attesa-fornitore', 'da-verificare', 'escalation',
+    'cambio-standard', 'post-implementazione', 'formazione', 'bug', 'accesso-remoto',
+  ];
+  for (const name of tags) {
+    await run('INSERT INTO tags (name) VALUES (?)', [name]);
+  }
+}
+
+async function seedDefaultCannedResponses(adminId) {
+  const row = await get('SELECT COUNT(*) AS n FROM canned_responses');
+  if (row.n > 0) return;
+
+  const items = [
+    ['Presa in carico', 'Gentile utente,\n\nla ringraziamo per la segnalazione. Il ticket è stato preso in carico dal nostro team e verrà gestito con la massima priorità possibile.\n\nCordiali saluti'],
+    ['Richiesta informazioni aggiuntive', 'Gentile utente,\n\nper poter procedere con la risoluzione avremmo bisogno di alcune informazioni aggiuntive. Potrebbe fornirci maggiori dettagli sul problema riscontrato (es. screenshot, orario, dispositivo utilizzato)?\n\nGrazie per la collaborazione.'],
+    ['Risoluzione: riavvio del dispositivo', "Gentile utente,\n\nla invitiamo a riavviare il dispositivo e verificare se il problema persiste. In molti casi questa operazione risolve l'anomalia segnalata.\n\nResto a disposizione."],
+    ['Password reimpostata', 'Gentile utente,\n\nabbiamo reimpostato la password come richiesto. Le invieremo le nuove credenziali tramite canale sicuro. La invitiamo a modificarla al primo accesso.\n\nCordiali saluti'],
+    ['Ticket risolto - richiesta conferma', 'Gentile utente,\n\nil problema segnalato è stato risolto. La invitiamo a verificare e confermarci l\'esito, in modo da poter chiudere il ticket.\n\nGrazie'],
+    ['Escalation a livello 2', "Il ticket è stato inoltrato al team specialistico di secondo livello per un'analisi più approfondita. Verrà aggiornato non appena disponibili nuove informazioni."],
+    ['In attesa di componente', "Gentile utente,\n\nla richiesta necessita di un componente/materiale non attualmente disponibile a magazzino. Abbiamo attivato l'ordine e la aggiorneremo non appena ricevuto.\n\nCi scusiamo per l'attesa."],
+    ['Accesso VPN concesso', "Gentile utente,\n\nl'accesso VPN richiesto è stato configurato e attivato sul suo account. Troverà le istruzioni di connessione nella email dedicata.\n\nCordiali saluti"],
+    ['Chiusura per inattività', 'Il ticket viene chiuso per assenza di riscontro da parte dell\'utente. Qualora il problema dovesse ripresentarsi, la invitiamo ad aprire una nuova segnalazione o a riaprire questo ticket.'],
+    ['Segnalazione duplicata', 'Gentile utente,\n\nabbiamo rilevato che questa segnalazione risulta duplicata rispetto a un ticket già aperto. Procederemo con la gestione unificata sul ticket originale.\n\nGrazie per la comprensione.'],
+  ];
+  for (const [title, body] of items) {
+    await run('INSERT INTO canned_responses (title, body, created_by) VALUES (?, ?, ?)', [title, body, adminId]);
+  }
+}
+
+async function seedDefaultTicketTemplates(adminId) {
+  const row = await get('SELECT COUNT(*) AS n FROM ticket_templates');
+  if (row.n > 0) return;
+
+  const items = [
+    ['Nuovo dipendente - postazione completa', 'Nuovo account', 'Onboarding nuovo dipendente', 'Richiesta configurazione completa postazione di lavoro per nuovo assunto: account, PC, accessori, accessi software.', 'medium', 'task'],
+    ['Guasto laptop', 'Laptop', 'Laptop non si accende', 'Il laptop aziendale non si accende / non risponde. Descrivere eventuali segnali (led, ventole, rumori) e da quando si verifica il problema.', 'high', 'incident'],
+    ['Problema connessione Wi-Fi', 'Wi-Fi', 'Impossibile connettersi alla rete Wi-Fi aziendale', 'Il dispositivo non riesce a connettersi o si disconnette frequentemente dalla rete Wi-Fi aziendale.', 'medium', 'incident'],
+    ['Richiesta VPN', 'VPN', 'Attivazione accesso VPN', 'Richiesta di attivazione/configurazione accesso VPN per lavoro da remoto.', 'medium', 'task'],
+    ['Reset password account', 'Reset password', 'Impossibile accedere - password dimenticata', 'Richiesta di reimpostazione password per impossibilità di accesso all\'account aziendale.', 'high', 'incident'],
+    ['Richiesta nuovo software', 'Licenze software', 'Richiesta installazione/licenza software', 'Richiesta di installazione o acquisto licenza per un nuovo software necessario per l\'attività lavorativa.', 'low', 'task'],
+    ['Stampante non funzionante', 'Periferiche (mouse, tastiera, cuffie)', 'Stampante non stampa / errore', 'La stampante di reparto non stampa correttamente o segnala un errore. Indicare modello e messaggio di errore.', 'medium', 'incident'],
+    ['Richiesta nuovo monitor', 'Monitor', 'Richiesta assegnazione monitor aggiuntivo', 'Richiesta di assegnazione di un monitor aggiuntivo per la postazione di lavoro.', 'low', 'task'],
+    ['Segnalazione problema email', 'Email e posta elettronica', 'Problemi di invio/ricezione email', 'Impossibile inviare o ricevere email dall\'account aziendale. Specificare client utilizzato (webmail, Outlook, app mobile).', 'high', 'incident'],
+    ['Richiesta accesso a sistema esterno', 'Accesso a sistemi esterni', 'Richiesta credenziali per portale/sistema esterno', 'Richiesta di attivazione accesso a un sistema o portale esterno necessario per l\'attività lavorativa.', 'medium', 'task'],
+  ];
+  for (let i = 0; i < items.length; i += 1) {
+    const [name, category, subject, description, priority, type] = items[i];
+    await run(
+      'INSERT INTO ticket_templates (name, category, subject, description, priority, type, position, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [name, category, subject, description, priority, type, i, adminId]
+    );
+  }
+}
+
+async function seedDefaultHolidays() {
+  const row = await get('SELECT COUNT(*) AS n FROM holidays');
+  if (row.n > 0) return;
+
+  const items = [
+    ['2026-01-01', 'Capodanno'],
+    ['2026-01-06', 'Epifania'],
+    ['2026-04-05', 'Pasqua'],
+    ['2026-04-06', "Lunedì dell'Angelo"],
+    ['2026-04-25', 'Festa della Liberazione'],
+    ['2026-05-01', 'Festa dei Lavoratori'],
+    ['2026-06-02', 'Festa della Repubblica'],
+    ['2026-08-15', 'Ferragosto'],
+    ['2026-11-01', 'Ognissanti'],
+    ['2026-12-08', 'Immacolata Concezione'],
+    ['2026-12-25', 'Natale'],
+    ['2026-12-26', 'Santo Stefano'],
+    ['2027-01-01', 'Capodanno'],
+    ['2027-01-06', 'Epifania'],
+  ];
+  for (const [date, name] of items) {
+    await run('INSERT INTO holidays (date, name) VALUES (?, ?)', [date, name]);
+  }
+}
+
+async function seedDefaultContent() {
+  const admin = await get('SELECT id FROM users ORDER BY id ASC LIMIT 1');
+  const adminId = admin ? admin.id : null;
+  await seedDefaultAssets();
+  await seedDefaultTags();
+  await seedDefaultCannedResponses(adminId);
+  await seedDefaultTicketTemplates(adminId);
+  await seedDefaultHolidays();
+}
+
 async function initDb() {
   await setupSchema();
   await migrate();
   await seedDefaultAdmin();
   await seedAppSettings();
+  await seedDefaultContent();
   console.log(usingTurso ? 'Database: Turso (persistente)' : `Database: file locale (${url})`);
 }
 

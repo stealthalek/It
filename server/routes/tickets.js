@@ -5,6 +5,8 @@ const asyncHandler = require('../middleware/asyncHandler');
 const realtime = require('../realtime');
 const mailer = require('../mailer');
 const { notifyUser } = require('../notifications');
+const { businessMillisBetween, computeSlaStatus, computeSlaRemaining, withSla } = require('../sla');
+const { formatTicketNumber } = require('../lib/ticketNumber');
 
 const router = express.Router();
 router.use(authenticate);
@@ -30,85 +32,26 @@ const TICKET_SELECT = `
     grp.sla_resolve_hours AS sla_resolve_hours,
     grp.work_start_hour AS work_start_hour,
     grp.work_end_hour AS work_end_hour,
-    asset.name AS asset_name
+    asset.name AS asset_name,
+    asset.tag AS asset_tag,
+    onBehalf.name AS on_behalf_name,
+    onBehalf.email AS on_behalf_email,
+    (SELECT GROUP_CONCAT(tg.name, ',') FROM ticket_tags tt JOIN tags tg ON tg.id = tt.tag_id WHERE tt.ticket_id = t.id) AS tag_names
   FROM tickets t
   JOIN users creator ON creator.id = t.created_by
   LEFT JOIN users assignee ON assignee.id = t.assigned_to
   LEFT JOIN groups grp ON grp.id = t.group_id
   LEFT JOIN groups grpParent ON grpParent.id = grp.parent_id
   LEFT JOIN assets asset ON asset.id = t.asset_id
+  LEFT JOIN users onBehalf ON onBehalf.id = t.on_behalf_of
 `;
-
-function businessMillisBetween(startMs, endMs, startHour, endHour) {
-  if (endMs <= startMs || endHour <= startHour) return 0;
-  const MS_PER_DAY = 24 * 3600 * 1000;
-  let total = 0;
-  let dayStart = new Date(startMs);
-  dayStart.setUTCHours(0, 0, 0, 0);
-  let cursor = dayStart.getTime();
-  while (cursor < endMs) {
-    const dayOfWeek = new Date(cursor).getUTCDay();
-    if (dayOfWeek >= 1 && dayOfWeek <= 5) {
-      const windowStart = cursor + startHour * 3600 * 1000;
-      const windowEnd = cursor + endHour * 3600 * 1000;
-      const overlapStart = Math.max(windowStart, startMs);
-      const overlapEnd = Math.min(windowEnd, endMs);
-      if (overlapEnd > overlapStart) total += overlapEnd - overlapStart;
-    }
-    cursor += MS_PER_DAY;
-  }
-  return total;
-}
-
-function pausedMillisSoFar(ticket, workStart, workEnd) {
-  let paused = ticket.sla_paused_ms || 0;
-  if (ticket.status === 'waiting_customer' && ticket.waiting_since) {
-    const since = new Date(ticket.waiting_since.replace(' ', 'T') + 'Z').getTime();
-    paused += businessMillisBetween(since, Date.now(), workStart, workEnd);
-  }
-  return paused;
-}
-
-function computeSlaStatus(ticket) {
-  if (!ticket.sla_resolve_hours || !ticket.created_at) return null;
-  const workStart = ticket.work_start_hour ?? 9;
-  const workEnd = ticket.work_end_hour ?? 18;
-  const created = new Date(ticket.created_at.replace(' ', 'T') + 'Z').getTime();
-  const resolveMs = ticket.sla_resolve_hours * 3600 * 1000;
-  if (ticket.status === 'resolved' || ticket.status === 'closed') {
-    if (!ticket.resolved_at) return null;
-    const resolved = new Date(ticket.resolved_at.replace(' ', 'T') + 'Z').getTime();
-    const elapsed = businessMillisBetween(created, resolved, workStart, workEnd) - (ticket.sla_paused_ms || 0);
-    return elapsed > resolveMs ? 'breached' : 'on_track';
-  }
-  const elapsed = Math.max(0, businessMillisBetween(created, Date.now(), workStart, workEnd) - pausedMillisSoFar(ticket, workStart, workEnd));
-  const ratio = elapsed / resolveMs;
-  if (ratio >= 1) return 'breached';
-  if (ratio >= 0.75) return 'at_risk';
-  return 'on_track';
-}
-
-function computeSlaRemaining(ticket) {
-  if (!ticket.sla_resolve_hours || !ticket.created_at) return null;
-  if (ticket.status === 'resolved' || ticket.status === 'closed') return null;
-  const workStart = ticket.work_start_hour ?? 9;
-  const workEnd = ticket.work_end_hour ?? 18;
-  const created = new Date(ticket.created_at.replace(' ', 'T') + 'Z').getTime();
-  const resolveMs = ticket.sla_resolve_hours * 3600 * 1000;
-  const elapsed = Math.max(0, businessMillisBetween(created, Date.now(), workStart, workEnd) - pausedMillisSoFar(ticket, workStart, workEnd));
-  return resolveMs - elapsed;
-}
-
-function withSla(ticket) {
-  return { ...ticket, sla_status: computeSlaStatus(ticket), sla_remaining_ms: computeSlaRemaining(ticket) };
-}
 
 function isStaff(user) {
   return user.role === 'agent' || user.role === 'admin';
 }
 
 function canAccessTicket(user, ticket) {
-  if (!isStaff(user)) return ticket.created_by === user.id;
+  if (!isStaff(user)) return ticket.created_by === user.id || ticket.on_behalf_of === user.id;
   if (user.is_super_admin) return true;
   if (!ticket.group_id) return true;
   return ticket.group_id === user.group_id;
@@ -138,13 +81,82 @@ async function defaultGroupForCategory(categoryName) {
   return row ? row.default_group_id : null;
 }
 
+function parseFieldOptions(raw) {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+async function applicableCustomFields(categoryName) {
+  const category = categoryName ? await db.get('SELECT id FROM categories WHERE name = ?', [categoryName]) : null;
+  const fields = category
+    ? await db.all('SELECT * FROM custom_fields WHERE category_id IS NULL OR category_id = ? ORDER BY position ASC', [category.id])
+    : await db.all('SELECT * FROM custom_fields WHERE category_id IS NULL ORDER BY position ASC');
+  return fields;
+}
+
+async function validateCustomFieldValues(categoryName, customFieldsInput) {
+  const fields = await applicableCustomFields(categoryName);
+  const values = customFieldsInput && typeof customFieldsInput === 'object' ? customFieldsInput : {};
+
+  for (const field of fields) {
+    const raw = values[field.id];
+    const provided = raw !== undefined && raw !== null && String(raw).trim() !== '';
+
+    if (field.required && field.field_type !== 'checkbox' && !provided) {
+      return `Il campo "${field.name}" è obbligatorio`;
+    }
+    if (field.field_type === 'select' && provided) {
+      const options = parseFieldOptions(field.options);
+      if (!options.includes(String(raw))) {
+        return `Valore non valido per il campo "${field.name}"`;
+      }
+    }
+    if (field.field_type === 'number' && provided && Number.isNaN(Number(raw))) {
+      return `Il campo "${field.name}" deve essere numerico`;
+    }
+  }
+  return null;
+}
+
+async function saveCustomFieldValues(ticketId, categoryName, customFieldsInput) {
+  const fields = await applicableCustomFields(categoryName);
+  const values = customFieldsInput && typeof customFieldsInput === 'object' ? customFieldsInput : {};
+
+  for (const field of fields) {
+    const raw = values[field.id];
+    if (raw === undefined) continue;
+    const stored = field.field_type === 'checkbox' ? (raw ? '1' : '0') : String(raw).trim();
+    await db.run(
+      `INSERT INTO ticket_custom_values (ticket_id, field_id, value) VALUES (?, ?, ?)
+       ON CONFLICT(ticket_id, field_id) DO UPDATE SET value = excluded.value`,
+      [ticketId, field.id, stored]
+    );
+  }
+}
+
+async function listCustomValues(ticketId) {
+  return db.all(
+    `SELECT f.id AS field_id, f.name, f.field_type, f.options, f.required, v.value
+     FROM ticket_custom_values v
+     JOIN custom_fields f ON f.id = v.field_id
+     WHERE v.ticket_id = ?
+     ORDER BY f.position ASC`,
+    [ticketId]
+  ).then((rows) => rows.map((r) => ({ ...r, options: parseFieldOptions(r.options) })));
+}
+
 async function notifyStaffOfNewTicket(ticket) {
   const staff = await db.all("SELECT id, group_id, is_super_admin FROM users WHERE role IN ('agent', 'admin')");
   const recipients = staff.filter((u) => u.id !== ticket.created_by && (u.is_super_admin || !ticket.group_id || u.group_id === ticket.group_id));
   for (const u of recipients) {
     notifyUser(u.id, ticket.id, {
-      it: `Nuovo ticket #${ticket.id}: ${ticket.subject}`,
-      en: `New ticket #${ticket.id}: ${ticket.subject}`,
+      it: `Nuovo ticket #${formatTicketNumber(ticket.id)}: ${ticket.subject}`,
+      en: `New ticket #${formatTicketNumber(ticket.id)}: ${ticket.subject}`,
     }).catch(() => {});
   }
 }
@@ -158,6 +170,97 @@ async function logEvent(ticketId, actorId, message) {
     [Number(info.lastInsertRowid)]
   );
   realtime.broadcastActivityItem(ticketId, { kind: 'event', ...row });
+}
+
+async function runAutomationRules(ticketId, triggerEvent, actorId) {
+  const rules = await db.all(
+    `SELECT r.*, grpAction.name AS action_assign_group_name, u.name AS action_assign_user_name
+     FROM automation_rules r
+     LEFT JOIN groups grpAction ON grpAction.id = r.action_assign_group_id
+     LEFT JOIN users u ON u.id = r.action_assign_user_id
+     WHERE r.enabled = 1 AND r.trigger_event = ?
+     ORDER BY r.position ASC, r.id ASC`,
+    [triggerEvent]
+  );
+  if (!rules.length) return;
+
+  for (const rule of rules) {
+    const ticket = await db.get(`${TICKET_SELECT} WHERE t.id = ?`, [ticketId]);
+    if (!ticket) return;
+    if (rule.cond_status && rule.cond_status !== ticket.status) continue;
+    if (rule.cond_priority && rule.cond_priority !== ticket.priority) continue;
+    if (rule.cond_category && rule.cond_category !== ticket.category) continue;
+    if (rule.cond_type && rule.cond_type !== ticket.type) continue;
+    if (rule.cond_group_id && rule.cond_group_id !== ticket.group_id) continue;
+
+    const updates = [];
+    const params = [];
+    const events = [];
+
+    if (rule.action_set_status && rule.action_set_status !== ticket.status) {
+      updates.push('status = ?');
+      params.push(rule.action_set_status);
+      events.push(`Stato impostato automaticamente a "${STATUS_LABELS[rule.action_set_status]}" (regola "${rule.name}")`);
+      if (rule.action_set_status === 'resolved') updates.push("resolved_at = datetime('now')");
+    }
+    if (rule.action_set_priority && rule.action_set_priority !== ticket.priority) {
+      updates.push('priority = ?');
+      params.push(rule.action_set_priority);
+      events.push(`Priorità impostata automaticamente a "${PRIORITY_LABELS[rule.action_set_priority]}" (regola "${rule.name}")`);
+    }
+    if (rule.action_assign_group_id && rule.action_assign_group_id !== ticket.group_id) {
+      updates.push('group_id = ?');
+      params.push(rule.action_assign_group_id);
+      events.push(`Gruppo impostato automaticamente a "${rule.action_assign_group_name || rule.action_assign_group_id}" (regola "${rule.name}")`);
+    }
+    if (rule.action_assign_user_id && rule.action_assign_user_id !== ticket.assigned_to) {
+      updates.push('assigned_to = ?');
+      params.push(rule.action_assign_user_id);
+      events.push(`Assegnato automaticamente a "${rule.action_assign_user_name || rule.action_assign_user_id}" (regola "${rule.name}")`);
+    }
+
+    if (updates.length) {
+      updates.push("updated_at = datetime('now')");
+      params.push(ticketId);
+      await db.run(`UPDATE tickets SET ${updates.join(', ')} WHERE id = ?`, params);
+      for (const message of events) {
+        await logEvent(ticketId, actorId, message);
+      }
+    }
+    if (rule.action_note) {
+      await db.run('INSERT INTO comments (ticket_id, user_id, message, is_internal) VALUES (?, ?, ?, 1)', [
+        ticketId, actorId, `${rule.action_note} (nota automatica — regola "${rule.name}")`,
+      ]);
+    }
+  }
+
+  const finalTicket = await db.get(`${TICKET_SELECT} WHERE t.id = ?`, [ticketId]);
+  if (finalTicket) realtime.broadcastTicketUpdate(ticketId, withSla(finalTicket));
+}
+
+async function listWatchers(ticketId) {
+  return db.all(
+    `SELECT u.id, u.name FROM ticket_watchers w JOIN users u ON u.id = w.user_id WHERE w.ticket_id = ? ORDER BY u.name ASC`,
+    [ticketId]
+  );
+}
+
+async function listTicketLinks(ticketId) {
+  return db.all(
+    `SELECT l.id, t.id AS linked_ticket_id, t.subject AS linked_subject, t.status AS linked_status
+     FROM ticket_links l
+     JOIN tickets t ON t.id = (CASE WHEN l.ticket_id = ? THEN l.linked_ticket_id ELSE l.ticket_id END)
+     WHERE l.ticket_id = ? OR l.linked_ticket_id = ?
+     ORDER BY l.created_at DESC`,
+    [ticketId, ticketId, ticketId]
+  );
+}
+
+async function listTicketTags(ticketId) {
+  return db.all(
+    `SELECT tg.id, tg.name FROM ticket_tags tt JOIN tags tg ON tg.id = tt.tag_id WHERE tt.ticket_id = ? ORDER BY tg.name ASC`,
+    [ticketId]
+  );
 }
 
 async function listActivity(ticketId, includeInternal) {
@@ -191,8 +294,8 @@ router.get(
     const params = [];
 
     if (!isStaff(req.user)) {
-      clauses.push('t.created_by = ?');
-      params.push(req.user.id);
+      clauses.push('(t.created_by = ? OR t.on_behalf_of = ?)');
+      params.push(req.user.id, req.user.id);
     } else if (assigned === 'me') {
       clauses.push('t.assigned_to = ?');
       params.push(req.user.id);
@@ -235,9 +338,22 @@ router.get(
       clauses.push('t.group_id = ?');
       params.push(Number(group));
     }
+    if (req.query.tag && req.query.tag.trim()) {
+      clauses.push('t.id IN (SELECT tt.ticket_id FROM ticket_tags tt JOIN tags tg ON tg.id = tt.tag_id WHERE tg.name = ?)');
+      params.push(req.query.tag.trim());
+    }
+    if (req.query.category && req.query.category.trim()) {
+      clauses.push('t.category = ?');
+      params.push(req.query.category.trim());
+    }
+    if (req.query.excludeId && /^\d+$/.test(req.query.excludeId)) {
+      clauses.push('t.id != ?');
+      params.push(Number(req.query.excludeId));
+    }
     if (q && q.trim()) {
       const trimmed = q.trim();
-      const asId = /^\d+$/.test(trimmed) ? Number(trimmed) : null;
+      const normalizedId = trimmed.replace(/^#/, '').replace(/^tck-?/i, '').replace(/^0+(?=\d)/, '');
+      const asId = /^\d+$/.test(normalizedId) ? Number(normalizedId) : null;
       const requesterMatch = isStaff(req.user) ? ' OR creator.name LIKE ? OR creator.email LIKE ?' : '';
       if (asId !== null) {
         clauses.push(`(t.subject LIKE ? OR t.description LIKE ? OR t.id = ?${requesterMatch})`);
@@ -261,7 +377,7 @@ router.get(
 router.post(
   '/',
   asyncHandler(async (req, res) => {
-    const { subject, description, priority, category, type } = req.body || {};
+    const { subject, description, priority, category, type, customFields, onBehalfOf } = req.body || {};
 
     if (!subject || !subject.trim()) {
       return res.status(400).json({ error: 'L\'oggetto è obbligatorio' });
@@ -274,16 +390,37 @@ router.post(
     const finalCategory = await resolveCategory(category && category.trim());
     const autoGroupId = await defaultGroupForCategory(finalCategory);
 
+    const customFieldsError = await validateCustomFieldValues(finalCategory, customFields);
+    if (customFieldsError) {
+      return res.status(400).json({ error: customFieldsError });
+    }
+
+    let beneficiary = null;
+    if (onBehalfOf && Number(onBehalfOf) !== req.user.id) {
+      beneficiary = await db.get('SELECT id, name FROM users WHERE id = ?', [Number(onBehalfOf)]);
+      if (!beneficiary) {
+        return res.status(400).json({ error: 'Utente selezionato non valido' });
+      }
+    }
+
     const info = await db.run(
-      'INSERT INTO tickets (subject, description, priority, type, category, created_by, group_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [subject.trim(), description.trim(), finalPriority, finalType, finalCategory, req.user.id, autoGroupId]
+      'INSERT INTO tickets (subject, description, priority, type, category, created_by, group_id, on_behalf_of) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [subject.trim(), description.trim(), finalPriority, finalType, finalCategory, req.user.id, autoGroupId, beneficiary ? beneficiary.id : null]
     );
 
     const ticketId = Number(info.lastInsertRowid);
-    await logEvent(ticketId, req.user.id, 'Ticket creato');
+    await saveCustomFieldValues(ticketId, finalCategory, customFields);
+    await logEvent(ticketId, req.user.id, beneficiary ? `Ticket aperto da ${req.user.name} per conto di ${beneficiary.name}` : 'Ticket creato');
+    await runAutomationRules(ticketId, 'created', req.user.id);
 
     const ticket = await db.get(`${TICKET_SELECT} WHERE t.id = ?`, [ticketId]);
     notifyStaffOfNewTicket(ticket).catch(() => {});
+    if (beneficiary) {
+      notifyUser(beneficiary.id, ticket.id, {
+        it: `${req.user.name} ha aperto il ticket #${formatTicketNumber(ticket.id)} per tuo conto: ${ticket.subject}`,
+        en: `${req.user.name} opened ticket #${formatTicketNumber(ticket.id)} on your behalf: ${ticket.subject}`,
+      }).catch(() => {});
+    }
     res.status(201).json({ ticket: withSla(ticket) });
   })
 );
@@ -295,7 +432,132 @@ router.get(
     if (!ticket) return;
 
     const activity = await listActivity(ticket.id, isStaff(req.user));
-    res.json({ ticket: withSla(ticket), activity });
+    const customFieldValues = await listCustomValues(ticket.id);
+    const tags = await listTicketTags(ticket.id);
+    const links = await listTicketLinks(ticket.id);
+    const watchers = await listWatchers(ticket.id);
+    const isWatching = isStaff(req.user) && watchers.some((w) => w.id === req.user.id);
+    res.json({ ticket: withSla(ticket), activity, customFieldValues, tags, links, watchers, isWatching });
+  })
+);
+
+router.post(
+  '/:id/watch',
+  asyncHandler(async (req, res) => {
+    const ticket = await getTicketOr404(req, res);
+    if (!ticket) return;
+    if (!isStaff(req.user)) {
+      return res.status(403).json({ error: 'Solo lo staff può seguire un ticket' });
+    }
+    await db.run('INSERT OR IGNORE INTO ticket_watchers (ticket_id, user_id) VALUES (?, ?)', [ticket.id, req.user.id]);
+    const watchers = await listWatchers(ticket.id);
+    res.status(201).json({ watchers, isWatching: true });
+  })
+);
+
+router.delete(
+  '/:id/watch',
+  asyncHandler(async (req, res) => {
+    const ticket = await getTicketOr404(req, res);
+    if (!ticket) return;
+    await db.run('DELETE FROM ticket_watchers WHERE ticket_id = ? AND user_id = ?', [ticket.id, req.user.id]);
+    const watchers = await listWatchers(ticket.id);
+    res.json({ watchers, isWatching: false });
+  })
+);
+
+router.post(
+  '/:id/links',
+  asyncHandler(async (req, res) => {
+    const ticket = await getTicketOr404(req, res);
+    if (!ticket) return;
+    if (!isStaff(req.user)) {
+      return res.status(403).json({ error: 'Solo lo staff può collegare i ticket' });
+    }
+    const linkedTicketId = Number(req.body && req.body.linkedTicketId);
+    if (!linkedTicketId || linkedTicketId === ticket.id) {
+      return res.status(400).json({ error: 'Ticket da collegare non valido' });
+    }
+    const linkedTicket = await db.get(`${TICKET_SELECT} WHERE t.id = ?`, [linkedTicketId]);
+    if (!linkedTicket || !canAccessTicket(req.user, linkedTicket)) {
+      return res.status(404).json({ error: 'Ticket da collegare non trovato' });
+    }
+    const existing = await db.get(
+      'SELECT id FROM ticket_links WHERE (ticket_id = ? AND linked_ticket_id = ?) OR (ticket_id = ? AND linked_ticket_id = ?)',
+      [ticket.id, linkedTicketId, linkedTicketId, ticket.id]
+    );
+    if (!existing) {
+      await db.run('INSERT INTO ticket_links (ticket_id, linked_ticket_id, created_by) VALUES (?, ?, ?)', [
+        ticket.id, linkedTicketId, req.user.id,
+      ]);
+      await logEvent(ticket.id, req.user.id, `Collegato al ticket #${linkedTicketId}: "${linkedTicket.subject}"`);
+    }
+
+    const links = await listTicketLinks(ticket.id);
+    res.status(201).json({ links });
+  })
+);
+
+router.delete(
+  '/:id/links/:linkId',
+  asyncHandler(async (req, res) => {
+    const ticket = await getTicketOr404(req, res);
+    if (!ticket) return;
+    if (!isStaff(req.user)) {
+      return res.status(403).json({ error: 'Solo lo staff può collegare i ticket' });
+    }
+    await db.run(
+      'DELETE FROM ticket_links WHERE id = ? AND (ticket_id = ? OR linked_ticket_id = ?)',
+      [req.params.linkId, ticket.id, ticket.id]
+    );
+    await logEvent(ticket.id, req.user.id, 'Collegamento rimosso');
+
+    const links = await listTicketLinks(ticket.id);
+    res.json({ links });
+  })
+);
+
+router.post(
+  '/:id/tags',
+  asyncHandler(async (req, res) => {
+    const ticket = await getTicketOr404(req, res);
+    if (!ticket) return;
+    if (!isStaff(req.user)) {
+      return res.status(403).json({ error: 'Solo lo staff può gestire le etichette' });
+    }
+    const { name } = req.body || {};
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Il nome dell\'etichetta è obbligatorio' });
+    }
+    const finalName = name.trim().slice(0, 40).toLowerCase();
+
+    let tag = await db.get('SELECT id, name FROM tags WHERE name = ?', [finalName]);
+    if (!tag) {
+      const info = await db.run('INSERT INTO tags (name) VALUES (?)', [finalName]);
+      tag = { id: Number(info.lastInsertRowid), name: finalName };
+    }
+    await db.run('INSERT OR IGNORE INTO ticket_tags (ticket_id, tag_id) VALUES (?, ?)', [ticket.id, tag.id]);
+    await logEvent(ticket.id, req.user.id, `Etichetta aggiunta: "${tag.name}"`);
+
+    const tags = await listTicketTags(ticket.id);
+    res.status(201).json({ tags });
+  })
+);
+
+router.delete(
+  '/:id/tags/:tagId',
+  asyncHandler(async (req, res) => {
+    const ticket = await getTicketOr404(req, res);
+    if (!ticket) return;
+    if (!isStaff(req.user)) {
+      return res.status(403).json({ error: 'Solo lo staff può gestire le etichette' });
+    }
+    const tag = await db.get('SELECT name FROM tags WHERE id = ?', [req.params.tagId]);
+    await db.run('DELETE FROM ticket_tags WHERE ticket_id = ? AND tag_id = ?', [ticket.id, req.params.tagId]);
+    if (tag) await logEvent(ticket.id, req.user.id, `Etichetta rimossa: "${tag.name}"`);
+
+    const tags = await listTicketTags(ticket.id);
+    res.json({ tags });
   })
 );
 
@@ -388,8 +650,8 @@ router.patch(
             events.push(`Assegnato a ${assignee.name}`);
             if (assignee.id !== req.user.id) {
               notifyUser(assignee.id, ticket.id, {
-                it: `Ti è stato assegnato il ticket #${ticket.id}: ${ticket.subject}`,
-                en: `Ticket #${ticket.id} has been assigned to you: ${ticket.subject}`,
+                it: `Ti è stato assegnato il ticket #${formatTicketNumber(ticket.id)}: ${ticket.subject}`,
+                en: `Ticket #${formatTicketNumber(ticket.id)} has been assigned to you: ${ticket.subject}`,
               }).catch(() => {});
             }
           }
@@ -433,14 +695,19 @@ router.patch(
       }
     }
 
-    const isOwner = ticket.created_by === req.user.id;
+    const isOwner = ticket.created_by === req.user.id || ticket.on_behalf_of === req.user.id;
     if (isOwner && !isStaff(req.user)) {
       const wantsReopen = body.status === 'open' && ['resolved', 'closed'].includes(ticket.status);
+      const wantsCancel = body.status === 'closed' && ['open', 'in_progress', 'waiting_customer'].includes(ticket.status);
       if (wantsReopen) {
         updates.push('status = ?');
         params.push('open');
         if (ticket.resolved_at) updates.push('resolved_at = NULL');
         events.push('Ticket riaperto dal richiedente');
+      } else if (wantsCancel) {
+        updates.push('status = ?');
+        params.push('closed');
+        events.push('Ticket annullato dal richiedente');
       } else if (body.status !== undefined) {
         return res.status(403).json({ error: 'Non puoi impostare questo stato' });
       }
@@ -459,16 +726,33 @@ router.patch(
       }
     }
 
-    if (updates.length === 0) {
+    let customFieldsUpdated = false;
+    if ((isOwner || isStaff(req.user)) && body.customFields !== undefined) {
+      const targetCategory = updates.some((u) => u.startsWith('category')) ? await resolveCategory(body.category.trim()) : ticket.category;
+      const customFieldsError = await validateCustomFieldValues(targetCategory, body.customFields);
+      if (customFieldsError) {
+        return res.status(400).json({ error: customFieldsError });
+      }
+      customFieldsUpdated = true;
+    }
+
+    if (updates.length === 0 && !customFieldsUpdated) {
       return res.status(400).json({ error: 'Nessuna modifica valida fornita' });
     }
 
-    updates.push("updated_at = datetime('now')");
-    params.push(ticket.id);
-    await db.run(`UPDATE tickets SET ${updates.join(', ')} WHERE id = ?`, params);
+    if (updates.length > 0) {
+      updates.push("updated_at = datetime('now')");
+      params.push(ticket.id);
+      await db.run(`UPDATE tickets SET ${updates.join(', ')} WHERE id = ?`, params);
+    }
+    if (customFieldsUpdated) {
+      const targetCategory = updates.some((u) => u.startsWith('category')) ? await resolveCategory(body.category.trim()) : ticket.category;
+      await saveCustomFieldValues(ticket.id, targetCategory, body.customFields);
+    }
     for (const message of events) {
       await logEvent(ticket.id, req.user.id, message);
     }
+    await runAutomationRules(ticket.id, 'updated', req.user.id);
 
     const updated = withSla(await db.get(`${TICKET_SELECT} WHERE t.id = ?`, [ticket.id]));
     realtime.broadcastTicketUpdate(ticket.id, updated);
@@ -476,16 +760,25 @@ router.patch(
       mailer.notifyTicketResolved(updated).catch((err) => console.error('Invio email fallito:', err.message));
       if (ticket.created_by !== req.user.id) {
         notifyUser(ticket.created_by, ticket.id, {
-          it: `Il ticket #${ticket.id} è stato risolto: ${ticket.subject}`,
-          en: `Ticket #${ticket.id} has been resolved: ${ticket.subject}`,
+          it: `Il ticket #${formatTicketNumber(ticket.id)} è stato risolto: ${ticket.subject}`,
+          en: `Ticket #${formatTicketNumber(ticket.id)} has been resolved: ${ticket.subject}`,
         }).catch(() => {});
       }
     }
     if (justSetWaiting && ticket.created_by !== req.user.id) {
       notifyUser(ticket.created_by, ticket.id, {
-        it: `Il ticket #${ticket.id} è in attesa di una tua risposta: ${ticket.subject}`,
-        en: `Ticket #${ticket.id} is awaiting your reply: ${ticket.subject}`,
+        it: `Il ticket #${formatTicketNumber(ticket.id)} è in attesa di una tua risposta: ${ticket.subject}`,
+        en: `Ticket #${formatTicketNumber(ticket.id)} is awaiting your reply: ${ticket.subject}`,
       }).catch(() => {});
+    }
+    if (events.length) {
+      const watchers = await listWatchers(ticket.id);
+      watchers.filter((w) => w.id !== req.user.id).forEach((w) => {
+        notifyUser(w.id, ticket.id, {
+          it: `Il ticket #${formatTicketNumber(ticket.id)} che segui è stato aggiornato: ${ticket.subject}`,
+          en: `Ticket #${formatTicketNumber(ticket.id)} you follow was updated: ${ticket.subject}`,
+        }).catch(() => {});
+      });
     }
     res.json({ ticket: updated });
   })
@@ -527,6 +820,10 @@ router.post(
     ]);
     await db.run("UPDATE tickets SET updated_at = datetime('now') WHERE id = ?", [ticket.id]);
 
+    if (!internal && isStaff(req.user) && !ticket.first_response_at) {
+      await db.run("UPDATE tickets SET first_response_at = datetime('now') WHERE id = ?", [ticket.id]);
+    }
+
     const commentRow = await db.get(
       `SELECT c.id, c.message, c.is_internal, c.created_at, u.name AS author_name, u.role AS author_role
        FROM comments c JOIN users u ON u.id = c.user_id
@@ -546,6 +843,7 @@ router.post(
         [pausedNow, ticket.id]
       );
       await logEvent(ticket.id, req.user.id, `Stato cambiato automaticamente da "${STATUS_LABELS.waiting_customer}" a "${STATUS_LABELS.in_progress}" (risposta del richiedente)`);
+      await runAutomationRules(ticket.id, 'updated', req.user.id);
       const updated = withSla(await db.get(`${TICKET_SELECT} WHERE t.id = ?`, [ticket.id]));
       realtime.broadcastTicketUpdate(ticket.id, updated);
     }
@@ -557,21 +855,159 @@ router.post(
     } else if (ticket.assigned_to && ticket.assigned_to !== req.user.id) {
       notifyTargets.add(ticket.assigned_to);
     }
+    const watchers = await listWatchers(ticket.id);
+    watchers.forEach((w) => { if (w.id !== req.user.id) notifyTargets.add(w.id); });
     for (const targetId of notifyTargets) {
       notifyUser(targetId, ticket.id, {
-        it: `Nuovo messaggio sul ticket #${ticket.id}: ${ticket.subject}`,
-        en: `New message on ticket #${ticket.id}: ${ticket.subject}`,
+        it: `Nuovo messaggio sul ticket #${formatTicketNumber(ticket.id)}: ${ticket.subject}`,
+        en: `New message on ticket #${formatTicketNumber(ticket.id)}: ${ticket.subject}`,
       }).catch(() => {});
     }
     if (autoReopened && ticket.assigned_to && ticket.assigned_to !== req.user.id) {
       notifyUser(ticket.assigned_to, ticket.id, {
-        it: `Il richiedente ha risposto: il ticket #${ticket.id} è tornato in lavorazione`,
-        en: `The requester replied: ticket #${ticket.id} is back in progress`,
+        it: `Il richiedente ha risposto: il ticket #${formatTicketNumber(ticket.id)} è tornato in lavorazione`,
+        en: `The requester replied: ticket #${formatTicketNumber(ticket.id)} is back in progress`,
       }).catch(() => {});
     }
 
     const activity = await listActivity(ticket.id, isStaff(req.user));
     res.status(201).json({ activity });
+  })
+);
+
+router.post(
+  '/:id/rating',
+  asyncHandler(async (req, res) => {
+    const ticket = await getTicketOr404(req, res);
+    if (!ticket) return;
+
+    if (ticket.created_by !== req.user.id) {
+      return res.status(403).json({ error: 'Solo il richiedente può valutare il ticket' });
+    }
+    if (!['resolved', 'closed'].includes(ticket.status)) {
+      return res.status(400).json({ error: 'Il ticket deve essere risolto per poter essere valutato' });
+    }
+    const { rating, comment } = req.body || {};
+    const ratingNum = Number(rating);
+    if (!Number.isInteger(ratingNum) || ratingNum < 1 || ratingNum > 5) {
+      return res.status(400).json({ error: 'Valutazione non valida (1-5)' });
+    }
+
+    const finalComment = comment && comment.trim() ? comment.trim().slice(0, 1000) : null;
+    await db.run("UPDATE tickets SET rating = ?, rating_comment = ?, rated_at = datetime('now') WHERE id = ?", [
+      ratingNum, finalComment, ticket.id,
+    ]);
+    await logEvent(ticket.id, req.user.id, `Ticket valutato: ${ratingNum}/5${finalComment ? ` — "${finalComment}"` : ''}`);
+
+    const updated = withSla(await db.get(`${TICKET_SELECT} WHERE t.id = ?`, [ticket.id]));
+    realtime.broadcastTicketUpdate(ticket.id, updated);
+    res.json({ ticket: updated });
+  })
+);
+
+const ATTACHMENT_MAX_BYTES = 5 * 1024 * 1024;
+const ATTACHMENT_ALLOWED_MIME = new Set([
+  'image/png', 'image/jpeg', 'image/gif', 'image/webp',
+  'application/pdf', 'text/plain', 'text/csv',
+  'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/zip', 'application/json',
+]);
+
+function attachmentMeta(row) {
+  return {
+    id: row.id, ticket_id: row.ticket_id, comment_id: row.comment_id, uploaded_by: row.uploaded_by,
+    file_name: row.file_name, mime_type: row.mime_type, size_bytes: row.size_bytes,
+    created_at: row.created_at, uploader_name: row.uploader_name,
+  };
+}
+
+router.get(
+  '/:id/attachments',
+  asyncHandler(async (req, res) => {
+    const ticket = await getTicketOr404(req, res);
+    if (!ticket) return;
+    const rows = await db.all(
+      `SELECT a.id, a.ticket_id, a.comment_id, a.uploaded_by, a.file_name, a.mime_type, a.size_bytes, a.created_at, u.name AS uploader_name
+       FROM ticket_attachments a LEFT JOIN users u ON u.id = a.uploaded_by
+       WHERE a.ticket_id = ? ORDER BY a.created_at ASC`,
+      [ticket.id]
+    );
+    res.json({ attachments: rows.map(attachmentMeta) });
+  })
+);
+
+router.post(
+  '/:id/attachments',
+  asyncHandler(async (req, res) => {
+    const ticket = await getTicketOr404(req, res);
+    if (!ticket) return;
+
+    const { fileName, dataUrl, commentId } = req.body || {};
+    if (!fileName || !fileName.trim()) {
+      return res.status(400).json({ error: 'Nome del file mancante' });
+    }
+    if (!dataUrl || typeof dataUrl !== 'string') {
+      return res.status(400).json({ error: 'File mancante' });
+    }
+    const match = /^data:([^;]+);base64,(.+)$/.exec(dataUrl);
+    if (!match) {
+      return res.status(400).json({ error: 'Formato file non valido' });
+    }
+    const [, mimeType, base64Data] = match;
+    if (!ATTACHMENT_ALLOWED_MIME.has(mimeType)) {
+      return res.status(400).json({ error: 'Tipo di file non consentito' });
+    }
+    const sizeBytes = Buffer.byteLength(base64Data, 'base64');
+    if (sizeBytes > ATTACHMENT_MAX_BYTES) {
+      return res.status(400).json({ error: 'File troppo grande (max 5 MB)' });
+    }
+
+    if (commentId) {
+      const comment = await db.get('SELECT id FROM comments WHERE id = ? AND ticket_id = ?', [commentId, ticket.id]);
+      if (!comment) return res.status(400).json({ error: 'Commento non valido' });
+    }
+
+    const info = await db.run(
+      'INSERT INTO ticket_attachments (ticket_id, comment_id, uploaded_by, file_name, mime_type, size_bytes, data) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [ticket.id, commentId || null, req.user.id, fileName.trim().slice(0, 255), mimeType, sizeBytes, dataUrl]
+    );
+    await logEvent(ticket.id, req.user.id, `Allegato aggiunto: "${fileName.trim().slice(0, 255)}"`);
+
+    const row = await db.get(
+      `SELECT a.id, a.ticket_id, a.comment_id, a.uploaded_by, a.file_name, a.mime_type, a.size_bytes, a.created_at, u.name AS uploader_name
+       FROM ticket_attachments a LEFT JOIN users u ON u.id = a.uploaded_by
+       WHERE a.id = ?`,
+      [Number(info.lastInsertRowid)]
+    );
+    res.status(201).json({ attachment: attachmentMeta(row) });
+  })
+);
+
+router.get(
+  '/:id/attachments/:attId',
+  asyncHandler(async (req, res) => {
+    const ticket = await getTicketOr404(req, res);
+    if (!ticket) return;
+    const row = await db.get('SELECT * FROM ticket_attachments WHERE id = ? AND ticket_id = ?', [req.params.attId, ticket.id]);
+    if (!row) return res.status(404).json({ error: 'Allegato non trovato' });
+    res.json({ attachment: { ...attachmentMeta(row), data: row.data } });
+  })
+);
+
+router.delete(
+  '/:id/attachments/:attId',
+  asyncHandler(async (req, res) => {
+    const ticket = await getTicketOr404(req, res);
+    if (!ticket) return;
+    const row = await db.get('SELECT * FROM ticket_attachments WHERE id = ? AND ticket_id = ?', [req.params.attId, ticket.id]);
+    if (!row) return res.status(404).json({ error: 'Allegato non trovato' });
+    if (row.uploaded_by !== req.user.id && !isStaff(req.user)) {
+      return res.status(403).json({ error: 'Permessi insufficienti' });
+    }
+    await db.run('DELETE FROM ticket_attachments WHERE id = ?', [row.id]);
+    await logEvent(ticket.id, req.user.id, `Allegato rimosso: "${row.file_name}"`);
+    res.status(204).end();
   })
 );
 

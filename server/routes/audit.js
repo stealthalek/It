@@ -2,6 +2,7 @@ const express = require('express');
 const db = require('../db/database');
 const { authenticate } = require('../middleware/auth');
 const asyncHandler = require('../middleware/asyncHandler');
+const { formatTicketNumber } = require('../lib/ticketNumber');
 
 const router = express.Router();
 router.use(authenticate);
@@ -19,6 +20,12 @@ function dateClause(alias, from, to, params) {
   return clauses.length ? `AND ${clauses.join(' AND ')}` : '';
 }
 
+function groupClause(alias, group, params) {
+  if (!group || !/^\d+$/.test(group)) return '';
+  params.push(Number(group));
+  return `AND ${alias}.group_id = ?`;
+}
+
 router.get(
   '/',
   asyncHandler(async (req, res) => {
@@ -26,7 +33,7 @@ router.get(
       return res.status(403).json({ error: 'Accesso riservato all\'amministratore globale' });
     }
 
-    const { from, to, q } = req.query;
+    const { from, to, q, group } = req.query;
 
     const commentParams = [];
     const comments = (
@@ -36,7 +43,7 @@ router.get(
          FROM comments c
          JOIN tickets t ON t.id = c.ticket_id
          JOIN users u ON u.id = c.user_id
-         WHERE 1 = 1 ${dateClause('c', from, to, commentParams)}`,
+         WHERE 1 = 1 ${dateClause('c', from, to, commentParams)} ${groupClause('t', group, commentParams)}`,
         commentParams
       )
     ).map((c) => ({ kind: 'comment', ...c }));
@@ -49,20 +56,24 @@ router.get(
          FROM ticket_events e
          JOIN tickets t ON t.id = e.ticket_id
          LEFT JOIN users u ON u.id = e.actor_id
-         WHERE 1 = 1 ${dateClause('e', from, to, eventParams)}`,
+         WHERE 1 = 1 ${dateClause('e', from, to, eventParams)} ${groupClause('t', group, eventParams)}`,
         eventParams
       )
     ).map((e) => ({ kind: 'event', ...e }));
 
     const adminParams = [];
+    let groupAdminClause = '';
+    if (group && /^\d+$/.test(group)) {
+      groupAdminClause = `AND ((a.target_type = 'ticket' AND a.target_id IN (SELECT id FROM tickets WHERE group_id = ?)) OR (a.target_type = 'group' AND a.target_id = ?))`;
+    }
     const adminActions = (
       await db.all(
         `SELECT a.id, a.target_type, a.target_id, a.message, a.created_at,
                 u.name AS actor_name, u.role AS actor_role
          FROM audit_log a
          LEFT JOIN users u ON u.id = a.actor_id
-         WHERE 1 = 1 ${dateClause('a', from, to, adminParams)}`,
-        adminParams
+         WHERE 1 = 1 ${dateClause('a', from, to, adminParams)} ${groupAdminClause}`,
+        [...adminParams, ...(groupAdminClause ? [Number(group), Number(group)] : [])]
       )
     ).map((a) => ({ kind: 'admin', ticket_id: null, ticket_subject: null, ...a }));
 
@@ -74,7 +85,8 @@ router.get(
         (row.message || '').toLowerCase().includes(needle) ||
         (row.actor_name || '').toLowerCase().includes(needle) ||
         (row.ticket_subject || '').toLowerCase().includes(needle) ||
-        String(row.ticket_id) === needle);
+        String(row.ticket_id) === needle ||
+        (row.ticket_id && formatTicketNumber(row.ticket_id).toLowerCase().includes(needle)));
     }
 
     res.json({ entries: entries.slice(0, 2000), total: entries.length });
