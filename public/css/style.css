@@ -1182,6 +1182,44 @@ body:not(.role-customer):not(.role-agent):not(.role-admin) .nav-toggle { display
 }
 .bulk-action-bar select { max-width: 12rem; }
 
+.tags-wrap, .tag-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: var(--surface-alt, #f1e8dc);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.15rem 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+.tag-chip-removable { padding-right: 0.4rem; }
+.tagRemoveBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1;
+  padding: 0;
+}
+.tagRemoveBtn:hover { color: var(--danger); }
+.tag-input {
+  border: 1px dashed var(--border);
+  border-radius: 999px;
+  padding: 0.15rem 0.65rem;
+  font-size: 0.78rem;
+  min-width: 10rem;
+  background: transparent;
+}
+
 .ticket-card.prio-low { border-left-color: var(--muted); }
 .ticket-card.prio-medium { border-left-color: var(--primary); }
 .ticket-card.prio-high { border-left-color: var(--warning); }

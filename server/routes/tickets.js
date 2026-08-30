@@ -31,7 +31,8 @@ const TICKET_SELECT = `
     grp.sla_resolve_hours AS sla_resolve_hours,
     grp.work_start_hour AS work_start_hour,
     grp.work_end_hour AS work_end_hour,
-    asset.name AS asset_name
+    asset.name AS asset_name,
+    (SELECT GROUP_CONCAT(tg.name, ',') FROM ticket_tags tt JOIN tags tg ON tg.id = tt.tag_id WHERE tt.ticket_id = t.id) AS tag_names
   FROM tickets t
   JOIN users creator ON creator.id = t.created_by
   LEFT JOIN users assignee ON assignee.id = t.assigned_to
@@ -232,6 +233,13 @@ async function runAutomationRules(ticketId, triggerEvent, actorId) {
   if (finalTicket) realtime.broadcastTicketUpdate(ticketId, withSla(finalTicket));
 }
 
+async function listTicketTags(ticketId) {
+  return db.all(
+    `SELECT tg.id, tg.name FROM ticket_tags tt JOIN tags tg ON tg.id = tt.tag_id WHERE tt.ticket_id = ? ORDER BY tg.name ASC`,
+    [ticketId]
+  );
+}
+
 async function listActivity(ticketId, includeInternal) {
   const internalClause = includeInternal ? '' : 'AND c.is_internal = 0';
   const comments = (
@@ -307,6 +315,10 @@ router.get(
       clauses.push('t.group_id = ?');
       params.push(Number(group));
     }
+    if (req.query.tag && req.query.tag.trim()) {
+      clauses.push('t.id IN (SELECT tt.ticket_id FROM ticket_tags tt JOIN tags tg ON tg.id = tt.tag_id WHERE tg.name = ?)');
+      params.push(req.query.tag.trim());
+    }
     if (q && q.trim()) {
       const trimmed = q.trim();
       const asId = /^\d+$/.test(trimmed) ? Number(trimmed) : null;
@@ -375,7 +387,52 @@ router.get(
 
     const activity = await listActivity(ticket.id, isStaff(req.user));
     const customFieldValues = await listCustomValues(ticket.id);
-    res.json({ ticket: withSla(ticket), activity, customFieldValues });
+    const tags = await listTicketTags(ticket.id);
+    res.json({ ticket: withSla(ticket), activity, customFieldValues, tags });
+  })
+);
+
+router.post(
+  '/:id/tags',
+  asyncHandler(async (req, res) => {
+    const ticket = await getTicketOr404(req, res);
+    if (!ticket) return;
+    if (!isStaff(req.user)) {
+      return res.status(403).json({ error: 'Solo lo staff può gestire le etichette' });
+    }
+    const { name } = req.body || {};
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Il nome dell\'etichetta è obbligatorio' });
+    }
+    const finalName = name.trim().slice(0, 40).toLowerCase();
+
+    let tag = await db.get('SELECT id, name FROM tags WHERE name = ?', [finalName]);
+    if (!tag) {
+      const info = await db.run('INSERT INTO tags (name) VALUES (?)', [finalName]);
+      tag = { id: Number(info.lastInsertRowid), name: finalName };
+    }
+    await db.run('INSERT OR IGNORE INTO ticket_tags (ticket_id, tag_id) VALUES (?, ?)', [ticket.id, tag.id]);
+    await logEvent(ticket.id, req.user.id, `Etichetta aggiunta: "${tag.name}"`);
+
+    const tags = await listTicketTags(ticket.id);
+    res.status(201).json({ tags });
+  })
+);
+
+router.delete(
+  '/:id/tags/:tagId',
+  asyncHandler(async (req, res) => {
+    const ticket = await getTicketOr404(req, res);
+    if (!ticket) return;
+    if (!isStaff(req.user)) {
+      return res.status(403).json({ error: 'Solo lo staff può gestire le etichette' });
+    }
+    const tag = await db.get('SELECT name FROM tags WHERE id = ?', [req.params.tagId]);
+    await db.run('DELETE FROM ticket_tags WHERE ticket_id = ? AND tag_id = ?', [ticket.id, req.params.tagId]);
+    if (tag) await logEvent(ticket.id, req.user.id, `Etichetta rimossa: "${tag.name}"`);
+
+    const tags = await listTicketTags(ticket.id);
+    res.json({ tags });
   })
 );
 

@@ -21,6 +21,7 @@ const auditRoutes = require('./routes/audit');
 const automationRoutes = require('./routes/automations');
 const customFieldRoutes = require('./routes/custom-fields');
 const cannedResponseRoutes = require('./routes/canned-responses');
+const tagRoutes = require('./routes/tags');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -49,6 +50,7 @@ app.use('/api/audit', auditRoutes);
 app.use('/api/automations', automationRoutes);
 app.use('/api/custom-fields', customFieldRoutes);
 app.use('/api/canned-responses', cannedResponseRoutes);
+app.use('/api/tags', tagRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() });

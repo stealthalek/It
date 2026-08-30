@@ -255,6 +255,7 @@
       backlog_hint: 'Ticket non assegnati, in ordine di urgenza SLA.',
       bulk_assign_placeholder: 'Assegna a...', bulk_status_placeholder: 'Cambia stato...', bulk_clear_selection: 'Deseleziona',
       bulk_selected_count: 'Selezionati:', toast_bulk_assigned: 'Ticket assegnati', toast_bulk_status_updated: 'Stato aggiornato sui ticket selezionati',
+      add_tag_placeholder: 'Aggiungi etichetta e premi invio',
       assets_hint: 'Inventario dispositivi, assegnazioni permanenti e prestiti.', new_asset_title: 'Nuovo asset',
       field_name: 'Nome', field_tag: 'Tag/matricola', btn_add_asset: 'Aggiungi asset',
       table_type: 'Tipo', table_tag: 'Tag', table_status: 'Stato', table_assignment: 'Assegnazione', table_due_date: 'Scadenza',
@@ -263,7 +264,7 @@
       toast_assignee_updated: 'Assegnatario aggiornato', toast_due_date_updated: 'Scadenza aggiornata',
       confirm_delete_asset: 'Eliminare questo asset?', toast_asset_deleted: 'Asset eliminato', delete_asset_title: 'Elimina asset',
       search_hint: 'Cerca per numero ticket, parola chiave o richiedente: i risultati compaiono mentre scrivi.',
-      search_placeholder_full: 'Numero ticket, parola chiave, richiedente...', all_groups_option: 'Tutti i gruppi',
+      search_placeholder_full: 'Numero ticket, parola chiave, richiedente...', all_groups_option: 'Tutti i gruppi', all_tags_option: 'Tutte le etichette',
       report_hint: 'Volumi, tempi di risoluzione e rispetto SLA per gruppo e per agente.',
       chart_volume_by_group: 'Volume ticket per gruppo', chart_avg_resolution: 'Tempo medio di risoluzione (ore) per gruppo',
       chart_sla_compliance: 'SLA rispettata per gruppo (%)', chart_load_by_agent: 'Carico ticket per agente',
@@ -433,6 +434,7 @@
       backlog_hint: 'Unassigned tickets, ordered by SLA urgency.',
       bulk_assign_placeholder: 'Assign to...', bulk_status_placeholder: 'Change status...', bulk_clear_selection: 'Clear selection',
       bulk_selected_count: 'Selected:', toast_bulk_assigned: 'Tickets assigned', toast_bulk_status_updated: 'Status updated on selected tickets',
+      add_tag_placeholder: 'Add a tag and press enter',
       assets_hint: 'Device inventory, permanent assignments and loans.', new_asset_title: 'New asset',
       field_name: 'Name', field_tag: 'Tag/asset number', btn_add_asset: 'Add asset',
       table_type: 'Type', table_tag: 'Tag', table_status: 'Status', table_assignment: 'Assignment', table_due_date: 'Due date',
@@ -441,7 +443,7 @@
       toast_assignee_updated: 'Assignee updated', toast_due_date_updated: 'Due date updated',
       confirm_delete_asset: 'Delete this asset?', toast_asset_deleted: 'Asset deleted', delete_asset_title: 'Delete asset',
       search_hint: 'Search by ticket number, keyword or requester: results appear as you type.',
-      search_placeholder_full: 'Ticket number, keyword, requester...', all_groups_option: 'All groups',
+      search_placeholder_full: 'Ticket number, keyword, requester...', all_groups_option: 'All groups', all_tags_option: 'All tags',
       report_hint: 'Volumes, resolution times and SLA compliance by group and agent.',
       chart_volume_by_group: 'Ticket volume by group', chart_avg_resolution: 'Average resolution time (hours) by group',
       chart_sla_compliance: 'SLA compliance by group (%)', chart_load_by_agent: 'Ticket load by agent',
@@ -1751,6 +1753,7 @@
         </div>
         <h3>#${tk.id} ${escapeHtml(tk.subject)}</h3>
         <p class="ticket-desc">${escapeHtml(tk.description)}</p>
+        ${tk.tag_names ? `<div class="tag-chips">${tk.tag_names.split(',').map((n) => `<span class="tag-chip">${escapeHtml(n)}</span>`).join('')}</div>` : ''}
         <div class="ticket-meta">
           ${t('by_label')} ${escapeHtml(tk.creator_name)} · ${formatDate(tk.updated_at)}
           ${tk.assignee_name ? ` · ${t('assigned_to_label')} ${escapeHtml(tk.assignee_name)}` : ''}
@@ -2002,7 +2005,8 @@
       return;
     }
 
-    const { ticket, activity, customFieldValues } = data;
+    const { ticket, activity, customFieldValues, tags } = data;
+    let ticketTags = tags || [];
     const readOnly = !!state.viewAs;
     const isOwner = ticket.created_by === state.user.id;
     const canEditFields = (isOwner || isStaff()) && !readOnly;
@@ -2114,6 +2118,7 @@
               ${groupLabel(ticket) ? ` · ${t('group_label_prefix')} ${escapeHtml(groupLabel(ticket))}` : ''}
               ${ticket.asset_name ? ` · ${t('field_linked_asset')} ${escapeHtml(ticket.asset_name)}` : ''}
             </p>
+            <div id="tagsWrap" class="tags-wrap"></div>
             ${canReopen ? `<button id="reopenBtn" class="btn btn-sm btn-ghost">${icon('refresh')} ${t('reopen_ticket')}</button>` : ''}
             ${customFieldValues && customFieldValues.length ? `
               <div class="custom-fields-summary">
@@ -2317,6 +2322,48 @@
       } else {
         renderRatingForm(0, '');
       }
+    }
+
+    const tagsWrap = document.getElementById('tagsWrap');
+    if (tagsWrap) {
+      const canManageTags = isStaff() && !readOnly;
+
+      function renderTags() {
+        tagsWrap.innerHTML = `
+          ${ticketTags.map((tg) => `
+            <span class="tag-chip ${canManageTags ? 'tag-chip-removable' : ''}">
+              ${escapeHtml(tg.name)}
+              ${canManageTags ? `<button type="button" class="tagRemoveBtn" data-id="${tg.id}" aria-label="${t('btn_delete')}">&times;</button>` : ''}
+            </span>`).join('')}
+          ${canManageTags ? `<input type="text" id="newTagInput" class="tag-input" placeholder="${t('add_tag_placeholder')}" />` : ''}
+        `;
+        tagsWrap.querySelectorAll('.tagRemoveBtn').forEach((btn) => {
+          btn.addEventListener('click', async () => {
+            try {
+              const res = await api(`/tickets/${ticket.id}/tags/${btn.dataset.id}`, { method: 'DELETE' });
+              ticketTags = res.tags;
+              renderTags();
+            } catch (err) {
+              showToast(err.message, 'error');
+            }
+          });
+        });
+        const newTagInput = document.getElementById('newTagInput');
+        if (newTagInput) {
+          newTagInput.addEventListener('keydown', async (e) => {
+            if (e.key !== 'Enter' || !newTagInput.value.trim()) return;
+            e.preventDefault();
+            try {
+              const res = await api(`/tickets/${ticket.id}/tags`, { method: 'POST', body: { name: newTagInput.value.trim() } });
+              ticketTags = res.tags;
+              renderTags();
+            } catch (err) {
+              showToast(err.message, 'error');
+            }
+          });
+        }
+      }
+      renderTags();
     }
 
     const attachmentInput = document.getElementById('attachmentInput');
@@ -3826,7 +3873,9 @@
 
   async function renderSearch() {
     let groups = [];
+    let tags = [];
     try { groups = (await api('/groups')).groups; } catch { groups = []; }
+    try { tags = (await api('/tags')).tags; } catch { tags = []; }
 
     appEl.innerHTML = `
       <div class="view-header">
@@ -3850,6 +3899,10 @@
           ${Object.entries(priorityLabels()).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
         </select>
         <select id="searchGroup">${groupOptionsHtml(groups, '', t('all_groups_option'))}</select>
+        <select id="searchTag">
+          <option value="">${t('all_tags_option')}</option>
+          ${tags.map((tg) => `<option value="${escapeHtml(tg.name)}">${escapeHtml(tg.name)}</option>`).join('')}
+        </select>
       </div>
       <div id="searchResults" class="ticket-grid"></div>`;
 
@@ -3859,6 +3912,7 @@
     const statusEl = document.getElementById('searchStatus');
     const priorityEl = document.getElementById('searchPriority');
     const groupEl = document.getElementById('searchGroup');
+    const tagEl = document.getElementById('searchTag');
 
     let debounceTimer;
     async function runSearch() {
@@ -3868,6 +3922,7 @@
       if (statusEl.value) params.set('status', statusEl.value);
       if (priorityEl.value) params.set('priority', priorityEl.value);
       if (groupEl.value) params.set('group', groupEl.value);
+      if (tagEl.value) params.set('tag', tagEl.value);
       try {
         const { tickets } = await api(`/tickets?${params.toString()}`);
         renderTicketList(resultsEl, tickets);
@@ -3881,7 +3936,7 @@
       clearTimeout(debounceTimer);
       debounceTimer = setTimeout(runSearch, 200);
     });
-    [typeEl, statusEl, priorityEl, groupEl].forEach((el) => el.addEventListener('change', runSearch));
+    [typeEl, statusEl, priorityEl, groupEl, tagEl].forEach((el) => el.addEventListener('change', runSearch));
 
     const presetGroup = sessionStorage.getItem('ticketing_search_group');
     if (presetGroup) {
