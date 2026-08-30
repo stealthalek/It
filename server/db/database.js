@@ -116,12 +116,21 @@ async function setupSchema() {
         due_date TEXT,
         created_at TEXT NOT NULL DEFAULT (datetime('now'))
       )`,
+      `CREATE TABLE IF NOT EXISTS audit_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        actor_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        target_type TEXT,
+        target_id INTEGER,
+        message TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now'))
+      )`,
       'CREATE INDEX IF NOT EXISTS idx_tickets_created_by ON tickets(created_by)',
       'CREATE INDEX IF NOT EXISTS idx_tickets_assigned_to ON tickets(assigned_to)',
       'CREATE INDEX IF NOT EXISTS idx_comments_ticket_id ON comments(ticket_id)',
       'CREATE INDEX IF NOT EXISTS idx_events_ticket_id ON ticket_events(ticket_id)',
       'CREATE INDEX IF NOT EXISTS idx_assets_assigned_to ON assets(assigned_to)',
       'CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id)',
+      'CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log(created_at)',
     ],
     'write'
   );

@@ -2,6 +2,7 @@ const express = require('express');
 const db = require('../db/database');
 const { authenticate, requireRole } = require('../middleware/auth');
 const asyncHandler = require('../middleware/asyncHandler');
+const { logAudit } = require('../audit');
 
 const router = express.Router();
 router.use(authenticate);
@@ -76,6 +77,7 @@ router.post(
       ]
     );
     const group = await db.get(`${GROUP_SELECT} WHERE g.id = ?`, [Number(info.lastInsertRowid)]);
+    logAudit(req.user.id, 'group', group.id, `Creato gruppo "${group.name}"${group.parent_name ? ` sotto "${group.parent_name}"` : ''}`).catch(() => {});
     res.status(201).json({ group });
   })
 );
@@ -143,6 +145,7 @@ router.patch(
     params.push(req.params.id);
     await db.run(`UPDATE groups SET ${updates.join(', ')} WHERE id = ?`, params);
     const updated = await db.get(`${GROUP_SELECT} WHERE g.id = ?`, [req.params.id]);
+    logAudit(req.user.id, 'group', updated.id, `Gruppo "${updated.name}" aggiornato`).catch(() => {});
     res.json({ group: updated });
   })
 );
@@ -168,6 +171,7 @@ router.delete(
 
     await db.run('UPDATE users SET group_id = NULL WHERE group_id = ?', [req.params.id]);
     await db.run('DELETE FROM groups WHERE id = ?', [req.params.id]);
+    logAudit(req.user.id, 'group', Number(req.params.id), `Gruppo "${group.name}" eliminato`).catch(() => {});
     res.status(204).end();
   })
 );

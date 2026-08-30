@@ -54,7 +54,19 @@ router.get(
       )
     ).map((e) => ({ kind: 'event', ...e }));
 
-    let entries = [...comments, ...events].sort((a, b) => (a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0));
+    const adminParams = [];
+    const adminActions = (
+      await db.all(
+        `SELECT a.id, a.target_type, a.target_id, a.message, a.created_at,
+                u.name AS actor_name, u.role AS actor_role
+         FROM audit_log a
+         LEFT JOIN users u ON u.id = a.actor_id
+         WHERE 1 = 1 ${dateClause('a', from, to, adminParams)}`,
+        adminParams
+      )
+    ).map((a) => ({ kind: 'admin', ticket_id: null, ticket_subject: null, ...a }));
+
+    let entries = [...comments, ...events, ...adminActions].sort((a, b) => (a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0));
 
     if (q && q.trim()) {
       const needle = q.trim().toLowerCase();

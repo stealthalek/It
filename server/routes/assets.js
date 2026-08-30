@@ -2,6 +2,7 @@ const express = require('express');
 const db = require('../db/database');
 const { authenticate, requireRole } = require('../middleware/auth');
 const asyncHandler = require('../middleware/asyncHandler');
+const { logAudit } = require('../audit');
 
 const router = express.Router();
 router.use(authenticate);
@@ -61,6 +62,7 @@ router.post(
       ]
     );
     const asset = await db.get(`${ASSET_SELECT} WHERE a.id = ?`, [Number(info.lastInsertRowid)]);
+    logAudit(req.user.id, 'asset', asset.id, `Creato asset "${asset.name}"${asset.assignee_name ? `, assegnato a "${asset.assignee_name}"` : ''}`).catch(() => {});
     res.status(201).json({ asset });
   })
 );
@@ -113,6 +115,7 @@ router.patch(
     params.push(req.params.id);
     await db.run(`UPDATE assets SET ${updates.join(', ')} WHERE id = ?`, params);
     const updated = await db.get(`${ASSET_SELECT} WHERE a.id = ?`, [req.params.id]);
+    logAudit(req.user.id, 'asset', updated.id, `Asset "${updated.name}" aggiornato${assignedTo !== undefined ? (updated.assignee_name ? `, assegnato a "${updated.assignee_name}"` : ', assegnazione rimossa') : ''}`).catch(() => {});
     res.json({ asset: updated });
   })
 );
@@ -121,10 +124,12 @@ router.delete(
   '/:id',
   requireRole('admin'),
   asyncHandler(async (req, res) => {
+    const asset = await db.get('SELECT name FROM assets WHERE id = ?', [req.params.id]);
     const result = await db.run('DELETE FROM assets WHERE id = ?', [req.params.id]);
     if (Number(result.rowsAffected) === 0) {
       return res.status(404).json({ error: 'Asset non trovato' });
     }
+    logAudit(req.user.id, 'asset', Number(req.params.id), `Asset "${asset.name}" eliminato`).catch(() => {});
     res.status(204).end();
   })
 );
