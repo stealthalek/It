@@ -5,6 +5,7 @@ const db = require('../db/database');
 const mailer = require('../mailer');
 const { authenticate, requireRole } = require('../middleware/auth');
 const asyncHandler = require('../middleware/asyncHandler');
+const { logAudit } = require('../audit');
 
 const router = express.Router();
 router.use(authenticate);
@@ -97,6 +98,7 @@ router.post(
 
     const user = await db.get(`${USER_SELECT} WHERE u.id = ?`, [Number(info.lastInsertRowid)]);
     mailer.sendInvite(user, tempPassword).catch((err) => console.error('Invio email di invito fallito:', err.message));
+    logAudit(req.user.id, 'user', user.id, `Creato account staff "${user.name}" (${email.toLowerCase()}), ruolo ${role}`).catch(() => {});
     res.status(201).json({ user, tempPassword });
   })
 );
@@ -124,6 +126,7 @@ router.patch(
     }
 
     const user = await db.get(`${USER_SELECT} WHERE u.id = ?`, [req.params.id]);
+    logAudit(req.user.id, 'user', user.id, `Ruolo di "${user.name}" cambiato in ${role}`).catch(() => {});
     res.json({ user });
   })
 );
@@ -153,6 +156,7 @@ router.patch(
     }
 
     const user = await db.get(`${USER_SELECT} WHERE u.id = ?`, [req.params.id]);
+    logAudit(req.user.id, 'user', user.id, `Gruppo di "${user.name}" ${user.group_name ? `impostato a "${user.group_name}"` : 'rimosso'}`).catch(() => {});
     res.json({ user });
   })
 );
@@ -177,6 +181,7 @@ router.patch(
     }
 
     const user = await db.get(`${USER_SELECT} WHERE u.id = ?`, [req.params.id]);
+    logAudit(req.user.id, 'user', user.id, `Lingua di "${user.name}" impostata a ${locale}`).catch(() => {});
     res.json({ user });
   })
 );
@@ -190,12 +195,14 @@ router.patch(
       return res.status(404).json({ error: 'Utente non trovato' });
     }
 
-    const result = await db.run('UPDATE users SET is_external = ? WHERE id = ?', [req.body && req.body.isExternal ? 1 : 0, req.params.id]);
+    const isExternal = req.body && req.body.isExternal ? 1 : 0;
+    const result = await db.run('UPDATE users SET is_external = ? WHERE id = ?', [isExternal, req.params.id]);
     if (Number(result.rowsAffected) === 0) {
       return res.status(404).json({ error: 'Utente non trovato' });
     }
 
     const user = await db.get(`${USER_SELECT} WHERE u.id = ?`, [req.params.id]);
+    logAudit(req.user.id, 'user', user.id, `Classificazione "esterno" di "${user.name}" impostata a ${isExternal ? 'sì' : 'no'}`).catch(() => {});
     res.json({ user });
   })
 );
@@ -228,6 +235,7 @@ router.patch(
     }
 
     const user = await db.get(`${USER_SELECT} WHERE u.id = ?`, [req.params.id]);
+    logAudit(req.user.id, 'user', user.id, `Manager di "${user.name}" ${user.manager_name ? `impostato a "${user.manager_name}"` : 'rimosso'}`).catch(() => {});
     res.json({ user });
   })
 );
@@ -247,6 +255,7 @@ router.post(
 
     const user = await db.get(`${USER_SELECT} WHERE u.id = ?`, [req.params.id]);
     mailer.sendPasswordReset(user, tempPassword).catch((err) => console.error('Invio email di reset fallito:', err.message));
+    logAudit(req.user.id, 'user', user.id, `Password di "${user.name}" reimpostata dall'amministratore`).catch(() => {});
     res.json({ user, tempPassword });
   })
 );

@@ -2,6 +2,7 @@ const express = require('express');
 const db = require('../db/database');
 const { authenticate, requireRole } = require('../middleware/auth');
 const asyncHandler = require('../middleware/asyncHandler');
+const { logAudit } = require('../audit');
 
 const router = express.Router();
 router.use(authenticate);
@@ -64,6 +65,7 @@ router.post(
       finalParentId,
     ]);
     const category = await db.get(`${CATEGORY_SELECT} WHERE cat.id = ?`, [Number(info.lastInsertRowid)]);
+    logAudit(req.user.id, 'category', category.id, `Creata categoria "${category.name}"${category.parent_name ? ` sotto "${category.parent_name}"` : ''}`).catch(() => {});
     res.status(201).json({ category });
   })
 );
@@ -105,6 +107,7 @@ router.patch(
     params.push(req.params.id);
     await db.run(`UPDATE categories SET ${updates.join(', ')} WHERE id = ?`, params);
     const updated = await db.get(`${CATEGORY_SELECT} WHERE cat.id = ?`, [req.params.id]);
+    logAudit(req.user.id, 'category', updated.id, `Categoria "${updated.name}" aggiornata`).catch(() => {});
     res.json({ category: updated });
   })
 );
@@ -129,6 +132,7 @@ router.delete(
     }
 
     await db.run('DELETE FROM categories WHERE id = ?', [req.params.id]);
+    logAudit(req.user.id, 'category', Number(req.params.id), `Categoria "${category.name}" eliminata`).catch(() => {});
     res.status(204).end();
   })
 );

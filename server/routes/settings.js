@@ -2,6 +2,7 @@ const express = require('express');
 const db = require('../db/database');
 const { authenticate, requireRole } = require('../middleware/auth');
 const asyncHandler = require('../middleware/asyncHandler');
+const { logAudit } = require('../audit');
 
 const router = express.Router();
 
@@ -28,6 +29,7 @@ router.patch(
       }
     }
     await db.run('UPDATE app_settings SET org_logo = ? WHERE id = 1', [orgLogo || null]);
+    logAudit(req.user.id, 'settings', null, orgLogo ? 'Logo organizzazione aggiornato' : 'Logo organizzazione rimosso').catch(() => {});
     res.json({ orgLogo: orgLogo || null });
   })
 );
@@ -42,6 +44,7 @@ router.patch(
       return res.status(400).json({ error: 'Il nome dell\'organizzazione è obbligatorio' });
     }
     await db.run('UPDATE app_settings SET org_name = ? WHERE id = 1', [orgName.trim()]);
+    logAudit(req.user.id, 'settings', null, `Nome organizzazione aggiornato a "${orgName.trim()}"`).catch(() => {});
     res.json({ orgName: orgName.trim() });
   })
 );
@@ -74,6 +77,7 @@ router.patch(
       `UPDATE app_settings SET invite_subject_${locale} = ?, invite_body_${locale} = ? WHERE id = 1`,
       [subject && subject.trim() ? subject.trim() : null, body && body.trim() ? body.trim() : null]
     );
+    logAudit(req.user.id, 'settings', null, `Modello email di invito (${locale}) aggiornato`).catch(() => {});
     res.json({ ok: true });
   })
 );

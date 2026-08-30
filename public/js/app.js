@@ -274,6 +274,8 @@
       audit_hint: 'Traccia completa di ogni modifica e messaggio su tutti i ticket, incluse le note interne — pensata per revisioni e controlli esterni.',
       audit_search_placeholder: 'Cerca per testo, autore o numero ticket...',
       audit_kind_event: 'Modifica', audit_kind_comment: 'Messaggio', audit_kind_internal_note: 'Nota interna',
+      audit_kind_admin: 'Amministrazione',
+      audit_filter_all: 'Tutta l\'attività', audit_filter_ticket: 'Solo ticket', audit_filter_admin: 'Solo amministrazione',
       audit_col_date: 'Data e ora', audit_col_ticket: 'Ticket', audit_col_subject: 'Oggetto ticket', audit_col_kind: 'Tipo',
       audit_col_actor: 'Autore', audit_col_message: 'Dettaglio',
       your_account_title: 'Il tuo account', change_password_title: 'Cambia password',
@@ -425,6 +427,8 @@
       audit_hint: 'Complete trail of every change and message across all tickets, including internal notes — built for review and external audits.',
       audit_search_placeholder: 'Search by text, author, or ticket number...',
       audit_kind_event: 'Change', audit_kind_comment: 'Message', audit_kind_internal_note: 'Internal note',
+      audit_kind_admin: 'Administration',
+      audit_filter_all: 'All activity', audit_filter_ticket: 'Tickets only', audit_filter_admin: 'Administration only',
       audit_col_date: 'Date & time', audit_col_ticket: 'Ticket', audit_col_subject: 'Ticket subject', audit_col_kind: 'Type',
       audit_col_actor: 'Author', audit_col_message: 'Detail',
       your_account_title: 'Your account', change_password_title: 'Change password',
@@ -3367,6 +3371,11 @@
       <div class="filters">
         <input type="date" id="auditDateFrom" title="${t('report_date_from')}" />
         <input type="date" id="auditDateTo" title="${t('report_date_to')}" />
+        <select id="auditKindFilter">
+          <option value="">${t('audit_filter_all')}</option>
+          <option value="ticket">${t('audit_filter_ticket')}</option>
+          <option value="admin">${t('audit_filter_admin')}</option>
+        </select>
         <input type="search" id="auditSearch" placeholder="${t('audit_search_placeholder')}" style="flex:1 1 16rem" />
       </div>
       <div class="report-export-bar">
@@ -3379,6 +3388,7 @@
     const listEl = document.getElementById('auditList');
     const dateFromEl = document.getElementById('auditDateFrom');
     const dateToEl = document.getElementById('auditDateTo');
+    const kindFilterEl = document.getElementById('auditKindFilter');
     const searchEl = document.getElementById('auditSearch');
     const resultCountEl = document.getElementById('auditResultCount');
     const exportCsvBtn = document.getElementById('auditExportCsvBtn');
@@ -3386,6 +3396,46 @@
 
     let currentEntries = [];
     let debounceTimer;
+
+    function kindLabel(e) {
+      if (e.kind === 'admin') return t('audit_kind_admin');
+      if (e.kind === 'comment') return e.is_internal ? t('audit_kind_internal_note') : t('audit_kind_comment');
+      return t('audit_kind_event');
+    }
+    function kindBadgeClass(e) {
+      if (e.kind === 'admin') return 'badge-waiting_customer';
+      return e.kind === 'comment' ? 'badge-in_progress' : 'badge-closed';
+    }
+    function applyKindFilter(entries) {
+      const kind = kindFilterEl.value;
+      if (!kind) return entries;
+      return entries.filter((e) => (kind === 'admin' ? e.kind === 'admin' : e.kind !== 'admin'));
+    }
+
+    function renderList() {
+      const filtered = applyKindFilter(currentEntries);
+      resultCountEl.textContent = `${t('report_export_count_label')} ${filtered.length}`;
+      if (!filtered.length) {
+        listEl.className = '';
+        listEl.innerHTML = `<div class="empty-state">${icon('inbox')}<span>${t('no_results')}</span></div>`;
+        return;
+      }
+      listEl.className = 'audit-list';
+      listEl.innerHTML = filtered.map((e) => `
+        <div class="audit-row">
+          <div class="audit-row-time">${formatDate(e.created_at)}</div>
+          <div class="audit-row-body">
+            <div class="audit-row-head">
+              ${e.ticket_id
+                ? `<a href="#/ticket/${e.ticket_id}" class="audit-row-ticket">#${e.ticket_id} ${escapeHtml(e.ticket_subject)}</a>`
+                : `<span class="audit-row-ticket">${t('audit_kind_admin')}</span>`}
+              <span class="badge ${kindBadgeClass(e)}">${kindLabel(e)}</span>
+            </div>
+            <p class="audit-row-message">${escapeHtml(e.message)}</p>
+            <p class="hint">${t('by_label')} ${escapeHtml(e.actor_name || t('unassigned_label'))}</p>
+          </div>
+        </div>`).join('');
+    }
 
     async function load() {
       listEl.className = 'spinner-row';
@@ -3397,25 +3447,7 @@
       try {
         const { entries } = await api(`/audit?${params.toString()}`);
         currentEntries = entries;
-        resultCountEl.textContent = `${t('report_export_count_label')} ${entries.length}`;
-        if (!entries.length) {
-          listEl.className = '';
-          listEl.innerHTML = `<div class="empty-state">${icon('inbox')}<span>${t('no_results')}</span></div>`;
-          return;
-        }
-        listEl.className = 'audit-list';
-        listEl.innerHTML = entries.map((e) => `
-          <div class="audit-row">
-            <div class="audit-row-time">${formatDate(e.created_at)}</div>
-            <div class="audit-row-body">
-              <div class="audit-row-head">
-                <a href="#/ticket/${e.ticket_id}" class="audit-row-ticket">#${e.ticket_id} ${escapeHtml(e.ticket_subject)}</a>
-                <span class="badge ${e.kind === 'comment' ? 'badge-in_progress' : 'badge-closed'}">${e.kind === 'comment' ? (e.is_internal ? t('audit_kind_internal_note') : t('audit_kind_comment')) : t('audit_kind_event')}</span>
-              </div>
-              <p class="audit-row-message">${escapeHtml(e.message)}</p>
-              <p class="hint">${t('by_label')} ${escapeHtml(e.actor_name || t('unassigned_label'))}</p>
-            </div>
-          </div>`).join('');
+        renderList();
       } catch (err) {
         listEl.className = '';
         listEl.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
@@ -3424,17 +3456,18 @@
 
     dateFromEl.addEventListener('change', load);
     dateToEl.addEventListener('change', load);
+    kindFilterEl.addEventListener('change', renderList);
     searchEl.addEventListener('input', () => {
       clearTimeout(debounceTimer);
       debounceTimer = setTimeout(load, 300);
     });
 
     function buildExportRows() {
-      return currentEntries.map((e) => ({
+      return applyKindFilter(currentEntries).map((e) => ({
         [t('audit_col_date')]: e.created_at,
-        [t('audit_col_ticket')]: `#${e.ticket_id}`,
-        [t('audit_col_subject')]: e.ticket_subject,
-        [t('audit_col_kind')]: e.kind === 'comment' ? (e.is_internal ? t('audit_kind_internal_note') : t('audit_kind_comment')) : t('audit_kind_event'),
+        [t('audit_col_ticket')]: e.ticket_id ? `#${e.ticket_id}` : '',
+        [t('audit_col_subject')]: e.ticket_subject || '',
+        [t('audit_col_kind')]: kindLabel(e),
         [t('audit_col_actor')]: e.actor_name || '',
         [t('audit_col_message')]: e.message,
       }));
