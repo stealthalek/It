@@ -157,7 +157,7 @@ svg { display: block; }
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.85rem 0.75rem;
+  padding: calc(0.85rem + env(safe-area-inset-top)) 0.75rem 0.85rem calc(0.75rem + env(safe-area-inset-left));
   border-bottom: 1px solid var(--border);
 }
 
@@ -202,7 +202,7 @@ svg { display: block; }
 .sidebar-foot {
   margin-top: auto;
   border-top: 1px solid var(--border);
-  padding: 0.6rem;
+  padding: 0.6rem 0.6rem calc(0.6rem + env(safe-area-inset-bottom)) calc(0.6rem + env(safe-area-inset-left));
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
@@ -239,7 +239,7 @@ svg { display: block; }
 }
 
 .topbar-inner {
-  padding: 0.75rem 1rem;
+  padding: calc(0.75rem + env(safe-area-inset-top)) calc(1rem + env(safe-area-inset-right)) 0.75rem calc(1rem + env(safe-area-inset-left));
   display: flex;
   align-items: center;
   gap: 0.6rem;
@@ -442,6 +442,9 @@ body:not(.role-customer):not(.role-agent):not(.role-admin) .nav-toggle { display
     background: rgba(20, 12, 8, 0.4);
     z-index: 25;
   }
+  input, select, textarea { font-size: 16px; }
+  .btn, .topbar-icon-btn, .nav-toggle, .main-nav a { min-height: 44px; }
+  .view-header [style*="display:flex"] { flex-wrap: wrap; }
 }
 
 @media (min-width: 760px) {
@@ -456,7 +459,7 @@ body:not(.role-customer):not(.role-agent):not(.role-admin) .nav-toggle { display
 
 .app-main {
   max-width: 1320px;
-  padding: 1.5rem 1.25rem 3.5rem;
+  padding: 1.5rem calc(1.25rem + env(safe-area-inset-right)) calc(3.5rem + env(safe-area-inset-bottom)) calc(1.25rem + env(safe-area-inset-left));
 }
 
 .view-header {
@@ -1478,7 +1481,7 @@ body:not(.role-customer):not(.role-agent):not(.role-admin) .nav-toggle { display
 
 .toast {
   position: fixed;
-  bottom: 1rem;
+  bottom: calc(1rem + env(safe-area-inset-bottom));
   left: 50%;
   transform: translateX(-50%) translateY(120%);
   background: var(--text);
