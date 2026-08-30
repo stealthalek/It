@@ -1015,6 +1015,10 @@
     if (page !== 'ticket') teardownTicketSocket();
     if (page !== 'dashboard') teardownDashboardAutoUpdate();
 
+    appEl.classList.remove('route-fade');
+    void appEl.offsetWidth;
+    appEl.classList.add('route-fade');
+
     try {
       switch (page) {
         case 'login': return renderLogin();
@@ -1742,14 +1746,22 @@
           <p class="hint">${t('new_ticket_hint')}</p>
         </div>
       </div>
-      <div class="card" style="max-width:640px">
-        <form id="newTicketForm" class="form-grid">
-          <div class="field">
-            <label for="type">${t('field_request_type')}</label>
-            <select id="type">
-              <option value="incident">${typeLabels().incident} ${t('type_incident_suffix')}</option>
-              <option value="task">${typeLabels().task} ${t('type_task_suffix')}</option>
-            </select>
+      <div class="card" style="max-width:720px">
+        <form id="newTicketForm" class="form-grid" style="max-width:none">
+          <div class="field-row">
+            <div class="field">
+              <label for="type">${t('field_request_type')}</label>
+              <select id="type">
+                <option value="incident">${typeLabels().incident} ${t('type_incident_suffix')}</option>
+                <option value="task">${typeLabels().task} ${t('type_task_suffix')}</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="priority">${t('field_urgency')}</label>
+              <select id="priority">
+                ${Object.entries(priorityLabels()).map(([v, l]) => `<option value="${v}" ${v === 'medium' ? 'selected' : ''}>${l}</option>`).join('')}
+              </select>
+            </div>
           </div>
           <div class="field">
             <label for="categorySearch">${t('field_category')}</label>
@@ -1760,12 +1772,6 @@
           <div class="field">
             <label for="subject">${t('field_subject')}</label>
             <input id="subject" type="text" required maxlength="200" placeholder="${t('field_subject_placeholder')}" />
-          </div>
-          <div class="field">
-            <label for="priority">${t('field_urgency')}</label>
-            <select id="priority">
-              ${Object.entries(priorityLabels()).map(([v, l]) => `<option value="${v}" ${v === 'medium' ? 'selected' : ''}>${l}</option>`).join('')}
-            </select>
           </div>
           <div class="field">
             <label for="description">${t('field_description')}</label>
@@ -2002,7 +2008,7 @@
 
           <div class="card">
             <h3 class="section-title" style="margin-top:0">${t('activity_title')}</h3>
-            <div id="activityList">
+            <div id="activityList" class="activity-timeline">
               ${activity.length ? activity.map(renderActivityItem).join('') : `<p class="hint">${t('no_activity')}</p>`}
             </div>
             ${readOnly ? `<p class="hint">${t('readonly_no_comments')}</p>` : `
@@ -2198,19 +2204,24 @@
   function renderActivityItem(item) {
     if (item.kind === 'event') {
       return `
-        <div class="activity-event">
-          ${icon('activity')}
-          <span>${escapeHtml(item.message)}${item.actor_name ? ` — ${escapeHtml(item.actor_name)}` : ''}</span>
-          <span class="activity-event-time">${formatDate(item.created_at)}</span>
+        <div class="activity-row">
+          <span class="activity-dot activity-dot-event">${icon('activity')}</span>
+          <div class="activity-row-content activity-event">
+            <span>${escapeHtml(item.message)}${item.actor_name ? ` — ${escapeHtml(item.actor_name)}` : ''}</span>
+            <span class="activity-event-time">${formatDate(item.created_at)}</span>
+          </div>
         </div>`;
     }
     return `
-      <div class="comment ${item.is_internal ? 'is-internal' : ''}">
-        <div class="comment-head">
-          <span>${escapeHtml(item.author_name)} (${roleLabels()[item.author_role] || item.author_role})${item.is_internal ? ' <span class="badge badge-internal">Nota interna</span>' : ''}</span>
-          <span>${formatDate(item.created_at)}</span>
+      <div class="activity-row">
+        <span class="activity-dot activity-dot-comment"></span>
+        <div class="activity-row-content comment ${item.is_internal ? 'is-internal' : ''}">
+          <div class="comment-head">
+            <span>${escapeHtml(item.author_name)} (${roleLabels()[item.author_role] || item.author_role})${item.is_internal ? ' <span class="badge badge-internal">Nota interna</span>' : ''}</span>
+            <span>${formatDate(item.created_at)}</span>
+          </div>
+          <div class="comment-body">${escapeHtml(item.message)}</div>
         </div>
-        <div class="comment-body">${escapeHtml(item.message)}</div>
       </div>`;
   }
 
