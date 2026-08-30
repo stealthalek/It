@@ -233,6 +233,17 @@ async function runAutomationRules(ticketId, triggerEvent, actorId) {
   if (finalTicket) realtime.broadcastTicketUpdate(ticketId, withSla(finalTicket));
 }
 
+async function listTicketLinks(ticketId) {
+  return db.all(
+    `SELECT l.id, t.id AS linked_ticket_id, t.subject AS linked_subject, t.status AS linked_status
+     FROM ticket_links l
+     JOIN tickets t ON t.id = (CASE WHEN l.ticket_id = ? THEN l.linked_ticket_id ELSE l.ticket_id END)
+     WHERE l.ticket_id = ? OR l.linked_ticket_id = ?
+     ORDER BY l.created_at DESC`,
+    [ticketId, ticketId, ticketId]
+  );
+}
+
 async function listTicketTags(ticketId) {
   return db.all(
     `SELECT tg.id, tg.name FROM ticket_tags tt JOIN tags tg ON tg.id = tt.tag_id WHERE tt.ticket_id = ? ORDER BY tg.name ASC`,
@@ -388,7 +399,59 @@ router.get(
     const activity = await listActivity(ticket.id, isStaff(req.user));
     const customFieldValues = await listCustomValues(ticket.id);
     const tags = await listTicketTags(ticket.id);
-    res.json({ ticket: withSla(ticket), activity, customFieldValues, tags });
+    const links = await listTicketLinks(ticket.id);
+    res.json({ ticket: withSla(ticket), activity, customFieldValues, tags, links });
+  })
+);
+
+router.post(
+  '/:id/links',
+  asyncHandler(async (req, res) => {
+    const ticket = await getTicketOr404(req, res);
+    if (!ticket) return;
+    if (!isStaff(req.user)) {
+      return res.status(403).json({ error: 'Solo lo staff può collegare i ticket' });
+    }
+    const linkedTicketId = Number(req.body && req.body.linkedTicketId);
+    if (!linkedTicketId || linkedTicketId === ticket.id) {
+      return res.status(400).json({ error: 'Ticket da collegare non valido' });
+    }
+    const linkedTicket = await db.get(`${TICKET_SELECT} WHERE t.id = ?`, [linkedTicketId]);
+    if (!linkedTicket || !canAccessTicket(req.user, linkedTicket)) {
+      return res.status(404).json({ error: 'Ticket da collegare non trovato' });
+    }
+    const existing = await db.get(
+      'SELECT id FROM ticket_links WHERE (ticket_id = ? AND linked_ticket_id = ?) OR (ticket_id = ? AND linked_ticket_id = ?)',
+      [ticket.id, linkedTicketId, linkedTicketId, ticket.id]
+    );
+    if (!existing) {
+      await db.run('INSERT INTO ticket_links (ticket_id, linked_ticket_id, created_by) VALUES (?, ?, ?)', [
+        ticket.id, linkedTicketId, req.user.id,
+      ]);
+      await logEvent(ticket.id, req.user.id, `Collegato al ticket #${linkedTicketId}: "${linkedTicket.subject}"`);
+    }
+
+    const links = await listTicketLinks(ticket.id);
+    res.status(201).json({ links });
+  })
+);
+
+router.delete(
+  '/:id/links/:linkId',
+  asyncHandler(async (req, res) => {
+    const ticket = await getTicketOr404(req, res);
+    if (!ticket) return;
+    if (!isStaff(req.user)) {
+      return res.status(403).json({ error: 'Solo lo staff può collegare i ticket' });
+    }
+    await db.run(
+      'DELETE FROM ticket_links WHERE id = ? AND (ticket_id = ? OR linked_ticket_id = ?)',
+      [req.params.linkId, ticket.id, ticket.id]
+    );
+    await logEvent(ticket.id, req.user.id, 'Collegamento rimosso');
+
+    const links = await listTicketLinks(ticket.id);
+    res.json({ links });
   })
 );
 

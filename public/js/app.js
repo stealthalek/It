@@ -256,6 +256,8 @@
       bulk_assign_placeholder: 'Assegna a...', bulk_status_placeholder: 'Cambia stato...', bulk_clear_selection: 'Deseleziona',
       bulk_selected_count: 'Selezionati:', toast_bulk_assigned: 'Ticket assegnati', toast_bulk_status_updated: 'Stato aggiornato sui ticket selezionati',
       add_tag_placeholder: 'Aggiungi etichetta e premi invio',
+      linked_tickets_title: 'Ticket collegati', link_ticket_placeholder: 'Numero ticket (es. 12)', btn_link_ticket: 'Collega',
+      no_linked_tickets_hint: 'Nessun ticket collegato.',
       assets_hint: 'Inventario dispositivi, assegnazioni permanenti e prestiti.', new_asset_title: 'Nuovo asset',
       field_name: 'Nome', field_tag: 'Tag/matricola', btn_add_asset: 'Aggiungi asset',
       table_type: 'Tipo', table_tag: 'Tag', table_status: 'Stato', table_assignment: 'Assegnazione', table_due_date: 'Scadenza',
@@ -435,6 +437,8 @@
       bulk_assign_placeholder: 'Assign to...', bulk_status_placeholder: 'Change status...', bulk_clear_selection: 'Clear selection',
       bulk_selected_count: 'Selected:', toast_bulk_assigned: 'Tickets assigned', toast_bulk_status_updated: 'Status updated on selected tickets',
       add_tag_placeholder: 'Add a tag and press enter',
+      linked_tickets_title: 'Linked tickets', link_ticket_placeholder: 'Ticket number (e.g. 12)', btn_link_ticket: 'Link',
+      no_linked_tickets_hint: 'No linked tickets.',
       assets_hint: 'Device inventory, permanent assignments and loans.', new_asset_title: 'New asset',
       field_name: 'Name', field_tag: 'Tag/asset number', btn_add_asset: 'Add asset',
       table_type: 'Type', table_tag: 'Tag', table_status: 'Status', table_assignment: 'Assignment', table_due_date: 'Due date',
@@ -2005,8 +2009,9 @@
       return;
     }
 
-    const { ticket, activity, customFieldValues, tags } = data;
+    const { ticket, activity, customFieldValues, tags, links } = data;
     let ticketTags = tags || [];
+    let ticketLinks = links || [];
     const readOnly = !!state.viewAs;
     const isOwner = ticket.created_by === state.user.id;
     const canEditFields = (isOwner || isStaff()) && !readOnly;
@@ -2144,6 +2149,17 @@
           <div class="card" style="margin-bottom:1rem">
             <h3 class="section-title" style="margin-top:0">${icon('star')} ${t('rating_title')}</h3>
             <div id="ratingContent"></div>
+          </div>` : ''}
+
+          ${isStaff() && !readOnly ? `
+          <div class="card" style="margin-bottom:1rem">
+            <h3 class="section-title" style="margin-top:0">${icon('package')} ${t('linked_tickets_title')}</h3>
+            <div id="linkedTicketsList" class="linked-tickets-list spinner-row">${t('loading')}</div>
+            <div class="link-ticket-form">
+              <input type="number" min="1" id="linkTicketInput" placeholder="${t('link_ticket_placeholder')}" />
+              <button type="button" id="linkTicketBtn" class="btn btn-ghost btn-sm">${t('btn_link_ticket')}</button>
+            </div>
+            <p class="error-text" id="linkTicketError"></p>
           </div>` : ''}
 
           <div class="card">
@@ -2364,6 +2380,48 @@
         }
       }
       renderTags();
+    }
+
+    const linkedTicketsList = document.getElementById('linkedTicketsList');
+    if (linkedTicketsList) {
+      function renderLinkedTickets() {
+        linkedTicketsList.className = 'linked-tickets-list';
+        linkedTicketsList.innerHTML = ticketLinks.length ? ticketLinks.map((link) => `
+          <div class="linked-ticket-row">
+            <a href="#/ticket/${link.linked_ticket_id}">#${link.linked_ticket_id} ${escapeHtml(link.linked_subject)}</a>
+            <span class="badge badge-${link.linked_status}">${statusLabels()[link.linked_status] || link.linked_status}</span>
+            <button type="button" class="icon-btn unlinkTicketBtn" data-id="${link.id}" title="${t('btn_delete')}">${icon('trash')}</button>
+          </div>`).join('') : `<p class="hint">${t('no_linked_tickets_hint')}</p>`;
+
+        linkedTicketsList.querySelectorAll('.unlinkTicketBtn').forEach((btn) => {
+          btn.addEventListener('click', async () => {
+            try {
+              const res = await api(`/tickets/${ticket.id}/links/${btn.dataset.id}`, { method: 'DELETE' });
+              ticketLinks = res.links;
+              renderLinkedTickets();
+            } catch (err) {
+              showToast(err.message, 'error');
+            }
+          });
+        });
+      }
+      renderLinkedTickets();
+
+      const linkTicketInput = document.getElementById('linkTicketInput');
+      const linkTicketBtn = document.getElementById('linkTicketBtn');
+      linkTicketBtn.addEventListener('click', async () => {
+        const errEl = document.getElementById('linkTicketError');
+        errEl.textContent = '';
+        if (!linkTicketInput.value) return;
+        try {
+          const res = await api(`/tickets/${ticket.id}/links`, { method: 'POST', body: { linkedTicketId: Number(linkTicketInput.value) } });
+          ticketLinks = res.links;
+          linkTicketInput.value = '';
+          renderLinkedTickets();
+        } catch (err) {
+          errEl.textContent = err.message;
+        }
+      });
     }
 
     const attachmentInput = document.getElementById('attachmentInput');

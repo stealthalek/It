@@ -187,6 +187,14 @@ async function setupSchema() {
         tag_id INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
         PRIMARY KEY (ticket_id, tag_id)
       )`,
+      `CREATE TABLE IF NOT EXISTS ticket_links (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+        linked_ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+        created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        UNIQUE(ticket_id, linked_ticket_id)
+      )`,
       'CREATE INDEX IF NOT EXISTS idx_tickets_created_by ON tickets(created_by)',
       'CREATE INDEX IF NOT EXISTS idx_tickets_assigned_to ON tickets(assigned_to)',
       'CREATE INDEX IF NOT EXISTS idx_comments_ticket_id ON comments(ticket_id)',
@@ -197,6 +205,7 @@ async function setupSchema() {
       'CREATE INDEX IF NOT EXISTS idx_ticket_custom_values_ticket_id ON ticket_custom_values(ticket_id)',
       'CREATE INDEX IF NOT EXISTS idx_ticket_attachments_ticket_id ON ticket_attachments(ticket_id)',
       'CREATE INDEX IF NOT EXISTS idx_ticket_tags_tag_id ON ticket_tags(tag_id)',
+      'CREATE INDEX IF NOT EXISTS idx_ticket_links_linked_ticket_id ON ticket_links(linked_ticket_id)',
     ],
     'write'
   );

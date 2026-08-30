@@ -1220,6 +1220,19 @@ body:not(.role-customer):not(.role-agent):not(.role-admin) .nav-toggle { display
   background: transparent;
 }
 
+.linked-tickets-list { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.6rem; }
+.linked-ticket-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.linked-ticket-row a { flex: 1; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.link-ticket-form { display: flex; gap: 0.5rem; }
+.link-ticket-form input { max-width: 10rem; }
+
 .ticket-card.prio-low { border-left-color: var(--muted); }
 .ticket-card.prio-medium { border-left-color: var(--primary); }
 .ticket-card.prio-high { border-left-color: var(--warning); }
