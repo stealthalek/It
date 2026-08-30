@@ -215,6 +215,7 @@
       priority_low: 'Bassa', priority_medium: 'Media', priority_high: 'Alta', priority_urgent: 'Urgente',
       type_incident: 'Incident', type_task: 'Task',
       sla_on_track: 'SLA in linea', sla_at_risk: 'SLA a rischio', sla_breached: 'SLA superata',
+      response_sla_prefix: 'Prima risposta:',
       asset_type_laptop: 'Laptop', asset_type_desktop: 'Desktop', asset_type_monitor: 'Monitor', asset_type_phone: 'Telefono', asset_type_other: 'Altro',
       asset_status_available: 'Disponibile', asset_status_in_use: 'In uso', asset_status_repair: 'In riparazione', asset_status_retired: 'Dismesso',
       role_customer: 'Cliente', role_agent: 'Agente', role_admin: 'Amministratore',
@@ -404,6 +405,7 @@
       priority_low: 'Low', priority_medium: 'Medium', priority_high: 'High', priority_urgent: 'Urgent',
       type_incident: 'Incident', type_task: 'Task',
       sla_on_track: 'SLA on track', sla_at_risk: 'SLA at risk', sla_breached: 'SLA breached',
+      response_sla_prefix: 'First response:',
       asset_type_laptop: 'Laptop', asset_type_desktop: 'Desktop', asset_type_monitor: 'Monitor', asset_type_phone: 'Phone', asset_type_other: 'Other',
       asset_status_available: 'Available', asset_status_in_use: 'In use', asset_status_repair: 'Under repair', asset_status_retired: 'Retired',
       role_customer: 'Customer', role_agent: 'Agent', role_admin: 'Administrator',
@@ -2150,6 +2152,7 @@
               <span class="badge badge-${ticket.priority}">${priorityLabels()[ticket.priority]}</span>
               <span class="badge">${escapeHtml(ticket.category)}</span>
               ${ticket.sla_status ? `<span class="badge badge-sla-${ticket.sla_status}">${slaLabels()[ticket.sla_status]}</span>` : ''}
+              ${ticket.response_sla_status ? `<span class="badge badge-sla-${ticket.response_sla_status}">${t('response_sla_prefix')} ${slaLabels()[ticket.response_sla_status]}</span>` : ''}
             </div>
             ${canEditFields ? `
               <div id="viewDescription">

@@ -384,6 +384,9 @@ async function migrate() {
   if (!ticketCols3.some((c) => c.name === 'sla_warned_at')) {
     await run('ALTER TABLE tickets ADD COLUMN sla_warned_at TEXT');
   }
+  if (!ticketCols3.some((c) => c.name === 'first_response_at')) {
+    await run('ALTER TABLE tickets ADD COLUMN first_response_at TEXT');
+  }
 }
 
 async function seedDefaultGroups() {

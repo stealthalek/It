@@ -71,8 +71,37 @@ function computeSlaRemaining(ticket) {
   return resolveMs - elapsed;
 }
 
-function withSla(ticket) {
-  return { ...ticket, sla_status: computeSlaStatus(ticket), sla_remaining_ms: computeSlaRemaining(ticket) };
+function computeResponseSlaStatus(ticket) {
+  if (!ticket.sla_response_hours || !ticket.created_at) return null;
+  const workStart = ticket.work_start_hour ?? 9;
+  const workEnd = ticket.work_end_hour ?? 18;
+  const created = new Date(ticket.created_at.replace(' ', 'T') + 'Z').getTime();
+  const responseMs = ticket.sla_response_hours * 3600 * 1000;
+
+  const respondedAt = ticket.first_response_at || (['resolved', 'closed'].includes(ticket.status) ? ticket.resolved_at : null);
+  if (respondedAt) {
+    const responded = new Date(respondedAt.replace(' ', 'T') + 'Z').getTime();
+    const elapsed = businessMillisBetween(created, responded, workStart, workEnd);
+    return elapsed > responseMs ? 'breached' : 'on_track';
+  }
+  if (['resolved', 'closed'].includes(ticket.status)) return null;
+
+  const elapsed = businessMillisBetween(created, Date.now(), workStart, workEnd);
+  const ratio = elapsed / responseMs;
+  if (ratio >= 1) return 'breached';
+  if (ratio >= 0.75) return 'at_risk';
+  return 'on_track';
 }
 
-module.exports = { businessMillisBetween, pausedMillisSoFar, computeSlaStatus, computeSlaRemaining, withSla, loadHolidays };
+function withSla(ticket) {
+  return {
+    ...ticket,
+    sla_status: computeSlaStatus(ticket),
+    sla_remaining_ms: computeSlaRemaining(ticket),
+    response_sla_status: computeResponseSlaStatus(ticket),
+  };
+}
+
+module.exports = {
+  businessMillisBetween, pausedMillisSoFar, computeSlaStatus, computeSlaRemaining, computeResponseSlaStatus, withSla, loadHolidays,
+};

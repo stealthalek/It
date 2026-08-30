@@ -787,6 +787,10 @@ router.post(
     ]);
     await db.run("UPDATE tickets SET updated_at = datetime('now') WHERE id = ?", [ticket.id]);
 
+    if (!internal && isStaff(req.user) && !ticket.first_response_at) {
+      await db.run("UPDATE tickets SET first_response_at = datetime('now') WHERE id = ?", [ticket.id]);
+    }
+
     const commentRow = await db.get(
       `SELECT c.id, c.message, c.is_internal, c.created_at, u.name AS author_name, u.role AS author_role
        FROM comments c JOIN users u ON u.id = c.user_id
