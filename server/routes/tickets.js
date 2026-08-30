@@ -736,4 +736,110 @@ router.post(
   })
 );
 
+const ATTACHMENT_MAX_BYTES = 5 * 1024 * 1024;
+const ATTACHMENT_ALLOWED_MIME = new Set([
+  'image/png', 'image/jpeg', 'image/gif', 'image/webp',
+  'application/pdf', 'text/plain', 'text/csv',
+  'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/zip', 'application/json',
+]);
+
+function attachmentMeta(row) {
+  return {
+    id: row.id, ticket_id: row.ticket_id, comment_id: row.comment_id, uploaded_by: row.uploaded_by,
+    file_name: row.file_name, mime_type: row.mime_type, size_bytes: row.size_bytes,
+    created_at: row.created_at, uploader_name: row.uploader_name,
+  };
+}
+
+router.get(
+  '/:id/attachments',
+  asyncHandler(async (req, res) => {
+    const ticket = await getTicketOr404(req, res);
+    if (!ticket) return;
+    const rows = await db.all(
+      `SELECT a.id, a.ticket_id, a.comment_id, a.uploaded_by, a.file_name, a.mime_type, a.size_bytes, a.created_at, u.name AS uploader_name
+       FROM ticket_attachments a LEFT JOIN users u ON u.id = a.uploaded_by
+       WHERE a.ticket_id = ? ORDER BY a.created_at ASC`,
+      [ticket.id]
+    );
+    res.json({ attachments: rows.map(attachmentMeta) });
+  })
+);
+
+router.post(
+  '/:id/attachments',
+  asyncHandler(async (req, res) => {
+    const ticket = await getTicketOr404(req, res);
+    if (!ticket) return;
+
+    const { fileName, dataUrl, commentId } = req.body || {};
+    if (!fileName || !fileName.trim()) {
+      return res.status(400).json({ error: 'Nome del file mancante' });
+    }
+    if (!dataUrl || typeof dataUrl !== 'string') {
+      return res.status(400).json({ error: 'File mancante' });
+    }
+    const match = /^data:([^;]+);base64,(.+)$/.exec(dataUrl);
+    if (!match) {
+      return res.status(400).json({ error: 'Formato file non valido' });
+    }
+    const [, mimeType, base64Data] = match;
+    if (!ATTACHMENT_ALLOWED_MIME.has(mimeType)) {
+      return res.status(400).json({ error: 'Tipo di file non consentito' });
+    }
+    const sizeBytes = Buffer.byteLength(base64Data, 'base64');
+    if (sizeBytes > ATTACHMENT_MAX_BYTES) {
+      return res.status(400).json({ error: 'File troppo grande (max 5 MB)' });
+    }
+
+    if (commentId) {
+      const comment = await db.get('SELECT id FROM comments WHERE id = ? AND ticket_id = ?', [commentId, ticket.id]);
+      if (!comment) return res.status(400).json({ error: 'Commento non valido' });
+    }
+
+    const info = await db.run(
+      'INSERT INTO ticket_attachments (ticket_id, comment_id, uploaded_by, file_name, mime_type, size_bytes, data) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [ticket.id, commentId || null, req.user.id, fileName.trim().slice(0, 255), mimeType, sizeBytes, dataUrl]
+    );
+    await logEvent(ticket.id, req.user.id, `Allegato aggiunto: "${fileName.trim().slice(0, 255)}"`);
+
+    const row = await db.get(
+      `SELECT a.id, a.ticket_id, a.comment_id, a.uploaded_by, a.file_name, a.mime_type, a.size_bytes, a.created_at, u.name AS uploader_name
+       FROM ticket_attachments a LEFT JOIN users u ON u.id = a.uploaded_by
+       WHERE a.id = ?`,
+      [Number(info.lastInsertRowid)]
+    );
+    res.status(201).json({ attachment: attachmentMeta(row) });
+  })
+);
+
+router.get(
+  '/:id/attachments/:attId',
+  asyncHandler(async (req, res) => {
+    const ticket = await getTicketOr404(req, res);
+    if (!ticket) return;
+    const row = await db.get('SELECT * FROM ticket_attachments WHERE id = ? AND ticket_id = ?', [req.params.attId, ticket.id]);
+    if (!row) return res.status(404).json({ error: 'Allegato non trovato' });
+    res.json({ attachment: { ...attachmentMeta(row), data: row.data } });
+  })
+);
+
+router.delete(
+  '/:id/attachments/:attId',
+  asyncHandler(async (req, res) => {
+    const ticket = await getTicketOr404(req, res);
+    if (!ticket) return;
+    const row = await db.get('SELECT * FROM ticket_attachments WHERE id = ? AND ticket_id = ?', [req.params.attId, ticket.id]);
+    if (!row) return res.status(404).json({ error: 'Allegato non trovato' });
+    if (row.uploaded_by !== req.user.id && !isStaff(req.user)) {
+      return res.status(403).json({ error: 'Permessi insufficienti' });
+    }
+    await db.run('DELETE FROM ticket_attachments WHERE id = ?', [row.id]);
+    await logEvent(ticket.id, req.user.id, `Allegato rimosso: "${row.file_name}"`);
+    res.status(204).end();
+  })
+);
+
 module.exports = router;

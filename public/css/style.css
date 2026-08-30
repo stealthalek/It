@@ -892,6 +892,20 @@ body:not(.role-customer):not(.role-agent):not(.role-admin) .nav-toggle { display
 .canned-picker { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem; }
 .canned-picker select { flex: 1; }
 
+.attachments-list { display: flex; flex-direction: column; gap: 0.4rem; }
+.attachment-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.attachment-icon { flex-shrink: 0; color: var(--muted); }
+.attachment-info { display: flex; flex-direction: column; gap: 0.1rem; flex: 1; min-width: 0; }
+.attachment-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.attachment-meta { font-size: 0.78rem; color: var(--muted); }
+
 .category-row {
   display: flex;
   flex-wrap: wrap;

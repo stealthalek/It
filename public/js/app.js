@@ -123,6 +123,8 @@
     megaphone: '<path d="M3 11v2a1 1 0 0 0 1 1h2l4 4V6L6 10H4a1 1 0 0 0-1 1z"/><path d="M15 8a3 3 0 0 1 0 6"/><path d="M17.5 5.5a7 7 0 0 1 0 11"/>',
     chevronDown: '<polyline points="6 9 12 15 18 9"/>',
     message: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+    paperclip: '<path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>',
+    file: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>',
   };
 
   const CATEGORY_ICON_CHOICES = ['ticket', 'wifi', 'globe', 'printer', 'mail', 'monitor', 'server', 'phone', 'grid', 'lock', 'shield', 'users', 'laptop', 'tablet', 'package', 'bulb', 'flame', 'truck', 'megaphone'];
@@ -225,7 +227,9 @@
       chart_mine_title: 'I miei ticket', chart_team_title: 'Il mio team', chart_no_team: 'Non fai parte di nessun gruppo',
       dim_status: 'Stato', dim_sla: 'SLA', dim_priority: 'Priorità', dim_type: 'Tipo', dim_category: 'Categoria', dim_assigned: 'Assegnatario',
       auto_update: 'Aggiornamento automatico', auto_update_on: 'Aggiornamento automatico attivo', impersonate: 'Immedesimati',
-      btn_save: 'Salva', btn_cancel: 'Annulla', btn_delete: 'Elimina', btn_add: 'Aggiungi', btn_search: 'Cerca',
+      btn_save: 'Salva', btn_cancel: 'Annulla', btn_delete: 'Elimina', btn_add: 'Aggiungi', btn_search: 'Cerca', btn_download: 'Scarica',
+      attachments_title: 'Allegati', btn_add_attachment: 'Aggiungi allegato', no_attachments_hint: 'Nessun allegato.',
+      attachment_too_large: 'File troppo grande (max 5 MB)', toast_attachment_added: 'Allegato aggiunto', toast_attachment_deleted: 'Allegato eliminato',
       loading: 'Caricamento...', no_results: 'Nessun risultato.', unassigned_label: 'Non assegnato',
       lang_updated: 'Lingua aggiornata', by_label: 'Di', assigned_to_label: 'Assegnato a', no_tickets_found: 'Nessun ticket trovato.',
       back_to_list: 'Torna alla lista', edit_subject_desc: 'Modifica oggetto e descrizione',
@@ -395,7 +399,9 @@
       chart_mine_title: 'My tickets', chart_team_title: 'My team', chart_no_team: 'You are not part of any group',
       dim_status: 'Status', dim_sla: 'SLA', dim_priority: 'Priority', dim_type: 'Type', dim_category: 'Category', dim_assigned: 'Assignee',
       auto_update: 'Auto update', auto_update_on: 'Auto update active', impersonate: 'View as',
-      btn_save: 'Save', btn_cancel: 'Cancel', btn_delete: 'Delete', btn_add: 'Add', btn_search: 'Search',
+      btn_save: 'Save', btn_cancel: 'Cancel', btn_delete: 'Delete', btn_add: 'Add', btn_search: 'Search', btn_download: 'Download',
+      attachments_title: 'Attachments', btn_add_attachment: 'Add attachment', no_attachments_hint: 'No attachments.',
+      attachment_too_large: 'File too large (max 5 MB)', toast_attachment_added: 'Attachment added', toast_attachment_deleted: 'Attachment deleted',
       loading: 'Loading...', no_results: 'No results.', unassigned_label: 'Unassigned',
       lang_updated: 'Language updated', by_label: 'By', assigned_to_label: 'Assigned to', no_tickets_found: 'No tickets found.',
       back_to_list: 'Back to list', edit_subject_desc: 'Edit subject and description',
@@ -2105,6 +2111,16 @@
               </div>` : ''}
           </div>
 
+          <div class="card" style="margin-bottom:1rem">
+            <h3 class="section-title" style="margin-top:0">${icon('paperclip')} ${t('attachments_title')}</h3>
+            <div id="attachmentsList" class="attachments-list spinner-row">${t('loading')}</div>
+            ${!readOnly ? `
+              <input type="file" id="attachmentInput" hidden />
+              <button type="button" id="attachmentUploadBtn" class="btn btn-ghost btn-sm" style="margin-top:0.6rem">${icon('paperclip', 'badge-icon')} ${t('btn_add_attachment')}</button>
+              <p class="error-text" id="attachmentError"></p>
+            ` : ''}
+          </div>
+
           <div class="card">
             <h3 class="section-title" style="margin-top:0">${t('activity_title')}</h3>
             <div id="activityList" class="activity-timeline">
@@ -2149,6 +2165,109 @@
           msgEl.focus();
         });
       }).catch(() => {});
+    }
+
+    function formatFileSize(bytes) {
+      if (bytes < 1024) return `${bytes} B`;
+      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+      return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    }
+
+    function attachmentIconName(mimeType) {
+      if (mimeType.startsWith('image/')) return 'monitor';
+      if (mimeType === 'application/pdf') return 'inbox';
+      if (mimeType === 'application/zip') return 'package';
+      return 'file';
+    }
+
+    async function loadAttachments() {
+      const listEl = document.getElementById('attachmentsList');
+      if (!listEl) return;
+      listEl.className = 'spinner-row';
+      listEl.textContent = t('loading');
+      try {
+        const { attachments } = await api(`/tickets/${ticket.id}/attachments`);
+        listEl.className = 'attachments-list';
+        listEl.innerHTML = attachments.length ? attachments.map((a) => `
+          <div class="attachment-row" data-id="${a.id}">
+            ${icon(attachmentIconName(a.mime_type), 'attachment-icon')}
+            <div class="attachment-info">
+              <span class="attachment-name">${escapeHtml(a.file_name)}</span>
+              <span class="attachment-meta">${formatFileSize(a.size_bytes)} · ${escapeHtml(a.uploader_name || '')} · ${formatDate(a.created_at)}</span>
+            </div>
+            <button type="button" class="icon-btn attachmentDownloadBtn" data-id="${a.id}" title="${t('btn_download')}">${icon('download')}</button>
+            ${!readOnly && (a.uploaded_by === state.user.id || isStaff()) ? `<button type="button" class="icon-btn attachmentDeleteBtn" data-id="${a.id}" title="${t('btn_delete')}">${icon('trash')}</button>` : ''}
+          </div>`).join('') : `<p class="hint">${t('no_attachments_hint')}</p>`;
+
+        listEl.querySelectorAll('.attachmentDownloadBtn').forEach((btn) => {
+          btn.addEventListener('click', async () => {
+            try {
+              const { attachment } = await api(`/tickets/${ticket.id}/attachments/${btn.dataset.id}`);
+              const res = await fetch(attachment.data);
+              const blob = await res.blob();
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement('a');
+              link.href = url;
+              link.download = attachment.file_name;
+              document.body.appendChild(link);
+              link.click();
+              link.remove();
+              URL.revokeObjectURL(url);
+            } catch (err) {
+              showToast(err.message, 'error');
+            }
+          });
+        });
+        listEl.querySelectorAll('.attachmentDeleteBtn').forEach((btn) => {
+          btn.addEventListener('click', async () => {
+            try {
+              await api(`/tickets/${ticket.id}/attachments/${btn.dataset.id}`, { method: 'DELETE' });
+              showToast(t('toast_attachment_deleted'), 'success');
+              loadAttachments();
+            } catch (err) {
+              showToast(err.message, 'error');
+            }
+          });
+        });
+      } catch (err) {
+        listEl.className = '';
+        listEl.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
+      }
+    }
+
+    loadAttachments();
+
+    const attachmentInput = document.getElementById('attachmentInput');
+    const attachmentUploadBtn = document.getElementById('attachmentUploadBtn');
+    if (attachmentUploadBtn) {
+      attachmentUploadBtn.addEventListener('click', () => attachmentInput.click());
+      attachmentInput.addEventListener('change', () => {
+        const file = attachmentInput.files[0];
+        if (!file) return;
+        const errEl = document.getElementById('attachmentError');
+        errEl.textContent = '';
+        if (file.size > 5 * 1024 * 1024) {
+          errEl.textContent = t('attachment_too_large');
+          attachmentInput.value = '';
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = async () => {
+          try {
+            await api(`/tickets/${ticket.id}/attachments`, {
+              method: 'POST',
+              body: { fileName: file.name, dataUrl: reader.result },
+            });
+            attachmentInput.value = '';
+            showToast(t('toast_attachment_added'), 'success');
+            loadAttachments();
+          } catch (err) {
+            errEl.textContent = err.message;
+            attachmentInput.value = '';
+          }
+        };
+        reader.readAsDataURL(file);
+      });
     }
 
     if (document.getElementById('commentForm')) guardForm(document.getElementById('commentForm'), async () => {
