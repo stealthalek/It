@@ -257,6 +257,8 @@
       backlog_hint: 'Ticket non assegnati, in ordine di urgenza SLA.',
       bulk_assign_placeholder: 'Assegna a...', bulk_status_placeholder: 'Cambia stato...', bulk_clear_selection: 'Deseleziona',
       bulk_selected_count: 'Selezionati:', toast_bulk_assigned: 'Ticket assegnati', toast_bulk_status_updated: 'Stato aggiornato sui ticket selezionati',
+      bulk_assignment_placeholder: 'Cambia assegnazione...', bulk_tag_prefix_placeholder: 'es. ITA-', bulk_apply_prefix: 'Applica prefisso',
+      toast_bulk_asset_updated: 'Asset selezionati aggiornati', toast_bulk_prefix_applied: 'Prefisso applicato agli asset selezionati',
       add_tag_placeholder: 'Aggiungi etichetta e premi invio',
       linked_tickets_title: 'Ticket collegati', link_ticket_placeholder: 'Numero ticket (es. 12)', btn_link_ticket: 'Collega',
       similar_tickets_title: 'Ticket simili', no_similar_tickets_hint: 'Nessun ticket simile trovato nella stessa categoria.', toast_ticket_linked: 'Ticket collegato',
@@ -452,6 +454,8 @@
       backlog_hint: 'Unassigned tickets, ordered by SLA urgency.',
       bulk_assign_placeholder: 'Assign to...', bulk_status_placeholder: 'Change status...', bulk_clear_selection: 'Clear selection',
       bulk_selected_count: 'Selected:', toast_bulk_assigned: 'Tickets assigned', toast_bulk_status_updated: 'Status updated on selected tickets',
+      bulk_assignment_placeholder: 'Change assignment...', bulk_tag_prefix_placeholder: 'e.g. ITA-', bulk_apply_prefix: 'Apply prefix',
+      toast_bulk_asset_updated: 'Selected assets updated', toast_bulk_prefix_applied: 'Prefix applied to selected assets',
       add_tag_placeholder: 'Add a tag and press enter',
       linked_tickets_title: 'Linked tickets', link_ticket_placeholder: 'Ticket number (e.g. 12)', btn_link_ticket: 'Link',
       similar_tickets_title: 'Similar tickets', no_similar_tickets_hint: 'No similar tickets found in the same category.', toast_ticket_linked: 'Ticket linked',
@@ -4239,6 +4243,21 @@
           ${Object.entries(assetStatusLabels()).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
         </select>
       </div>
+      <div id="assetBulkBar" class="bulk-action-bar" hidden>
+        <span id="assetBulkCount" class="hint"></span>
+        <select id="assetBulkStatusSel">
+          <option value="">${t('bulk_status_placeholder')}</option>
+          ${Object.entries(assetStatusLabels()).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
+        </select>
+        <select id="assetBulkAssignTypeSel">
+          <option value="">${t('bulk_assignment_placeholder')}</option>
+          <option value="permanente">${t('assignment_permanent')}</option>
+          <option value="prestito">${t('assignment_loan')}</option>
+        </select>
+        <input id="assetBulkPrefixInput" type="text" value="ITA-" placeholder="${t('bulk_tag_prefix_placeholder')}" style="width:8rem" />
+        <button type="button" id="assetBulkPrefixBtn" class="btn btn-ghost btn-sm">${t('bulk_apply_prefix')}</button>
+        <button type="button" id="assetBulkClearBtn" class="btn btn-ghost btn-sm">${t('bulk_clear_selection')}</button>
+      </div>
       <div id="assetsWrap" class="card spinner-row">${t('loading')}</div>`;
 
     let usersCache = [];
@@ -4248,6 +4267,19 @@
 
     const statusFilter = document.getElementById('assetStatusFilter');
     const queryFilter = document.getElementById('assetQueryFilter');
+    const assetBulkBar = document.getElementById('assetBulkBar');
+    const assetBulkCount = document.getElementById('assetBulkCount');
+    const assetBulkStatusSel = document.getElementById('assetBulkStatusSel');
+    const assetBulkAssignTypeSel = document.getElementById('assetBulkAssignTypeSel');
+    const assetBulkPrefixInput = document.getElementById('assetBulkPrefixInput');
+    const assetBulkPrefixBtn = document.getElementById('assetBulkPrefixBtn');
+    const assetBulkClearBtn = document.getElementById('assetBulkClearBtn');
+    const selectedAssets = new Set();
+
+    function updateAssetBulkBar() {
+      assetBulkBar.hidden = selectedAssets.size === 0;
+      assetBulkCount.textContent = `${t('bulk_selected_count')} ${selectedAssets.size}`;
+    }
 
     async function loadAssets() {
       const wrap = document.getElementById('assetsWrap');
@@ -4262,10 +4294,11 @@
         wrap.innerHTML = assets.length ? `
           <div class="table-scroll">
             <table class="users-table">
-              <thead><tr><th>${t('field_name')}</th><th>${t('table_type')}</th><th>${t('table_tag')}</th><th>${t('table_status')}</th><th>${t('table_assignment')}</th><th>${t('assigned_to_label')}</th><th>${t('table_due_date')}</th>${state.user.role === 'admin' ? '<th></th>' : ''}</tr></thead>
+              <thead><tr><th><input type="checkbox" id="assetSelectAll" /></th><th>${t('field_name')}</th><th>${t('table_type')}</th><th>${t('table_tag')}</th><th>${t('table_status')}</th><th>${t('table_assignment')}</th><th>${t('assigned_to_label')}</th><th>${t('table_due_date')}</th>${state.user.role === 'admin' ? '<th></th>' : ''}</tr></thead>
               <tbody>
                 ${assets.map((a) => `
                   <tr>
+                    <td><input type="checkbox" class="assetSelectBox" data-id="${a.id}" /></td>
                     <td>${escapeHtml(a.name)}</td>
                     <td>${assetTypeLabels()[a.asset_type] || a.asset_type}</td>
                     <td>${escapeHtml(a.tag || '—')}</td>
@@ -4327,11 +4360,77 @@
             loadAssets();
           } catch (err) { showToast(err.message, 'error'); }
         }));
+
+        const visibleIds = new Set(assets.map((a) => a.id));
+        [...selectedAssets].forEach((id) => { if (!visibleIds.has(id)) selectedAssets.delete(id); });
+        const selectAllBox = document.getElementById('assetSelectAll');
+        const assetBoxes = wrap.querySelectorAll('.assetSelectBox');
+        assetBoxes.forEach((box) => {
+          box.checked = selectedAssets.has(Number(box.dataset.id));
+          box.addEventListener('change', () => {
+            const id = Number(box.dataset.id);
+            if (box.checked) selectedAssets.add(id); else selectedAssets.delete(id);
+            selectAllBox.checked = selectedAssets.size === assetBoxes.length;
+            updateAssetBulkBar();
+          });
+        });
+        if (selectAllBox) {
+          selectAllBox.checked = assetBoxes.length > 0 && selectedAssets.size === assetBoxes.length;
+          selectAllBox.addEventListener('change', () => {
+            assetBoxes.forEach((box) => {
+              box.checked = selectAllBox.checked;
+              const id = Number(box.dataset.id);
+              if (selectAllBox.checked) selectedAssets.add(id); else selectedAssets.delete(id);
+            });
+            updateAssetBulkBar();
+          });
+        }
+        updateAssetBulkBar();
       } catch (err) {
         wrap.className = '';
         wrap.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
       }
     }
+
+    assetBulkClearBtn.addEventListener('click', () => {
+      selectedAssets.clear();
+      loadAssets();
+    });
+
+    assetBulkStatusSel.addEventListener('change', async () => {
+      if (!assetBulkStatusSel.value || !selectedAssets.size) return;
+      try {
+        await api('/assets/bulk', { method: 'PATCH', body: { ids: [...selectedAssets], status: assetBulkStatusSel.value } });
+        showToast(t('toast_bulk_asset_updated'), 'success');
+        assetBulkStatusSel.value = '';
+        loadAssets();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+
+    assetBulkAssignTypeSel.addEventListener('change', async () => {
+      if (!assetBulkAssignTypeSel.value || !selectedAssets.size) return;
+      try {
+        await api('/assets/bulk', { method: 'PATCH', body: { ids: [...selectedAssets], assignmentType: assetBulkAssignTypeSel.value } });
+        showToast(t('toast_bulk_asset_updated'), 'success');
+        assetBulkAssignTypeSel.value = '';
+        loadAssets();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+
+    assetBulkPrefixBtn.addEventListener('click', async () => {
+      if (!assetBulkPrefixInput.value.trim() || !selectedAssets.size) return;
+      try {
+        await api('/assets/bulk', { method: 'PATCH', body: { ids: [...selectedAssets], tagPrefix: assetBulkPrefixInput.value.trim() } });
+        showToast(t('toast_bulk_prefix_applied'), 'success');
+        loadAssets();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
 
     statusFilter.addEventListener('change', loadAssets);
     let assetQueryDebounce;
