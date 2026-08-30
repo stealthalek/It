@@ -219,6 +219,59 @@ async function setupSchema() {
         created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
         created_at TEXT NOT NULL DEFAULT (datetime('now'))
       )`,
+      `CREATE TABLE IF NOT EXISTS onboarding_item_types (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        item_key TEXT NOT NULL UNIQUE,
+        label_it TEXT NOT NULL,
+        label_en TEXT NOT NULL,
+        kind TEXT NOT NULL DEFAULT 'checkbox' CHECK (kind IN ('checkbox', 'license', 'copy_user', 'asset')),
+        asset_type TEXT,
+        default_group_id INTEGER REFERENCES groups(id) ON DELETE SET NULL,
+        enabled INTEGER NOT NULL DEFAULT 1,
+        position INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS onboarding_requests (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        employee_name TEXT NOT NULL,
+        employee_email TEXT,
+        start_date TEXT,
+        employee_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        requested_by INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'in_progress', 'completed', 'cancelled')),
+        notes TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS onboarding_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        request_id INTEGER NOT NULL REFERENCES onboarding_requests(id) ON DELETE CASCADE,
+        item_type_id INTEGER REFERENCES onboarding_item_types(id) ON DELETE SET NULL,
+        item_key TEXT NOT NULL,
+        label_it TEXT NOT NULL,
+        label_en TEXT NOT NULL,
+        kind TEXT NOT NULL DEFAULT 'checkbox' CHECK (kind IN ('checkbox', 'license', 'copy_user', 'asset')),
+        asset_type TEXT,
+        assigned_group_id INTEGER REFERENCES groups(id) ON DELETE SET NULL,
+        status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'done', 'skipped')),
+        copy_from_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        license_note TEXT,
+        notes TEXT,
+        asset_id INTEGER REFERENCES assets(id) ON DELETE SET NULL,
+        completed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        completed_at TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS onboarding_attachments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        request_id INTEGER NOT NULL REFERENCES onboarding_requests(id) ON DELETE CASCADE,
+        uploaded_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        file_name TEXT NOT NULL,
+        mime_type TEXT NOT NULL,
+        size_bytes INTEGER NOT NULL,
+        data TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`,
       'CREATE INDEX IF NOT EXISTS idx_tickets_created_by ON tickets(created_by)',
       'CREATE INDEX IF NOT EXISTS idx_tickets_assigned_to ON tickets(assigned_to)',
       'CREATE INDEX IF NOT EXISTS idx_comments_ticket_id ON comments(ticket_id)',
@@ -230,6 +283,9 @@ async function setupSchema() {
       'CREATE INDEX IF NOT EXISTS idx_ticket_attachments_ticket_id ON ticket_attachments(ticket_id)',
       'CREATE INDEX IF NOT EXISTS idx_ticket_tags_tag_id ON ticket_tags(tag_id)',
       'CREATE INDEX IF NOT EXISTS idx_ticket_links_linked_ticket_id ON ticket_links(linked_ticket_id)',
+      'CREATE INDEX IF NOT EXISTS idx_onboarding_items_request_id ON onboarding_items(request_id)',
+      'CREATE INDEX IF NOT EXISTS idx_onboarding_items_group_id ON onboarding_items(assigned_group_id)',
+      'CREATE INDEX IF NOT EXISTS idx_onboarding_attachments_request_id ON onboarding_attachments(request_id)',
     ],
     'write'
   );
@@ -389,6 +445,61 @@ async function migrate() {
   }
   if (!ticketCols3.some((c) => c.name === 'on_behalf_of')) {
     await run('ALTER TABLE tickets ADD COLUMN on_behalf_of INTEGER REFERENCES users(id) ON DELETE SET NULL');
+  }
+
+  const groupCols3 = await all('PRAGMA table_info(groups)');
+  if (!groupCols3.some((c) => c.name === 'manager_id')) {
+    await run('ALTER TABLE groups ADD COLUMN manager_id INTEGER REFERENCES users(id) ON DELETE SET NULL');
+  }
+
+  const assetsTable = await get("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'assets'");
+  if (assetsTable && assetsTable.sql && !assetsTable.sql.includes("'tablet'")) {
+    await run(`CREATE TABLE assets_new (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      asset_type TEXT NOT NULL DEFAULT 'altro' CHECK (asset_type IN ('laptop', 'desktop', 'monitor', 'telefono', 'tablet', 'altro')),
+      tag TEXT,
+      status TEXT NOT NULL DEFAULT 'disponibile' CHECK (status IN ('disponibile', 'in_uso', 'in_riparazione', 'dismesso')),
+      assignment_type TEXT NOT NULL DEFAULT 'permanente' CHECK (assignment_type IN ('permanente', 'prestito')),
+      assigned_to INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      due_date TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )`);
+    await run(`INSERT INTO assets_new (id, name, asset_type, tag, status, assignment_type, assigned_to, due_date, created_at)
+      SELECT id, name, asset_type, tag, status, assignment_type, assigned_to, due_date, created_at FROM assets`);
+    await run('DROP TABLE assets');
+    await run('ALTER TABLE assets_new RENAME TO assets');
+  }
+
+  const onboardingTypeCount = await get('SELECT COUNT(*) AS n FROM onboarding_item_types');
+  if (onboardingTypeCount.n === 0) {
+    await seedOnboardingItemTypes();
+  }
+}
+
+async function seedOnboardingItemTypes() {
+  const groupIdByName = {};
+  (await all('SELECT id, name FROM groups')).forEach((g) => { groupIdByName[g.name] = g.id; });
+  const g = (name) => groupIdByName[name] || null;
+
+  const items = [
+    ['active_directory', 'Active Directory', 'Active Directory', 'checkbox', null, g('Security')],
+    ['mailbox', 'Mailbox', 'Mailbox', 'license', null, g('Service Desk')],
+    ['vpn', 'VPN', 'VPN', 'checkbox', null, g('Network')],
+    ['jde', 'JDE', 'JDE', 'copy_user', null, g('Service Desk')],
+    ['crm', 'CRM', 'CRM', 'copy_user', null, g('Service Desk')],
+    ['business_object', 'Business Object', 'Business Object', 'copy_user', null, g('Service Desk')],
+    ['faberwam', 'FaberWAM', 'FaberWAM', 'copy_user', null, g('Service Desk')],
+    ['laptop', 'Laptop', 'Laptop', 'asset', 'laptop', g('Endpoint')],
+    ['smartphone', 'Smartphone', 'Smartphone', 'asset', 'telefono', g('Endpoint')],
+    ['tablet', 'Tablet', 'Tablet', 'asset', 'tablet', g('Endpoint')],
+  ];
+  for (let i = 0; i < items.length; i += 1) {
+    const [key, labelIt, labelEn, kind, assetType, groupId] = items[i];
+    await run(
+      'INSERT INTO onboarding_item_types (item_key, label_it, label_en, kind, asset_type, default_group_id, position) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [key, labelIt, labelEn, kind, assetType, groupId, i]
+    );
   }
 }
 

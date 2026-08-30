@@ -24,6 +24,7 @@ const cannedResponseRoutes = require('./routes/canned-responses');
 const tagRoutes = require('./routes/tags');
 const ticketTemplateRoutes = require('./routes/ticket-templates');
 const holidayRoutes = require('./routes/holidays');
+const onboardingRoutes = require('./routes/onboarding');
 const { loadHolidays } = require('./sla');
 
 const app = express();
@@ -56,6 +57,7 @@ app.use('/api/canned-responses', cannedResponseRoutes);
 app.use('/api/tags', tagRoutes);
 app.use('/api/ticket-templates', ticketTemplateRoutes);
 app.use('/api/holidays', holidayRoutes);
+app.use('/api/onboarding', onboardingRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() });

@@ -2,6 +2,7 @@ const db = require('./db/database');
 const realtime = require('./realtime');
 const { computeSlaStatus } = require('./sla');
 const { notifyUser } = require('./notifications');
+const { formatTicketNumber } = require('./lib/ticketNumber');
 
 const AUTO_CLOSE_HOURS = 72;
 const CHECK_INTERVAL_MS = 10 * 60 * 1000;
@@ -75,8 +76,8 @@ async function checkSlaWarnings() {
       groupStaff.forEach((u) => recipients.add(u.id));
     }
     const messageKey = status === 'breached'
-      ? { it: `SLA superata sul ticket #${ticket.id}: ${ticket.subject}`, en: `SLA breached on ticket #${ticket.id}: ${ticket.subject}` }
-      : { it: `SLA a rischio sul ticket #${ticket.id}: ${ticket.subject}`, en: `SLA at risk on ticket #${ticket.id}: ${ticket.subject}` };
+      ? { it: `SLA superata sul ticket #${formatTicketNumber(ticket.id)}: ${ticket.subject}`, en: `SLA breached on ticket #${formatTicketNumber(ticket.id)}: ${ticket.subject}` }
+      : { it: `SLA a rischio sul ticket #${formatTicketNumber(ticket.id)}: ${ticket.subject}`, en: `SLA at risk on ticket #${formatTicketNumber(ticket.id)}: ${ticket.subject}` };
     for (const userId of recipients) {
       notifyUser(userId, ticket.id, messageKey).catch(() => {});
     }

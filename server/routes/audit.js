@@ -2,6 +2,7 @@ const express = require('express');
 const db = require('../db/database');
 const { authenticate } = require('../middleware/auth');
 const asyncHandler = require('../middleware/asyncHandler');
+const { formatTicketNumber } = require('../lib/ticketNumber');
 
 const router = express.Router();
 router.use(authenticate);
@@ -84,7 +85,8 @@ router.get(
         (row.message || '').toLowerCase().includes(needle) ||
         (row.actor_name || '').toLowerCase().includes(needle) ||
         (row.ticket_subject || '').toLowerCase().includes(needle) ||
-        String(row.ticket_id) === needle);
+        String(row.ticket_id) === needle ||
+        (row.ticket_id && formatTicketNumber(row.ticket_id).toLowerCase().includes(needle)));
     }
 
     res.json({ entries: entries.slice(0, 2000), total: entries.length });

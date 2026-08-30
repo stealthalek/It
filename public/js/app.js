@@ -72,14 +72,26 @@
   function slaLabels() {
     return { on_track: t('sla_on_track'), at_risk: t('sla_at_risk'), breached: t('sla_breached') };
   }
+  function formatTicketNumber(id) {
+    return `TCK-${String(id).padStart(6, '0')}`;
+  }
   function assetTypeLabels() {
-    return { laptop: t('asset_type_laptop'), desktop: t('asset_type_desktop'), monitor: t('asset_type_monitor'), telefono: t('asset_type_phone'), altro: t('asset_type_other') };
+    return { laptop: t('asset_type_laptop'), desktop: t('asset_type_desktop'), monitor: t('asset_type_monitor'), telefono: t('asset_type_phone'), tablet: t('asset_type_tablet'), altro: t('asset_type_other') };
   }
   function assetStatusLabels() {
     return { disponibile: t('asset_status_available'), in_uso: t('asset_status_in_use'), in_riparazione: t('asset_status_repair'), dismesso: t('asset_status_retired') };
   }
   function roleLabels() {
     return { customer: t('role_customer'), agent: t('role_agent'), admin: t('role_admin') };
+  }
+  function onboardingStatusLabels() {
+    return { open: t('onboarding_status_open'), in_progress: t('onboarding_status_in_progress'), completed: t('onboarding_status_completed'), cancelled: t('onboarding_status_cancelled') };
+  }
+  function onboardingItemStatusLabels() {
+    return { pending: t('onboarding_item_pending'), in_progress: t('onboarding_status_in_progress'), done: t('onboarding_item_done'), skipped: t('onboarding_item_skipped') };
+  }
+  function onboardingKindLabels() {
+    return { checkbox: t('onboarding_kind_checkbox'), license: t('onboarding_kind_license'), copy_user: t('onboarding_kind_copy_user'), asset: t('onboarding_kind_asset') };
   }
 
   const ICON_PATHS = {
@@ -161,6 +173,19 @@
     return `${base}-${new Date().toISOString().slice(0, 10)}.${ext}`;
   }
 
+  function formatFileSize(bytes) {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  function attachmentIconName(mimeType) {
+    if (mimeType.startsWith('image/')) return 'monitor';
+    if (mimeType === 'application/pdf') return 'inbox';
+    if (mimeType === 'application/zip') return 'package';
+    return 'file';
+  }
+
   function csvEscape(value) {
     const str = String(value ?? '');
     return /[",\n;]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
@@ -203,7 +228,7 @@
   const TRANSLATIONS = {
     it: {
       nav_dashboard: 'Ticket', nav_new: 'Nuovo ticket', nav_search: 'Ricerca', nav_backlog: 'Backlog',
-      nav_assets: 'Asset', nav_report: 'Report', nav_audit: 'Audit', nav_admin: 'Amministrazione', nav_profile: 'Profilo', logout: 'Esci',
+      nav_assets: 'Asset', nav_onboarding: 'Onboarding', nav_report: 'Report', nav_audit: 'Audit', nav_admin: 'Amministrazione', nav_profile: 'Profilo', logout: 'Esci',
       login_title: 'Accedi', login_hint: 'Entra nella piattaforma di ticketing.', login_email: 'Email', login_password: 'Password',
       login_submit: 'Accedi', login_no_account: 'Non hai un account?', login_register_link: 'Registrati',
       register_title: 'Crea un account', register_submit: 'Registrati',
@@ -217,7 +242,7 @@
       type_incident: 'Incident', type_task: 'Task',
       sla_on_track: 'SLA in linea', sla_at_risk: 'SLA a rischio', sla_breached: 'SLA superata',
       response_sla_prefix: 'Prima risposta:',
-      asset_type_laptop: 'Laptop', asset_type_desktop: 'Desktop', asset_type_monitor: 'Monitor', asset_type_phone: 'Telefono', asset_type_other: 'Altro',
+      asset_type_laptop: 'Laptop', asset_type_desktop: 'Desktop', asset_type_monitor: 'Monitor', asset_type_phone: 'Telefono', asset_type_tablet: 'Tablet', asset_type_other: 'Altro',
       asset_status_available: 'Disponibile', asset_status_in_use: 'In uso', asset_status_repair: 'In riparazione', asset_status_retired: 'Dismesso',
       role_customer: 'Cliente', role_agent: 'Agente', role_admin: 'Amministratore',
       filter_all_types: 'Tutti i tipi', filter_all_statuses: 'Tutti gli stati', filter_all_priorities: 'Tutte le priorità',
@@ -316,6 +341,8 @@
       cold_start_hint: 'Il server si sta risvegliando dopo un periodo di inattività, un momento...',
       admin_title: 'Amministrazione', access_denied: 'Accesso non consentito.', person_card_title: 'Scheda persona',
       org_open_tickets: 'aperti', org_sla_breach: 'in ritardo', org_node_hint: 'Clic per vedere i ticket del team',
+      org_member_count: 'persone', org_no_manager: 'Nessun responsabile', org_toggle_branch: 'Espandi/comprimi ramo',
+      org_settings_toggle: 'Impostazioni team', org_expand_all: 'Espandi tutto', org_collapse_all: 'Comprimi tutto',
       admin_create_staff_title: 'Crea account staff', admin_group_optional_label: 'Gruppo di assegnazione (opzionale)',
       admin_group_hint: 'I membri dello stesso gruppo si vedono a vicenda nell\'assegnazione dei ticket',
       account_locale_label: 'Lingua account', account_locale_hint: 'Le email inviate a questo account useranno questa lingua',
@@ -404,10 +431,30 @@
       desktop_notif_label: 'Notifiche desktop', desktop_notif_hint: 'Ricevi un avviso pop-up del sistema operativo per nuovi ticket e commenti, anche a scheda non attiva.',
       toast_desktop_notif_enabled: 'Notifiche desktop attivate', toast_desktop_notif_disabled: 'Notifiche desktop disattivate',
       toast_desktop_notif_denied: 'Permesso negato dal browser: abilita le notifiche per questo sito nelle impostazioni del browser',
+      onboarding_list_hint: 'Gestisci le pratiche di onboarding per i nuovi assunti e monitora l\'avanzamento di ogni voce.',
+      btn_new_onboarding: 'Nuovo onboarding', field_employee_name: 'Nome del nuovo assunto', onboarding_progress: 'Avanzamento',
+      field_requested_by: 'Richiesto da', table_created: 'Creato il', no_onboarding_found: 'Nessuna pratica di onboarding.',
+      onboarding_form_hint: 'Inserisci i dati del nuovo assunto e seleziona le voci da attivare per la sua postazione.',
+      field_employee_email: 'Email personale', field_start_date: 'Data di inizio', field_existing_user_optional: 'Utente piattaforma (se già esistente)',
+      field_notes: 'Note', onboarding_checklist_label: 'Voci da attivare', onboarding_attachment_label: 'Modulo di onboarding (allegato)',
+      onboarding_attachment_hint: 'Puoi allegare il modulo compilato (PDF o immagine): sarà consultabile dalla pratica.',
+      btn_start_onboarding: 'Avvia onboarding', toast_onboarding_created: 'Onboarding avviato',
+      onboarding_requested_by_label: 'Richiesto da', onboarding_details_title: 'Dettagli',
+      onboarding_copy_from_label: 'Copia utenza da', onboarding_license_label: 'Licenza',
+      onboarding_license_placeholder: 'es. E3, Business Standard...', onboarding_asset_created_prefix: 'Asset generato:',
+      onboarding_completed_by_prefix: 'Completato da', no_onboarding_items_hint: 'Nessuna voce.',
+      toast_onboarding_item_updated: 'Voce aggiornata', toast_onboarding_updated: 'Onboarding aggiornato',
+      admin_onboarding_title: 'Onboarding — voci checklist', admin_onboarding_hint: 'Definisci le voci disponibili per le pratiche di onboarding e a quale team vengono instradate.',
+      field_label_it: 'Nome (IT)', field_label_en: 'Nome (EN)', onboarding_kind_label: 'Tipo di voce', onboarding_routed_to_label: 'Instradata a',
+      btn_add_onboarding_item: 'Aggiungi voce', onboarding_enabled_label: 'Attiva', confirm_delete_onboarding_item: 'Eliminare questa voce?',
+      toast_onboarding_item_type_updated: 'Voce aggiornata', toast_onboarding_item_type_created: 'Voce creata', toast_onboarding_item_type_deleted: 'Voce eliminata',
+      onboarding_status_open: 'Aperto', onboarding_status_in_progress: 'In lavorazione', onboarding_status_completed: 'Completato', onboarding_status_cancelled: 'Annullato',
+      onboarding_item_pending: 'Da fare', onboarding_item_done: 'Completato', onboarding_item_skipped: 'Saltato',
+      onboarding_kind_checkbox: 'Attivazione semplice', onboarding_kind_license: 'Con licenza', onboarding_kind_copy_user: 'Copia utenza da collega', onboarding_kind_asset: 'Genera asset',
     },
     en: {
       nav_dashboard: 'Tickets', nav_new: 'New ticket', nav_search: 'Search', nav_backlog: 'Backlog',
-      nav_assets: 'Assets', nav_report: 'Report', nav_audit: 'Audit', nav_admin: 'Administration', nav_profile: 'Profile', logout: 'Log out',
+      nav_assets: 'Assets', nav_onboarding: 'Onboarding', nav_report: 'Report', nav_audit: 'Audit', nav_admin: 'Administration', nav_profile: 'Profile', logout: 'Log out',
       login_title: 'Sign in', login_hint: 'Enter the ticketing platform.', login_email: 'Email', login_password: 'Password',
       login_submit: 'Sign in', login_no_account: "Don't have an account?", login_register_link: 'Register',
       register_title: 'Create an account', register_submit: 'Register',
@@ -421,7 +468,7 @@
       type_incident: 'Incident', type_task: 'Task',
       sla_on_track: 'SLA on track', sla_at_risk: 'SLA at risk', sla_breached: 'SLA breached',
       response_sla_prefix: 'First response:',
-      asset_type_laptop: 'Laptop', asset_type_desktop: 'Desktop', asset_type_monitor: 'Monitor', asset_type_phone: 'Phone', asset_type_other: 'Other',
+      asset_type_laptop: 'Laptop', asset_type_desktop: 'Desktop', asset_type_monitor: 'Monitor', asset_type_phone: 'Phone', asset_type_tablet: 'Tablet', asset_type_other: 'Other',
       asset_status_available: 'Available', asset_status_in_use: 'In use', asset_status_repair: 'Under repair', asset_status_retired: 'Retired',
       role_customer: 'Customer', role_agent: 'Agent', role_admin: 'Administrator',
       filter_all_types: 'All types', filter_all_statuses: 'All statuses', filter_all_priorities: 'All priorities',
@@ -520,6 +567,8 @@
       cold_start_hint: 'The server is waking up after a period of inactivity, one moment...',
       admin_title: 'Administration', access_denied: 'Access not allowed.', person_card_title: 'Person profile',
       org_open_tickets: 'open', org_sla_breach: 'overdue', org_node_hint: 'Click to see the team\'s tickets',
+      org_member_count: 'people', org_no_manager: 'No manager', org_toggle_branch: 'Expand/collapse branch',
+      org_settings_toggle: 'Team settings', org_expand_all: 'Expand all', org_collapse_all: 'Collapse all',
       admin_create_staff_title: 'Create staff account', admin_group_optional_label: 'Assignment group (optional)',
       admin_group_hint: 'Members of the same group can see each other for ticket assignment',
       account_locale_label: 'Account language', account_locale_hint: 'Emails sent to this account will use this language',
@@ -608,6 +657,26 @@
       desktop_notif_label: 'Desktop notifications', desktop_notif_hint: 'Get an OS-level pop-up alert for new tickets and comments, even when the tab is not active.',
       toast_desktop_notif_enabled: 'Desktop notifications enabled', toast_desktop_notif_disabled: 'Desktop notifications disabled',
       toast_desktop_notif_denied: 'Permission denied by the browser: enable notifications for this site in your browser settings',
+      onboarding_list_hint: 'Manage onboarding requests for new hires and track progress on every checklist item.',
+      btn_new_onboarding: 'New onboarding', field_employee_name: 'New hire name', onboarding_progress: 'Progress',
+      field_requested_by: 'Requested by', table_created: 'Created on', no_onboarding_found: 'No onboarding requests.',
+      onboarding_form_hint: 'Enter the new hire\'s details and pick the checklist items to activate for their setup.',
+      field_employee_email: 'Personal email', field_start_date: 'Start date', field_existing_user_optional: 'Platform user (if already existing)',
+      field_notes: 'Notes', onboarding_checklist_label: 'Items to activate', onboarding_attachment_label: 'Onboarding form (attachment)',
+      onboarding_attachment_hint: 'You can attach the filled-in form (PDF or image): it will be viewable from the request.',
+      btn_start_onboarding: 'Start onboarding', toast_onboarding_created: 'Onboarding started',
+      onboarding_requested_by_label: 'Requested by', onboarding_details_title: 'Details',
+      onboarding_copy_from_label: 'Copy entitlements from', onboarding_license_label: 'License',
+      onboarding_license_placeholder: 'e.g. E3, Business Standard...', onboarding_asset_created_prefix: 'Asset created:',
+      onboarding_completed_by_prefix: 'Completed by', no_onboarding_items_hint: 'No items.',
+      toast_onboarding_item_updated: 'Item updated', toast_onboarding_updated: 'Onboarding updated',
+      admin_onboarding_title: 'Onboarding — checklist items', admin_onboarding_hint: 'Define the items available for onboarding requests and which team they route to.',
+      field_label_it: 'Name (IT)', field_label_en: 'Name (EN)', onboarding_kind_label: 'Item type', onboarding_routed_to_label: 'Routed to',
+      btn_add_onboarding_item: 'Add item', onboarding_enabled_label: 'Enabled', confirm_delete_onboarding_item: 'Delete this item?',
+      toast_onboarding_item_type_updated: 'Item updated', toast_onboarding_item_type_created: 'Item created', toast_onboarding_item_type_deleted: 'Item deleted',
+      onboarding_status_open: 'Open', onboarding_status_in_progress: 'In progress', onboarding_status_completed: 'Completed', onboarding_status_cancelled: 'Cancelled',
+      onboarding_item_pending: 'To do', onboarding_item_done: 'Done', onboarding_item_skipped: 'Skipped',
+      onboarding_kind_checkbox: 'Simple activation', onboarding_kind_license: 'With license', onboarding_kind_copy_user: 'Copy entitlements from colleague', onboarding_kind_asset: 'Generate asset',
     },
   };
   const LANG_LABELS = { it: 'Italiano', en: 'English' };
@@ -627,11 +696,11 @@
 
   const NAV_KEY_BY_ROUTE = {
     dashboard: 'nav_dashboard', new: 'nav_new', search: 'nav_search', backlog: 'nav_backlog',
-    assets: 'nav_assets', report: 'nav_report', audit: 'nav_audit', admin: 'nav_admin', profile: 'nav_profile',
+    assets: 'nav_assets', onboarding: 'nav_onboarding', report: 'nav_report', audit: 'nav_audit', admin: 'nav_admin', profile: 'nav_profile',
   };
   const NAV_ICON_BY_ROUTE = {
     dashboard: 'ticket', new: 'plus', search: 'inbox', backlog: 'check',
-    assets: 'monitor', report: 'activity', audit: 'eye', admin: 'shield', profile: 'userCircle',
+    assets: 'monitor', onboarding: 'userCircle', report: 'activity', audit: 'eye', admin: 'shield', profile: 'userCircle',
   };
 
   function applyChromeTranslations() {
@@ -1059,7 +1128,7 @@
       if (tickets.length) {
         groups.push({
           label: t('quick_jump_tickets'),
-          items: tickets.slice(0, 5).map((tk) => ({ label: `#${tk.id} ${tk.subject}`, hash: `#/ticket/${tk.id}` })),
+          items: tickets.slice(0, 5).map((tk) => ({ label: `#${formatTicketNumber(tk.id)} ${tk.subject}`, hash: `#/ticket/${tk.id}` })),
         });
       }
     } catch {}
@@ -1264,6 +1333,7 @@
         case 'settings': return renderSettings();
         case 'backlog': return renderBacklog();
         case 'assets': return renderAssets();
+        case 'onboarding': return renderOnboarding(param);
         case 'search': return renderSearch();
         case 'report': return renderReport();
         case 'audit': return renderAudit();
@@ -1981,7 +2051,7 @@
           ${tk.sla_status && tk.sla_status !== 'on_track' ? `<span class="badge badge-sla-${tk.sla_status}">${slaLabels()[tk.sla_status]}</span>` : ''}
           ${countdown ? `<span class="badge badge-sla-countdown">${icon('activity', 'badge-icon')}${countdown}</span>` : ''}
         </div>
-        <h3>#${tk.id} ${escapeHtml(tk.subject)}</h3>
+        <h3>#${formatTicketNumber(tk.id)} ${escapeHtml(tk.subject)}</h3>
         <p class="ticket-desc">${escapeHtml(tk.description)}</p>
         ${tk.tag_names ? `<div class="tag-chips">${tk.tag_names.split(',').map((n) => `<span class="tag-chip">${escapeHtml(n)}</span>`).join('')}</div>` : ''}
         <div class="ticket-meta">
@@ -2360,7 +2430,7 @@
 
     appEl.innerHTML = `
       <div class="view-header">
-        <h1>#${ticket.id} ${escapeHtml(ticket.subject)}</h1>
+        <h1>#${formatTicketNumber(ticket.id)} ${escapeHtml(ticket.subject)}</h1>
         <div style="display:flex;gap:0.5rem">
           ${isStaff() && !readOnly ? `<button type="button" id="watchToggleBtn" class="btn btn-ghost">${icon(isWatching ? 'eyeOff' : 'eye')} <span id="watchToggleLabel">${isWatching ? t('btn_unwatch') : t('btn_watch')}</span>${ticketWatchers.length ? ` (${ticketWatchers.length})` : ''}</button>` : ''}
           <a class="btn btn-ghost" href="#/dashboard">${icon('arrowLeft')} ${t('back_to_list')}</a>
@@ -2494,19 +2564,6 @@
           msgEl.focus();
         });
       }).catch(() => {});
-    }
-
-    function formatFileSize(bytes) {
-      if (bytes < 1024) return `${bytes} B`;
-      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-      return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-    }
-
-    function attachmentIconName(mimeType) {
-      if (mimeType.startsWith('image/')) return 'monitor';
-      if (mimeType === 'application/pdf') return 'inbox';
-      if (mimeType === 'application/zip') return 'package';
-      return 'file';
     }
 
     async function loadAttachments() {
@@ -2722,7 +2779,7 @@
           similarTicketsList.className = 'linked-tickets-list';
           similarTicketsList.innerHTML = top.length ? top.map((s) => `
             <div class="linked-ticket-row">
-              <a href="#/ticket/${s.id}">#${s.id} ${escapeHtml(s.subject)}</a>
+              <a href="#/ticket/${s.id}">#${formatTicketNumber(s.id)} ${escapeHtml(s.subject)}</a>
               <span class="badge badge-${s.status}">${statusLabels()[s.status] || s.status}</span>
               ${ticketLinks.some((l) => l.linked_ticket_id === s.id) ? '' : `<button type="button" class="btn btn-ghost btn-sm quickLinkBtn" data-id="${s.id}">${t('btn_link_ticket')}</button>`}
             </div>`).join('') : `<p class="hint">${t('no_similar_tickets_hint')}</p>`;
@@ -3083,9 +3140,14 @@
             <div class="field" style="flex:0 0 7rem"><label for="newGroupResolve">${t('field_resolve_hours')}</label><input id="newGroupResolve" type="number" min="1" /></div>
             <div class="field" style="flex:0 0 6rem"><label for="newGroupWorkStart">${t('field_shift_start')}</label><input id="newGroupWorkStart" type="number" min="0" max="24" value="9" /></div>
             <div class="field" style="flex:0 0 6rem"><label for="newGroupWorkEnd">${t('field_shift_end')}</label><input id="newGroupWorkEnd" type="number" min="0" max="24" value="18" /></div>
+            <div class="field" style="flex:1 1 12rem"><label for="newGroupManager">${t('field_manager')}</label><select id="newGroupManager"><option value="">${t('option_none')}</option></select></div>
             <button class="btn btn-sm" type="submit">${t('btn_create_group')}</button>
           </form>
           <p class="error-text" id="groupError"></p>
+          <div class="org-toolbar">
+            <button type="button" class="btn btn-ghost btn-sm" id="orgExpandAllBtn">${icon('chevronDown', 'nav-icon')} ${t('org_expand_all')}</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="orgCollapseAllBtn">${icon('chevronDown', 'nav-icon org-collapse-icon')} ${t('org_collapse_all')}</button>
+          </div>
           <div id="groupsList" class="spinner-row">${t('loading')}</div>
         </div>
         <div class="card admin-grid-full">
@@ -3192,6 +3254,30 @@
           <p class="error-text" id="holidayError"></p>
           <div id="holidaysList" class="spinner-row">${t('loading')}</div>
         </div>
+        <div class="card admin-grid-full">
+          <h3 class="section-title" style="margin-top:0">${icon('userCircle')} ${t('admin_onboarding_title')}</h3>
+          <p class="hint">${t('admin_onboarding_hint')}</p>
+          <form id="newOnbItemForm" class="form-grid" style="max-width:none;margin:0.75rem 0">
+            <div class="field-row">
+              <div class="field"><label for="newOnbItemLabelIt">${t('field_label_it')}</label><input id="newOnbItemLabelIt" required /></div>
+              <div class="field"><label for="newOnbItemLabelEn">${t('field_label_en')}</label><input id="newOnbItemLabelEn" required /></div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="newOnbItemKind">${t('onboarding_kind_label')}</label>
+                <select id="newOnbItemKind">${Object.entries(onboardingKindLabels()).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>
+              </div>
+              <div class="field" id="newOnbItemAssetTypeWrap" style="display:none">
+                <label for="newOnbItemAssetType">${t('table_type')}</label>
+                <select id="newOnbItemAssetType">${Object.entries(assetTypeLabels()).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>
+              </div>
+              <div class="field"><label for="newOnbItemGroup">${t('onboarding_routed_to_label')}</label><select id="newOnbItemGroup"><option value="">${t('option_none')}</option></select></div>
+            </div>
+            <div><button class="btn btn-sm" type="submit">${t('btn_add_onboarding_item')}</button></div>
+          </form>
+          <p class="error-text" id="onbItemTypeError"></p>
+          <div id="onbItemTypesList" class="spinner-row">${t('loading')}</div>
+        </div>
       </div>` : ''}
       <div id="usersWrap" class="card spinner-row">${t('loading')}</div>`;
 
@@ -3206,41 +3292,66 @@
           if (select) select.innerHTML = groupOptionsHtml(groups, '', t('no_group_option'));
           const parentSelect = document.getElementById('newGroupParent');
           if (parentSelect) parentSelect.innerHTML = groupOptionsHtml(groups, '', t('option_no_parent'));
+          const onbGroupSelect = document.getElementById('newOnbItemGroup');
+          if (onbGroupSelect) onbGroupSelect.innerHTML = groupOptionsHtml(groups, '', t('option_none'));
         } catch { groupOptionsCache = []; }
       }
 
+      let staffUsersCache = [];
+
       async function loadManagerOptions() {
-        const select = document.getElementById('newManager');
-        if (!select) return;
         try {
           const { users } = await api('/users');
-          const staffUsers = users.filter((u) => u.role === 'agent' || u.role === 'admin');
-          select.innerHTML = `<option value="">${t('option_none')}</option>` +
-            staffUsers.map((u) => `<option value="${u.id}">${escapeHtml(u.name)}</option>`).join('');
+          staffUsersCache = users.filter((u) => u.role === 'agent' || u.role === 'admin');
+          const select = document.getElementById('newManager');
+          if (select) {
+            select.innerHTML = `<option value="">${t('option_none')}</option>` +
+              staffUsersCache.map((u) => `<option value="${u.id}">${escapeHtml(u.name)}</option>`).join('');
+          }
+          const groupManagerSelect = document.getElementById('newGroupManager');
+          if (groupManagerSelect) {
+            groupManagerSelect.innerHTML = `<option value="">${t('option_none')}</option>` +
+              staffUsersCache.map((u) => `<option value="${u.id}">${escapeHtml(u.name)}</option>`).join('');
+          }
         } catch {}
+      }
+
+      function staffOptionsHtml(selectedId) {
+        return `<option value="">${t('option_none')}</option>` +
+          staffUsersCache.map((u) => `<option value="${u.id}" ${String(u.id) === String(selectedId) ? 'selected' : ''}>${escapeHtml(u.name)}</option>`).join('');
       }
 
       function renderOrgNode(node, statsById) {
         const stats = statsById.get(node.id) || { open: 0, breached: 0 };
+        const hasChildren = node.children.length > 0;
         return `
           <div class="org-branch">
             <div class="org-node" draggable="true" data-group-id="${node.id}" data-group-name="${escapeHtml(node.name)}" title="${t('org_node_hint')}">
               <div class="org-node-head">
-                <span class="org-node-name">${escapeHtml(node.name)}</span>
+                ${hasChildren ? `<button type="button" class="org-collapse-toggle" data-branch-toggle title="${t('org_toggle_branch')}">${icon('chevronDown')}</button>` : '<span class="org-collapse-spacer"></span>'}
+                <div class="org-node-title">
+                  <span class="org-node-name">${escapeHtml(node.name)}</span>
+                  <span class="org-node-manager">${icon('userCircle', 'badge-icon')}${node.manager_name ? escapeHtml(node.manager_name) : t('org_no_manager')}</span>
+                </div>
                 <button type="button" class="icon-btn deleteGroupBtn" data-id="${node.id}" title="${t('delete_group_title')}">${icon('trash')}</button>
               </div>
               <div class="org-node-stats">
+                <span class="org-node-badge">${icon('users', 'badge-icon')}${node.member_count || 0} ${t('org_member_count')}</span>
                 <span class="org-node-badge ${stats.breached > 0 ? 'org-node-badge-danger' : 'org-node-badge-ok'}">${stats.open} ${t('org_open_tickets')}</span>
                 ${stats.breached > 0 ? `<span class="org-node-badge org-node-badge-danger">${stats.breached} ${t('org_sla_breach')}</span>` : ''}
               </div>
-              <div class="org-node-sla">
-                <label>${t('field_response_hours')} <input type="number" min="1" class="slaInput" data-group-id="${node.id}" data-field="slaResponseHours" value="${node.sla_response_hours ?? ''}" /></label>
-                <label>${t('field_resolve_hours')} <input type="number" min="1" class="slaInput" data-group-id="${node.id}" data-field="slaResolveHours" value="${node.sla_resolve_hours ?? ''}" /></label>
-                <label>${t('shift_from_label')} <input type="number" min="0" max="24" class="workHourInput" data-group-id="${node.id}" data-field="workStartHour" value="${node.work_start_hour ?? 9}" /></label>
-                <label>${t('shift_to_label')} <input type="number" min="0" max="24" class="workHourInput" data-group-id="${node.id}" data-field="workEndHour" value="${node.work_end_hour ?? 18}" /></label>
-              </div>
+              <details class="org-node-settings">
+                <summary>${icon('settings', 'badge-icon')} ${t('org_settings_toggle')}</summary>
+                <div class="org-node-settings-body">
+                  <label>${t('field_manager')} <select class="managerInput" data-group-id="${node.id}">${staffOptionsHtml(node.manager_id)}</select></label>
+                  <label>${t('field_response_hours')} <input type="number" min="1" class="slaInput" data-group-id="${node.id}" data-field="slaResponseHours" value="${node.sla_response_hours ?? ''}" /></label>
+                  <label>${t('field_resolve_hours')} <input type="number" min="1" class="slaInput" data-group-id="${node.id}" data-field="slaResolveHours" value="${node.sla_resolve_hours ?? ''}" /></label>
+                  <label>${t('shift_from_label')} <input type="number" min="0" max="24" class="workHourInput" data-group-id="${node.id}" data-field="workStartHour" value="${node.work_start_hour ?? 9}" /></label>
+                  <label>${t('shift_to_label')} <input type="number" min="0" max="24" class="workHourInput" data-group-id="${node.id}" data-field="workEndHour" value="${node.work_end_hour ?? 18}" /></label>
+                </div>
+              </details>
             </div>
-            ${node.children.length ? `<div class="org-children">${node.children.map((child) => renderOrgNode(child, statsById)).join('')}</div>` : ''}
+            ${hasChildren ? `<div class="org-children">${node.children.map((child) => renderOrgNode(child, statsById)).join('')}</div>` : ''}
           </div>`;
       }
 
@@ -3249,11 +3360,13 @@
         listEl.className = 'spinner-row';
         listEl.textContent = t('loading');
         try {
-          const [{ groups }, { tickets }] = await Promise.all([
+          const [{ groups }, { tickets }, { users }] = await Promise.all([
             api('/groups'),
             api('/tickets').catch(() => ({ tickets: [] })),
+            api('/users').catch(() => ({ users: [] })),
           ]);
           groupOptionsCache = groups;
+          staffUsersCache = users.filter((u) => u.role === 'agent' || u.role === 'admin');
           const statsById = new Map();
           tickets.forEach((tk) => {
             if (!tk.group_id) return;
@@ -3270,9 +3383,27 @@
 
           listEl.querySelectorAll('.org-node').forEach((nodeEl) => {
             nodeEl.addEventListener('click', (e) => {
-              if (e.target.closest('input, button, label')) return;
+              if (e.target.closest('input, select, button, label, summary, details')) return;
               sessionStorage.setItem('ticketing_search_group', nodeEl.dataset.groupId);
               location.hash = '#/search';
+            });
+          });
+
+          listEl.querySelectorAll('.org-collapse-toggle').forEach((btn) => {
+            btn.addEventListener('click', () => {
+              btn.closest('.org-branch').classList.toggle('collapsed');
+            });
+          });
+
+          listEl.querySelectorAll('.managerInput').forEach((select) => {
+            select.addEventListener('change', async () => {
+              try {
+                await api(`/groups/${select.dataset.groupId}`, { method: 'PATCH', body: { managerId: select.value || null } });
+                showToast(t('toast_manager_updated'), 'success');
+                loadGroups();
+              } catch (err) {
+                showToast(err.message, 'error');
+              }
             });
           });
 
@@ -3403,6 +3534,7 @@
               slaResolveHours: document.getElementById('newGroupResolve').value || null,
               workStartHour: document.getElementById('newGroupWorkStart').value || null,
               workEndHour: document.getElementById('newGroupWorkEnd').value || null,
+              managerId: document.getElementById('newGroupManager').value || null,
             },
           });
           document.getElementById('newGroupForm').reset();
@@ -3417,6 +3549,119 @@
       loadGroupOptions();
       loadGroups();
       loadManagerOptions();
+
+      document.getElementById('orgExpandAllBtn').addEventListener('click', () => {
+        document.querySelectorAll('#groupsList .org-branch').forEach((el) => el.classList.remove('collapsed'));
+      });
+      document.getElementById('orgCollapseAllBtn').addEventListener('click', () => {
+        document.querySelectorAll('#groupsList .org-branch').forEach((el) => {
+          if (el.querySelector('.org-children')) el.classList.add('collapsed');
+        });
+      });
+
+      const onbKindSelect = document.getElementById('newOnbItemKind');
+      const onbAssetTypeWrap = document.getElementById('newOnbItemAssetTypeWrap');
+      onbKindSelect.addEventListener('change', () => {
+        onbAssetTypeWrap.style.display = onbKindSelect.value === 'asset' ? '' : 'none';
+      });
+
+      async function loadOnbItemTypes() {
+        const listEl = document.getElementById('onbItemTypesList');
+        listEl.className = 'spinner-row';
+        listEl.textContent = t('loading');
+        try {
+          const { itemTypes } = await api('/onboarding/item-types');
+          listEl.className = '';
+          listEl.innerHTML = itemTypes.length ? `
+            <div class="table-scroll">
+              <table class="users-table">
+                <thead><tr><th>${t('field_label_it')}</th><th>${t('field_label_en')}</th><th>${t('onboarding_kind_label')}</th><th>${t('onboarding_routed_to_label')}</th><th>${t('table_status')}</th><th></th></tr></thead>
+                <tbody>
+                  ${itemTypes.map((it) => `
+                    <tr>
+                      <td>${escapeHtml(it.label_it)}</td>
+                      <td>${escapeHtml(it.label_en)}</td>
+                      <td>${onboardingKindLabels()[it.kind] || it.kind}</td>
+                      <td>
+                        <select class="onbItemGroupSel groupSel" data-id="${it.id}">
+                          <option value="">${t('option_none')}</option>
+                          ${groupOptionsCache.map((g) => `<option value="${g.id}" ${it.default_group_id === g.id ? 'selected' : ''}>${escapeHtml(g.name)}</option>`).join('')}
+                        </select>
+                      </td>
+                      <td><label class="checkbox-field"><input type="checkbox" class="onbItemEnabledCheck" data-id="${it.id}" ${it.enabled ? 'checked' : ''} /><span>${t('onboarding_enabled_label')}</span></label></td>
+                      <td><button type="button" class="icon-btn deleteOnbItemBtn" data-id="${it.id}" title="${t('btn_delete')}">${icon('trash')}</button></td>
+                    </tr>`).join('')}
+                </tbody>
+              </table>
+            </div>` : `<p class="hint">${t('no_onboarding_items_hint')}</p>`;
+
+          listEl.querySelectorAll('.onbItemGroupSel').forEach((sel) => {
+            sel.addEventListener('change', async () => {
+              try {
+                await api(`/onboarding/item-types/${sel.dataset.id}`, { method: 'PATCH', body: { defaultGroupId: sel.value || null } });
+                showToast(t('toast_onboarding_item_type_updated'), 'success');
+              } catch (err) {
+                showToast(err.message, 'error');
+              }
+            });
+          });
+          listEl.querySelectorAll('.onbItemEnabledCheck').forEach((cb) => {
+            cb.addEventListener('change', async () => {
+              try {
+                await api(`/onboarding/item-types/${cb.dataset.id}`, { method: 'PATCH', body: { enabled: cb.checked } });
+                showToast(t('toast_onboarding_item_type_updated'), 'success');
+              } catch (err) {
+                showToast(err.message, 'error');
+                cb.checked = !cb.checked;
+              }
+            });
+          });
+          listEl.querySelectorAll('.deleteOnbItemBtn').forEach((btn) => {
+            btn.addEventListener('click', async () => {
+              if (!confirm(t('confirm_delete_onboarding_item'))) return;
+              try {
+                await api(`/onboarding/item-types/${btn.dataset.id}`, { method: 'DELETE' });
+                showToast(t('toast_onboarding_item_type_deleted'), 'success');
+                loadOnbItemTypes();
+              } catch (err) {
+                showToast(err.message, 'error');
+              }
+            });
+          });
+        } catch (err) {
+          listEl.className = '';
+          listEl.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
+        }
+      }
+
+      guardForm(document.getElementById('newOnbItemForm'), async () => {
+        const errEl = document.getElementById('onbItemTypeError');
+        errEl.textContent = '';
+        const labelIt = document.getElementById('newOnbItemLabelIt').value.trim();
+        const labelEn = document.getElementById('newOnbItemLabelEn').value.trim();
+        if (!labelIt || !labelEn) return;
+        try {
+          await api('/onboarding/item-types', {
+            method: 'POST',
+            body: {
+              itemKey: labelEn,
+              labelIt,
+              labelEn,
+              kind: onbKindSelect.value,
+              assetType: document.getElementById('newOnbItemAssetType').value,
+              defaultGroupId: document.getElementById('newOnbItemGroup').value || null,
+            },
+          });
+          document.getElementById('newOnbItemForm').reset();
+          onbAssetTypeWrap.style.display = 'none';
+          showToast(t('toast_onboarding_item_type_created'), 'success');
+          loadOnbItemTypes();
+        } catch (err) {
+          errEl.textContent = err.message;
+        }
+      });
+
+      loadOnbItemTypes();
 
       guardForm(document.getElementById('createStaffForm'), async (e) => {
         const errEl = document.getElementById('createStaffError');
@@ -4579,6 +4824,350 @@
     loadAssets();
   }
 
+  async function renderOnboarding(param) {
+    if (param === 'new') return renderOnboardingForm();
+    if (param) return renderOnboardingDetail(param);
+    return renderOnboardingList();
+  }
+
+  async function renderOnboardingList() {
+    const groups = await api('/groups').then((r) => r.groups).catch(() => []);
+    appEl.innerHTML = `
+      <div class="view-header">
+        <div>
+          <h1>${icon('userCircle')} ${t('nav_onboarding')}</h1>
+          <p class="hint">${t('onboarding_list_hint')}</p>
+        </div>
+        <a href="#/onboarding/new" class="btn btn-sm">${icon('plus')} ${t('btn_new_onboarding')}</a>
+      </div>
+      <div class="filters">
+        <select id="onbStatusFilter">
+          <option value="">${t('filter_all_statuses')}</option>
+          ${Object.entries(onboardingStatusLabels()).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
+        </select>
+        <select id="onbGroupFilter">${groupOptionsHtml(groups, '', t('all_groups_option'))}</select>
+      </div>
+      <div id="onbListWrap" class="card spinner-row">${t('loading')}</div>`;
+
+    const statusFilter = document.getElementById('onbStatusFilter');
+    const groupFilter = document.getElementById('onbGroupFilter');
+
+    async function load() {
+      const wrap = document.getElementById('onbListWrap');
+      wrap.className = 'card spinner-row';
+      wrap.textContent = t('loading');
+      try {
+        const params = new URLSearchParams();
+        if (statusFilter.value) params.set('status', statusFilter.value);
+        if (groupFilter.value) params.set('group', groupFilter.value);
+        const { requests } = await api(`/onboarding?${params.toString()}`);
+        wrap.className = 'card';
+        wrap.innerHTML = requests.length ? `
+          <div class="table-scroll">
+            <table class="users-table">
+              <thead><tr><th>${t('field_employee_name')}</th><th>${t('table_status')}</th><th>${t('onboarding_progress')}</th><th>${t('field_requested_by')}</th><th>${t('table_created')}</th></tr></thead>
+              <tbody>
+                ${requests.map((r) => `
+                  <tr class="clickable-row" data-id="${r.id}">
+                    <td>${escapeHtml(r.employee_name)}</td>
+                    <td><span class="badge badge-${r.status}">${onboardingStatusLabels()[r.status] || r.status}</span></td>
+                    <td>${r.item_done_count}/${r.item_count}</td>
+                    <td>${escapeHtml(r.requested_by_name)}</td>
+                    <td>${formatDate(r.created_at)}</td>
+                  </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>` : `<p class="hint">${t('no_onboarding_found')}</p>`;
+        wrap.querySelectorAll('.clickable-row').forEach((row) => {
+          row.addEventListener('click', () => { location.hash = `#/onboarding/${row.dataset.id}`; });
+        });
+      } catch (err) {
+        wrap.className = '';
+        wrap.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
+      }
+    }
+
+    statusFilter.addEventListener('change', load);
+    groupFilter.addEventListener('change', load);
+    load();
+  }
+
+  async function renderOnboardingForm() {
+    let itemTypes = [];
+    let users = [];
+    try {
+      [itemTypes, users] = await Promise.all([
+        api('/onboarding/item-types').then((r) => r.itemTypes.filter((it) => it.enabled)),
+        api('/users').then((r) => r.users),
+      ]);
+    } catch {}
+
+    appEl.innerHTML = `
+      <div class="view-header">
+        <div>
+          <h1>${icon('userCircle')} ${t('btn_new_onboarding')}</h1>
+          <p class="hint">${t('onboarding_form_hint')}</p>
+        </div>
+      </div>
+      <div class="card" style="max-width:760px">
+        <form id="onbForm" class="form-grid" style="max-width:none">
+          <div class="field-row">
+            <div class="field"><label for="onbEmployeeName">${t('field_employee_name')}</label><input id="onbEmployeeName" required /></div>
+            <div class="field"><label for="onbEmployeeEmail">${t('field_employee_email')}</label><input id="onbEmployeeEmail" type="email" /></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label for="onbStartDate">${t('field_start_date')}</label><input id="onbStartDate" type="date" /></div>
+            <div class="field">
+              <label for="onbEmployeeUser">${t('field_existing_user_optional')}</label>
+              <select id="onbEmployeeUser">
+                <option value="">${t('option_none')}</option>
+                ${users.map((u) => `<option value="${u.id}">${escapeHtml(u.name)} · ${escapeHtml(u.email)}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+          <div class="field"><label for="onbNotes">${t('field_notes')}</label><textarea id="onbNotes" rows="2"></textarea></div>
+          <div class="field">
+            <label>${t('onboarding_checklist_label')}</label>
+            <div class="onb-checklist">
+              ${itemTypes.map((it) => `
+                <label class="checkbox-field">
+                  <input type="checkbox" class="onbItemCheck" value="${it.id}" checked />
+                  <span>${escapeHtml(getLang() === 'en' ? it.label_en : it.label_it)}${it.default_group_name ? ` <span class="hint">→ ${escapeHtml(it.default_group_name)}</span>` : ''}</span>
+                </label>`).join('')}
+            </div>
+          </div>
+          <div class="field">
+            <label for="onbAttachmentInput">${t('onboarding_attachment_label')}</label>
+            <input id="onbAttachmentInput" type="file" />
+            <p class="hint">${t('onboarding_attachment_hint')}</p>
+          </div>
+          <p class="error-text" id="onbFormError"></p>
+          <div><button class="btn btn-sm" type="submit">${t('btn_start_onboarding')}</button></div>
+        </form>
+      </div>`;
+
+    guardForm(document.getElementById('onbForm'), async () => {
+      const errEl = document.getElementById('onbFormError');
+      errEl.textContent = '';
+      const name = document.getElementById('onbEmployeeName').value.trim();
+      if (!name) return;
+      const itemTypeIds = Array.from(document.querySelectorAll('.onbItemCheck:checked')).map((el) => Number(el.value));
+      try {
+        const { request } = await api('/onboarding', {
+          method: 'POST',
+          body: {
+            employeeName: name,
+            employeeEmail: document.getElementById('onbEmployeeEmail').value.trim(),
+            startDate: document.getElementById('onbStartDate').value || null,
+            employeeUserId: document.getElementById('onbEmployeeUser').value || null,
+            notes: document.getElementById('onbNotes').value.trim(),
+            itemTypeIds,
+          },
+        });
+        const file = document.getElementById('onbAttachmentInput').files[0];
+        if (file) {
+          await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = async () => {
+              try {
+                await api(`/onboarding/${request.id}/attachments`, { method: 'POST', body: { fileName: file.name, dataUrl: reader.result } });
+              } catch {}
+              resolve();
+            };
+            reader.readAsDataURL(file);
+          });
+        }
+        showToast(t('toast_onboarding_created'), 'success');
+        location.hash = `#/onboarding/${request.id}`;
+      } catch (err) {
+        errEl.textContent = err.message;
+      }
+    });
+  }
+
+  async function renderOnboardingDetail(id) {
+    appEl.innerHTML = `<div class="card spinner-row">${t('loading')}</div>`;
+    let request, items, attachments;
+    try {
+      ({ request, items, attachments } = await api(`/onboarding/${id}`));
+    } catch (err) {
+      appEl.innerHTML = `<div class="card"><p class="error-text">${escapeHtml(err.message)}</p></div>`;
+      return;
+    }
+
+    let staffAndUsers = [];
+    try { staffAndUsers = (await api('/users')).users; } catch {}
+
+    const canEditNotes = isStaff();
+
+    appEl.innerHTML = `
+      <div class="view-header">
+        <div>
+          <h1>${icon('userCircle')} ${escapeHtml(request.employee_name)}</h1>
+          <p class="hint">${t('onboarding_requested_by_label')} ${escapeHtml(request.requested_by_name)} · ${formatDate(request.created_at)}</p>
+        </div>
+        <span class="badge badge-${request.status}">${onboardingStatusLabels()[request.status] || request.status}</span>
+      </div>
+      <div class="ticket-detail-grid">
+        <div>
+          <div class="card">
+            <h3 class="section-title" style="margin-top:0">${t('onboarding_checklist_label')}</h3>
+            <div id="onbItemsList"></div>
+          </div>
+        </div>
+        <div>
+          <div class="card">
+            <h3 class="section-title" style="margin-top:0">${t('onboarding_details_title')}</h3>
+            <p><strong>${t('field_employee_email')}:</strong> ${escapeHtml(request.employee_email || '—')}</p>
+            <p><strong>${t('field_start_date')}:</strong> ${request.start_date || '—'}</p>
+            <p><strong>${t('field_existing_user_optional')}:</strong> ${escapeHtml(request.employee_user_name || '—')}</p>
+            ${canEditNotes ? `
+              <div class="field"><label for="onbNotesEdit">${t('field_notes')}</label><textarea id="onbNotesEdit" rows="3">${escapeHtml(request.notes || '')}</textarea></div>
+              <button type="button" class="btn btn-ghost btn-sm" id="onbSaveNotesBtn">${t('btn_save')}</button>
+            ` : `<p>${escapeHtml(request.notes || '')}</p>`}
+          </div>
+          <div class="card">
+            <h3 class="section-title" style="margin-top:0">${t('attachments_title')}</h3>
+            <div id="onbAttachmentsList" class="attachments-list">
+              ${attachments.length ? attachments.map((a) => `
+                <div class="attachment-row" data-id="${a.id}">
+                  ${icon(attachmentIconName(a.mime_type), 'attachment-icon')}
+                  <div class="attachment-info">
+                    <span class="attachment-name">${escapeHtml(a.file_name)}</span>
+                    <span class="attachment-meta">${formatFileSize(a.size_bytes)} · ${escapeHtml(a.uploader_name || '')} · ${formatDate(a.created_at)}</span>
+                  </div>
+                  <button type="button" class="icon-btn onbAttachmentDownloadBtn" data-id="${a.id}" title="${t('btn_download')}">${icon('download')}</button>
+                </div>`).join('') : `<p class="hint">${t('no_attachments_hint')}</p>`}
+            </div>
+            <label class="btn btn-ghost btn-sm" style="margin-top:0.75rem;display:inline-flex">
+              ${icon('paperclip')} ${t('btn_add_attachment')}
+              <input id="onbAttachmentInput2" type="file" style="display:none" />
+            </label>
+          </div>
+        </div>
+      </div>`;
+
+    function renderItems() {
+      const listEl = document.getElementById('onbItemsList');
+      listEl.innerHTML = items.map((it) => `
+        <div class="onb-item-row" data-id="${it.id}">
+          <div class="onb-item-head">
+            <span class="onb-item-name">${escapeHtml(getLang() === 'en' ? it.label_en : it.label_it)}</span>
+            ${it.group_name ? `<span class="org-node-badge">${escapeHtml(it.group_name)}</span>` : ''}
+            <select class="onbItemStatusSel" data-id="${it.id}">
+              ${Object.entries(onboardingItemStatusLabels()).map(([v, l]) => `<option value="${v}" ${it.status === v ? 'selected' : ''}>${l}</option>`).join('')}
+            </select>
+          </div>
+          ${it.kind === 'copy_user' ? `
+            <div class="field">
+              <label>${t('onboarding_copy_from_label')}</label>
+              <select class="onbCopyFromSel" data-id="${it.id}">
+                <option value="">${t('option_none')}</option>
+                ${staffAndUsers.map((u) => `<option value="${u.id}" ${it.copy_from_user_id === u.id ? 'selected' : ''}>${escapeHtml(u.name)} · ${escapeHtml(u.email)}</option>`).join('')}
+              </select>
+            </div>` : ''}
+          ${it.kind === 'license' ? `
+            <div class="field">
+              <label>${t('onboarding_license_label')}</label>
+              <input type="text" class="onbLicenseInput" data-id="${it.id}" value="${escapeHtml(it.license_note || '')}" placeholder="${t('onboarding_license_placeholder')}" />
+            </div>` : ''}
+          ${it.kind === 'asset' && it.asset_id ? `<p class="hint">${t('onboarding_asset_created_prefix')} ${escapeHtml(it.asset_name || '')}${it.asset_tag ? ' · ' + escapeHtml(it.asset_tag) : ''}</p>` : ''}
+          ${it.status === 'done' && it.completed_by_name ? `<p class="hint">${t('onboarding_completed_by_prefix')} ${escapeHtml(it.completed_by_name)} · ${formatDate(it.completed_at)}</p>` : ''}
+        </div>`).join('') || `<p class="hint">${t('no_onboarding_items_hint')}</p>`;
+
+      listEl.querySelectorAll('.onbItemStatusSel').forEach((sel) => {
+        sel.addEventListener('change', async () => {
+          try {
+            const { item } = await api(`/onboarding/items/${sel.dataset.id}`, { method: 'PATCH', body: { status: sel.value } });
+            items = items.map((it) => (it.id === item.id ? item : it));
+            renderItems();
+            showToast(t('toast_onboarding_item_updated'), 'success');
+          } catch (err) {
+            showToast(err.message, 'error');
+          }
+        });
+      });
+      listEl.querySelectorAll('.onbCopyFromSel').forEach((sel) => {
+        sel.addEventListener('change', async () => {
+          try {
+            await api(`/onboarding/items/${sel.dataset.id}`, { method: 'PATCH', body: { copyFromUserId: sel.value || null } });
+            showToast(t('toast_onboarding_item_updated'), 'success');
+          } catch (err) {
+            showToast(err.message, 'error');
+          }
+        });
+      });
+      listEl.querySelectorAll('.onbLicenseInput').forEach((input) => {
+        input.addEventListener('change', async () => {
+          try {
+            await api(`/onboarding/items/${input.dataset.id}`, { method: 'PATCH', body: { licenseNote: input.value.trim() } });
+            showToast(t('toast_onboarding_item_updated'), 'success');
+          } catch (err) {
+            showToast(err.message, 'error');
+          }
+        });
+      });
+    }
+    renderItems();
+
+    const saveNotesBtn = document.getElementById('onbSaveNotesBtn');
+    if (saveNotesBtn) {
+      saveNotesBtn.addEventListener('click', async () => {
+        try {
+          await api(`/onboarding/${id}`, { method: 'PATCH', body: { notes: document.getElementById('onbNotesEdit').value.trim() } });
+          showToast(t('toast_onboarding_updated'), 'success');
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      });
+    }
+
+    document.querySelectorAll('.onbAttachmentDownloadBtn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        try {
+          const { attachment } = await api(`/onboarding/${id}/attachments/${btn.dataset.id}`);
+          const res = await fetch(attachment.data);
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = attachment.file_name;
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          URL.revokeObjectURL(url);
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      });
+    });
+
+    const attachmentInput2 = document.getElementById('onbAttachmentInput2');
+    if (attachmentInput2) {
+      attachmentInput2.addEventListener('change', () => {
+        const file = attachmentInput2.files[0];
+        if (!file) return;
+        if (file.size > 5 * 1024 * 1024) {
+          showToast(t('attachment_too_large'), 'error');
+          attachmentInput2.value = '';
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = async () => {
+          try {
+            await api(`/onboarding/${id}/attachments`, { method: 'POST', body: { fileName: file.name, dataUrl: reader.result } });
+            showToast(t('toast_attachment_added'), 'success');
+            renderOnboardingDetail(id);
+          } catch (err) {
+            showToast(err.message, 'error');
+            attachmentInput2.value = '';
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+  }
+
   async function renderSearch() {
     let groups = [];
     let tags = [];
@@ -4923,7 +5512,7 @@
 
     function buildExportRows() {
       return filteredTickets.map((tk) => ({
-        [t('report_col_number')]: `#${tk.id}`,
+        [t('report_col_number')]: `#${formatTicketNumber(tk.id)}`,
         [t('report_col_subject')]: tk.subject,
         [t('report_col_type')]: typeLabels()[tk.type] || tk.type,
         [t('report_col_status')]: statusLabels()[tk.status] || tk.status,
@@ -5086,7 +5675,7 @@
     function buildExportRows() {
       return applyKindFilter(currentEntries).map((e) => ({
         [t('audit_col_date')]: e.created_at,
-        [t('audit_col_ticket')]: e.ticket_id ? `#${e.ticket_id}` : '',
+        [t('audit_col_ticket')]: e.ticket_id ? `#${formatTicketNumber(e.ticket_id)}` : '',
         [t('audit_col_subject')]: e.ticket_subject || '',
         [t('audit_col_kind')]: kindLabel(e),
         [t('audit_col_actor')]: e.actor_name || '',
@@ -5282,9 +5871,9 @@
           <div class="divider"></div>
           <div class="field">
             <label for="orgLogoInput">${t('field_org_logo')}</label>
-            <div style="display:flex;align-items:center;gap:0.85rem">
+            <div style="display:flex;align-items:center;gap:0.85rem;flex-wrap:wrap">
               <img id="orgLogoPreview" src="img/icon.svg" alt="" width="44" height="44" style="border-radius:8px;object-fit:contain;background:var(--surface-alt)" />
-              <input id="orgLogoInput" type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" />
+              <input id="orgLogoInput" type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" style="max-width:100%" />
               <button type="button" id="orgLogoRemoveBtn" class="btn btn-sm btn-outline-danger" hidden>${t('btn_remove_logo')}</button>
             </div>
             <span class="hint">${t('logo_hint')}</span>

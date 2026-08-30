@@ -1,5 +1,6 @@
 const nodemailer = require('nodemailer');
 const db = require('./db/database');
+const { formatTicketNumber } = require('./lib/ticketNumber');
 
 function isConfigured() {
   return Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
@@ -38,11 +39,11 @@ async function getOrgName() {
 
 const STRINGS = {
   it: {
-    resolvedSubject: (id, subject) => `Ticket #${id} risolto: ${subject}`,
+    resolvedSubject: (id, subject) => `Ticket ${formatTicketNumber(id)} risolto: ${subject}`,
     resolvedText: (name, id, subject, org) => [
       `Ciao ${name || ''},`,
       '',
-      `il tuo ticket #${id} "${subject}" è stato contrassegnato come risolto.`,
+      `il tuo ticket ${formatTicketNumber(id)} "${subject}" è stato contrassegnato come risolto.`,
       'Se il problema persiste puoi riaprirlo direttamente dalla piattaforma di ticketing.',
       '',
       `— ${org}`,
@@ -74,11 +75,11 @@ const STRINGS = {
     ].join('\n'),
   },
   en: {
-    resolvedSubject: (id, subject) => `Ticket #${id} resolved: ${subject}`,
+    resolvedSubject: (id, subject) => `Ticket ${formatTicketNumber(id)} resolved: ${subject}`,
     resolvedText: (name, id, subject, org) => [
       `Hi ${name || ''},`,
       '',
-      `your ticket #${id} "${subject}" has been marked as resolved.`,
+      `your ticket ${formatTicketNumber(id)} "${subject}" has been marked as resolved.`,
       'If the issue persists, you can reopen it directly from the ticketing platform.',
       '',
       `— ${org}`,

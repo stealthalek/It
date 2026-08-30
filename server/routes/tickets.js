@@ -6,6 +6,7 @@ const realtime = require('../realtime');
 const mailer = require('../mailer');
 const { notifyUser } = require('../notifications');
 const { businessMillisBetween, computeSlaStatus, computeSlaRemaining, withSla } = require('../sla');
+const { formatTicketNumber } = require('../lib/ticketNumber');
 
 const router = express.Router();
 router.use(authenticate);
@@ -154,8 +155,8 @@ async function notifyStaffOfNewTicket(ticket) {
   const recipients = staff.filter((u) => u.id !== ticket.created_by && (u.is_super_admin || !ticket.group_id || u.group_id === ticket.group_id));
   for (const u of recipients) {
     notifyUser(u.id, ticket.id, {
-      it: `Nuovo ticket #${ticket.id}: ${ticket.subject}`,
-      en: `New ticket #${ticket.id}: ${ticket.subject}`,
+      it: `Nuovo ticket #${formatTicketNumber(ticket.id)}: ${ticket.subject}`,
+      en: `New ticket #${formatTicketNumber(ticket.id)}: ${ticket.subject}`,
     }).catch(() => {});
   }
 }
@@ -351,7 +352,8 @@ router.get(
     }
     if (q && q.trim()) {
       const trimmed = q.trim();
-      const asId = /^\d+$/.test(trimmed) ? Number(trimmed) : null;
+      const normalizedId = trimmed.replace(/^#/, '').replace(/^tck-?/i, '').replace(/^0+(?=\d)/, '');
+      const asId = /^\d+$/.test(normalizedId) ? Number(normalizedId) : null;
       const requesterMatch = isStaff(req.user) ? ' OR creator.name LIKE ? OR creator.email LIKE ?' : '';
       if (asId !== null) {
         clauses.push(`(t.subject LIKE ? OR t.description LIKE ? OR t.id = ?${requesterMatch})`);
@@ -415,8 +417,8 @@ router.post(
     notifyStaffOfNewTicket(ticket).catch(() => {});
     if (beneficiary) {
       notifyUser(beneficiary.id, ticket.id, {
-        it: `${req.user.name} ha aperto il ticket #${ticket.id} per tuo conto: ${ticket.subject}`,
-        en: `${req.user.name} opened ticket #${ticket.id} on your behalf: ${ticket.subject}`,
+        it: `${req.user.name} ha aperto il ticket #${formatTicketNumber(ticket.id)} per tuo conto: ${ticket.subject}`,
+        en: `${req.user.name} opened ticket #${formatTicketNumber(ticket.id)} on your behalf: ${ticket.subject}`,
       }).catch(() => {});
     }
     res.status(201).json({ ticket: withSla(ticket) });
@@ -648,8 +650,8 @@ router.patch(
             events.push(`Assegnato a ${assignee.name}`);
             if (assignee.id !== req.user.id) {
               notifyUser(assignee.id, ticket.id, {
-                it: `Ti è stato assegnato il ticket #${ticket.id}: ${ticket.subject}`,
-                en: `Ticket #${ticket.id} has been assigned to you: ${ticket.subject}`,
+                it: `Ti è stato assegnato il ticket #${formatTicketNumber(ticket.id)}: ${ticket.subject}`,
+                en: `Ticket #${formatTicketNumber(ticket.id)} has been assigned to you: ${ticket.subject}`,
               }).catch(() => {});
             }
           }
@@ -758,23 +760,23 @@ router.patch(
       mailer.notifyTicketResolved(updated).catch((err) => console.error('Invio email fallito:', err.message));
       if (ticket.created_by !== req.user.id) {
         notifyUser(ticket.created_by, ticket.id, {
-          it: `Il ticket #${ticket.id} è stato risolto: ${ticket.subject}`,
-          en: `Ticket #${ticket.id} has been resolved: ${ticket.subject}`,
+          it: `Il ticket #${formatTicketNumber(ticket.id)} è stato risolto: ${ticket.subject}`,
+          en: `Ticket #${formatTicketNumber(ticket.id)} has been resolved: ${ticket.subject}`,
         }).catch(() => {});
       }
     }
     if (justSetWaiting && ticket.created_by !== req.user.id) {
       notifyUser(ticket.created_by, ticket.id, {
-        it: `Il ticket #${ticket.id} è in attesa di una tua risposta: ${ticket.subject}`,
-        en: `Ticket #${ticket.id} is awaiting your reply: ${ticket.subject}`,
+        it: `Il ticket #${formatTicketNumber(ticket.id)} è in attesa di una tua risposta: ${ticket.subject}`,
+        en: `Ticket #${formatTicketNumber(ticket.id)} is awaiting your reply: ${ticket.subject}`,
       }).catch(() => {});
     }
     if (events.length) {
       const watchers = await listWatchers(ticket.id);
       watchers.filter((w) => w.id !== req.user.id).forEach((w) => {
         notifyUser(w.id, ticket.id, {
-          it: `Il ticket #${ticket.id} che segui è stato aggiornato: ${ticket.subject}`,
-          en: `Ticket #${ticket.id} you follow was updated: ${ticket.subject}`,
+          it: `Il ticket #${formatTicketNumber(ticket.id)} che segui è stato aggiornato: ${ticket.subject}`,
+          en: `Ticket #${formatTicketNumber(ticket.id)} you follow was updated: ${ticket.subject}`,
         }).catch(() => {});
       });
     }
@@ -857,14 +859,14 @@ router.post(
     watchers.forEach((w) => { if (w.id !== req.user.id) notifyTargets.add(w.id); });
     for (const targetId of notifyTargets) {
       notifyUser(targetId, ticket.id, {
-        it: `Nuovo messaggio sul ticket #${ticket.id}: ${ticket.subject}`,
-        en: `New message on ticket #${ticket.id}: ${ticket.subject}`,
+        it: `Nuovo messaggio sul ticket #${formatTicketNumber(ticket.id)}: ${ticket.subject}`,
+        en: `New message on ticket #${formatTicketNumber(ticket.id)}: ${ticket.subject}`,
       }).catch(() => {});
     }
     if (autoReopened && ticket.assigned_to && ticket.assigned_to !== req.user.id) {
       notifyUser(ticket.assigned_to, ticket.id, {
-        it: `Il richiedente ha risposto: il ticket #${ticket.id} è tornato in lavorazione`,
-        en: `The requester replied: ticket #${ticket.id} is back in progress`,
+        it: `Il richiedente ha risposto: il ticket #${formatTicketNumber(ticket.id)} è tornato in lavorazione`,
+        en: `The requester replied: ticket #${formatTicketNumber(ticket.id)} is back in progress`,
       }).catch(() => {});
     }
 

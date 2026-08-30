@@ -9,9 +9,11 @@ router.use(authenticate);
 
 const GROUP_SELECT = `
   SELECT g.id, g.name, g.parent_id, parent.name AS parent_name, g.sla_response_hours, g.sla_resolve_hours,
-    g.work_start_hour, g.work_end_hour
+    g.work_start_hour, g.work_end_hour, g.manager_id, manager.name AS manager_name,
+    (SELECT COUNT(*) FROM users mem WHERE mem.group_id = g.id) AS member_count
   FROM groups g
   LEFT JOIN groups parent ON parent.id = g.parent_id
+  LEFT JOIN users manager ON manager.id = g.manager_id
 `;
 
 function validWorkHour(value) {
@@ -40,7 +42,7 @@ router.post(
   '/',
   requireRole('admin'),
   asyncHandler(async (req, res) => {
-    const { name, parentId, slaResponseHours, slaResolveHours, workStartHour, workEndHour } = req.body || {};
+    const { name, parentId, slaResponseHours, slaResolveHours, workStartHour, workEndHour, managerId } = req.body || {};
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Il nome del gruppo è obbligatorio' });
     }
@@ -66,7 +68,7 @@ router.post(
     }
 
     const info = await db.run(
-      'INSERT INTO groups (name, parent_id, sla_response_hours, sla_resolve_hours, work_start_hour, work_end_hour) VALUES (?, ?, ?, ?, ?, ?)',
+      'INSERT INTO groups (name, parent_id, sla_response_hours, sla_resolve_hours, work_start_hour, work_end_hour, manager_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
       [
         name.trim(),
         finalParentId,
@@ -74,6 +76,7 @@ router.post(
         slaResolveHours ? Number(slaResolveHours) : null,
         workStartHour !== undefined && workStartHour !== null ? Number(workStartHour) : 9,
         workEndHour !== undefined && workEndHour !== null ? Number(workEndHour) : 18,
+        managerId || null,
       ]
     );
     const group = await db.get(`${GROUP_SELECT} WHERE g.id = ?`, [Number(info.lastInsertRowid)]);
@@ -91,9 +94,21 @@ router.patch(
       return res.status(404).json({ error: 'Gruppo non trovato' });
     }
 
-    const { parentId, slaResponseHours, slaResolveHours, workStartHour, workEndHour } = req.body || {};
+    const { parentId, slaResponseHours, slaResolveHours, workStartHour, workEndHour, managerId, name } = req.body || {};
     const updates = [];
     const params = [];
+
+    if (name !== undefined) {
+      if (!name || !name.trim()) {
+        return res.status(400).json({ error: 'Il nome del gruppo è obbligatorio' });
+      }
+      updates.push('name = ?');
+      params.push(name.trim());
+    }
+    if (managerId !== undefined) {
+      updates.push('manager_id = ?');
+      params.push(managerId || null);
+    }
 
     if (workStartHour !== undefined && workStartHour !== null && !validWorkHour(workStartHour)) {
       return res.status(400).json({ error: 'Orario di inizio non valido' });

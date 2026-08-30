@@ -8,7 +8,7 @@ const router = express.Router();
 router.use(authenticate);
 router.use(requireRole('agent', 'admin'));
 
-const TYPES = ['laptop', 'desktop', 'monitor', 'telefono', 'altro'];
+const TYPES = ['laptop', 'desktop', 'monitor', 'telefono', 'tablet', 'altro'];
 const STATUSES = ['disponibile', 'in_uso', 'in_riparazione', 'dismesso'];
 const ASSIGNMENT_TYPES = ['permanente', 'prestito'];
 
