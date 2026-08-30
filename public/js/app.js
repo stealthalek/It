@@ -269,6 +269,7 @@
       confirm_delete_asset: 'Eliminare questo asset?', toast_asset_deleted: 'Asset eliminato', delete_asset_title: 'Elimina asset',
       search_hint: 'Cerca per numero ticket, parola chiave o richiedente: i risultati compaiono mentre scrivi.',
       search_placeholder_full: 'Numero ticket, parola chiave, richiedente...', all_groups_option: 'Tutti i gruppi', all_tags_option: 'Tutte le etichette',
+      filter_assigned_to_label: 'Assegnati a', filter_created_by_label: 'Aperti da', assets_assigned_title: 'Asset assegnati', no_assets_assigned: 'Nessun asset assegnato.',
       report_hint: 'Volumi, tempi di risoluzione e rispetto SLA per gruppo e per agente.',
       chart_volume_by_group: 'Volume ticket per gruppo', chart_avg_resolution: 'Tempo medio di risoluzione (ore) per gruppo',
       chart_sla_compliance: 'SLA rispettata per gruppo (%)', chart_load_by_agent: 'Carico ticket per agente',
@@ -459,6 +460,7 @@
       confirm_delete_asset: 'Delete this asset?', toast_asset_deleted: 'Asset deleted', delete_asset_title: 'Delete asset',
       search_hint: 'Search by ticket number, keyword or requester: results appear as you type.',
       search_placeholder_full: 'Ticket number, keyword, requester...', all_groups_option: 'All groups', all_tags_option: 'All tags',
+      filter_assigned_to_label: 'Assigned to', filter_created_by_label: 'Opened by', assets_assigned_title: 'Assigned assets', no_assets_assigned: 'No assets assigned.',
       report_hint: 'Volumes, resolution times and SLA compliance by group and agent.',
       chart_volume_by_group: 'Ticket volume by group', chart_avg_resolution: 'Average resolution time (hours) by group',
       chart_sla_compliance: 'SLA compliance by group (%)', chart_load_by_agent: 'Ticket load by agent',
@@ -3741,11 +3743,12 @@
 
     const isAdmin = state.user.role === 'admin';
     const isSelf = user.id === state.user.id;
-    const [groups, createdStats, assignedStats, allUsers] = await Promise.all([
+    const [groups, createdStats, assignedStats, allUsers, assignedAssets] = await Promise.all([
       isAdmin ? api('/groups').then((d) => d.groups).catch(() => []) : Promise.resolve([]),
       api(`/tickets?createdBy=${user.id}`).then((d) => d.tickets).catch(() => []),
       user.role !== 'customer' ? api(`/tickets?assigned=${user.id}`).then((d) => d.tickets).catch(() => []) : Promise.resolve([]),
       user.role !== 'customer' ? api('/users').then((d) => d.users).catch(() => []) : Promise.resolve([]),
+      user.role !== 'customer' ? api(`/assets?assignedTo=${user.id}`).then((d) => d.assets).catch(() => []) : Promise.resolve([]),
     ]);
     const directReports = allUsers.filter((u) => u.manager_id === user.id);
 
@@ -3810,16 +3813,32 @@
         <div class="card">
           <h3 class="section-title" style="margin-top:0">${t('ticket_activity_title')}</h3>
           <div class="stat-row" style="grid-template-columns:1fr 1fr">
-            <div class="stat-card"><div class="stat-value">${createdStats.length}</div><div class="stat-label">${t('opened_by_person')}</div></div>
-            ${user.role !== 'customer' ? `<div class="stat-card"><div class="stat-value">${assignedStats.length}</div><div class="stat-label">${t('assigned_to_person')}</div></div>` : ''}
+            <button type="button" id="statCreatedBtn" class="stat-card" style="text-align:left;cursor:pointer;border:1px solid var(--border)"><div class="stat-value">${createdStats.length}</div><div class="stat-label">${t('opened_by_person')}</div></button>
+            ${user.role !== 'customer' ? `<button type="button" id="statAssignedBtn" class="stat-card" style="text-align:left;cursor:pointer;border:1px solid var(--border)"><div class="stat-value">${assignedStats.length}</div><div class="stat-label">${t('assigned_to_person')}</div></button>` : ''}
           </div>
         </div>
+        ${user.role !== 'customer' ? `
+        <div class="card">
+          <h3 class="section-title" style="margin-top:0">${t('assets_assigned_title')}</h3>
+          ${assignedAssets.length ? `<ul class="plain-list">${assignedAssets.map((a) => `<li><a href="#/assets">${escapeHtml(a.name)}</a>${a.tag ? ' · ' + escapeHtml(a.tag) : ''} · ${assetTypeLabels()[a.asset_type] || a.asset_type}</li>`).join('')}</ul>` : `<p class="hint">${t('no_assets_assigned')}</p>`}
+        </div>` : ''}
         ${user.role !== 'customer' ? `
         <div class="card">
           <h3 class="section-title" style="margin-top:0">${t('direct_reports_title')}</h3>
           ${directReports.length ? `<ul class="plain-list">${directReports.map((r) => `<li><a href="#/users/${r.id}">${escapeHtml(r.name)}</a> · ${roleLabels()[r.role] || r.role}${groupLabel(r) ? ' · ' + escapeHtml(groupLabel(r)) : ''}</li>`).join('')}</ul>` : `<p class="hint">${t('no_direct_reports')}</p>`}
         </div>` : ''}
       </div>`;
+
+    document.getElementById('statCreatedBtn').addEventListener('click', () => {
+      sessionStorage.setItem('ticketing_search_created_by', `${user.id}|${user.name}`);
+      location.hash = '#/search';
+    });
+    if (user.role !== 'customer') {
+      document.getElementById('statAssignedBtn').addEventListener('click', () => {
+        sessionStorage.setItem('ticketing_search_assigned', `${user.id}|${user.name}`);
+        location.hash = '#/search';
+      });
+    }
 
     if (isAdmin) {
       document.getElementById('detailRole').addEventListener('change', async (e) => {
@@ -4187,15 +4206,33 @@
           ${tags.map((tg) => `<option value="${escapeHtml(tg.name)}">${escapeHtml(tg.name)}</option>`).join('')}
         </select>
       </div>
+      <div id="searchPersonChip"></div>
       <div id="searchResults" class="ticket-grid"></div>`;
 
     const resultsEl = document.getElementById('searchResults');
+    const personChipEl = document.getElementById('searchPersonChip');
     const qEl = document.getElementById('searchQuery');
     const typeEl = document.getElementById('searchType');
     const statusEl = document.getElementById('searchStatus');
     const priorityEl = document.getElementById('searchPriority');
     const groupEl = document.getElementById('searchGroup');
     const tagEl = document.getElementById('searchTag');
+
+    let personFilter = null;
+
+    function renderPersonChip() {
+      if (!personFilter) { personChipEl.innerHTML = ''; return; }
+      personChipEl.innerHTML = `
+        <div class="tag-chip tag-chip-removable" style="margin-bottom:0.85rem">
+          ${escapeHtml(personFilter.label)}: ${escapeHtml(personFilter.name)}
+          <button type="button" id="clearPersonFilterBtn" class="tagRemoveBtn" aria-label="${t('btn_delete')}">&times;</button>
+        </div>`;
+      document.getElementById('clearPersonFilterBtn').addEventListener('click', () => {
+        personFilter = null;
+        renderPersonChip();
+        runSearch();
+      });
+    }
 
     let debounceTimer;
     async function runSearch() {
@@ -4206,6 +4243,7 @@
       if (priorityEl.value) params.set('priority', priorityEl.value);
       if (groupEl.value) params.set('group', groupEl.value);
       if (tagEl.value) params.set('tag', tagEl.value);
+      if (personFilter) params.set(personFilter.param, personFilter.id);
       try {
         const { tickets } = await api(`/tickets?${params.toString()}`);
         renderTicketList(resultsEl, tickets);
@@ -4226,6 +4264,19 @@
       sessionStorage.removeItem('ticketing_search_group');
       groupEl.value = presetGroup;
     }
+
+    const presetAssigned = sessionStorage.getItem('ticketing_search_assigned');
+    const presetCreatedBy = sessionStorage.getItem('ticketing_search_created_by');
+    if (presetAssigned) {
+      sessionStorage.removeItem('ticketing_search_assigned');
+      const [id, name] = presetAssigned.split('|');
+      personFilter = { param: 'assigned', id, name, label: t('filter_assigned_to_label') };
+    } else if (presetCreatedBy) {
+      sessionStorage.removeItem('ticketing_search_created_by');
+      const [id, name] = presetCreatedBy.split('|');
+      personFilter = { param: 'createdBy', id, name, label: t('filter_created_by_label') };
+    }
+    renderPersonChip();
 
     runSearch();
   }

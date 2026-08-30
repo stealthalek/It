@@ -21,12 +21,16 @@ const ASSET_SELECT = `
 router.get(
   '/',
   asyncHandler(async (req, res) => {
-    const { status, q } = req.query;
+    const { status, q, assignedTo } = req.query;
     const clauses = [];
     const params = [];
     if (status && STATUSES.includes(status)) {
       clauses.push('a.status = ?');
       params.push(status);
+    }
+    if (assignedTo && /^\d+$/.test(assignedTo)) {
+      clauses.push('a.assigned_to = ?');
+      params.push(Number(assignedTo));
     }
     if (q && q.trim()) {
       clauses.push('(a.name LIKE ? OR a.tag LIKE ?)');
