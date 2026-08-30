@@ -265,6 +265,7 @@
       report_hint: 'Volumi, tempi di risoluzione e rispetto SLA per gruppo e per agente.',
       chart_volume_by_group: 'Volume ticket per gruppo', chart_avg_resolution: 'Tempo medio di risoluzione (ore) per gruppo',
       chart_sla_compliance: 'SLA rispettata per gruppo (%)', chart_load_by_agent: 'Carico ticket per agente',
+      chart_csat: 'Soddisfazione media per gruppo (su 5)', no_ratings_yet: 'Nessuna valutazione ancora.', report_col_rating: 'Valutazione',
       no_data: 'Nessun dato.', no_resolved_yet: 'Nessun ticket risolto ancora.',
       no_group_sla_configured: 'Nessun gruppo con SLA configurata.', no_assigned_tickets: 'Nessun ticket assegnato.',
       no_group_label: 'Senza gruppo',
@@ -440,6 +441,7 @@
       report_hint: 'Volumes, resolution times and SLA compliance by group and agent.',
       chart_volume_by_group: 'Ticket volume by group', chart_avg_resolution: 'Average resolution time (hours) by group',
       chart_sla_compliance: 'SLA compliance by group (%)', chart_load_by_agent: 'Ticket load by agent',
+      chart_csat: 'Average satisfaction by group (out of 5)', no_ratings_yet: 'No ratings yet.', report_col_rating: 'Rating',
       no_data: 'No data.', no_resolved_yet: 'No resolved tickets yet.',
       no_group_sla_configured: 'No group with SLA configured.', no_assigned_tickets: 'No assigned tickets.',
       no_group_label: 'No group',
@@ -3940,6 +3942,17 @@
         key: label, label, value: Math.round((met / total) * 100), color: 'var(--success)',
       })).sort((a, b) => b.value - a.value);
 
+      const ratedTickets = tickets.filter((tk) => tk.rating);
+      const csatByGroup = new Map();
+      ratedTickets.forEach((tk) => {
+        const key = groupLabel(tk) || noGroupLabel;
+        if (!csatByGroup.has(key)) csatByGroup.set(key, []);
+        csatByGroup.get(key).push(tk.rating);
+      });
+      const csatRows = [...csatByGroup.entries()].map(([label, values]) => ({
+        key: label, label, value: Math.round((values.reduce((a, b) => a + b, 0) / values.length) * 10) / 10, color: '#f5a623',
+      })).sort((a, b) => b.value - a.value);
+
       const agentCounts = new Map();
       tickets.forEach((tk) => {
         if (!tk.assignee_name) return;
@@ -3953,12 +3966,14 @@
         <div class="card chart-card"><h3 class="section-title" style="margin-top:0">${t('chart_volume_by_group')}</h3><div id="reportChartVolume"></div></div>
         <div class="card chart-card"><h3 class="section-title" style="margin-top:0">${t('chart_avg_resolution')}</h3><div id="reportChartAvg"></div></div>
         <div class="card chart-card"><h3 class="section-title" style="margin-top:0">${t('chart_sla_compliance')}</h3><div id="reportChartSla"></div></div>
-        <div class="card chart-card"><h3 class="section-title" style="margin-top:0">${t('chart_load_by_agent')}</h3><div id="reportChartAgent"></div></div>`;
+        <div class="card chart-card"><h3 class="section-title" style="margin-top:0">${t('chart_load_by_agent')}</h3><div id="reportChartAgent"></div></div>
+        <div class="card chart-card"><h3 class="section-title" style="margin-top:0">${t('chart_csat')}</h3><div id="reportChartCsat"></div></div>`;
 
       renderChart(document.getElementById('reportChartVolume'), 'report_volume', volumeRows, tickets.length, t('no_data'));
       renderChart(document.getElementById('reportChartAvg'), 'report_avg', avgRows, 0, t('no_resolved_yet'), { barOpts: { showPct: false, suffix: ' h' }, donutTotal: avgRows.reduce((a, r) => a + r.value, 0) });
       renderChart(document.getElementById('reportChartSla'), 'report_sla', slaRows, 0, t('no_group_sla_configured'), { barOpts: { showPct: false, suffix: '%' }, donutTotal: slaRows.reduce((a, r) => a + r.value, 0) });
       renderChart(document.getElementById('reportChartAgent'), 'report_agent', agentRows, tickets.length, t('no_assigned_tickets'));
+      renderChart(document.getElementById('reportChartCsat'), 'report_csat', csatRows, 0, t('no_ratings_yet'), { barOpts: { showPct: false, suffix: ' /5' }, donutTotal: csatRows.reduce((a, r) => a + r.value, 0) });
     }
 
     teamSel.addEventListener('change', () => { populateMemberOptions(); renderAll(); });
@@ -3986,6 +4001,7 @@
           ? Math.round(((new Date(tk.resolved_at.replace(' ', 'T') + 'Z') - new Date(tk.created_at.replace(' ', 'T') + 'Z')) / 3600000) * 10) / 10
           : '',
         [t('report_col_sla')]: tk.sla_status ? (slaLabels()[tk.sla_status] || tk.sla_status) : '',
+        [t('report_col_rating')]: tk.rating || '',
       }));
     }
 
