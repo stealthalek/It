@@ -6,6 +6,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
+const jwt = require('jsonwebtoken');
 
 const db = require('./db/database');
 const { initRealtime } = require('./realtime');
@@ -52,11 +53,24 @@ app.use('/api', (req, res, next) => {
   next();
 });
 
+function apiLimiterKey(req, res) {
+  const header = req.headers.authorization || '';
+  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
+  if (token) {
+    try {
+      const payload = jwt.decode(token);
+      if (payload && payload.sub) return `user:${payload.sub}`;
+    } catch {}
+  }
+  return rateLimit.ipKeyGenerator(req.ip);
+}
+
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 3000,
+  max: 6000,
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: apiLimiterKey,
 });
 app.use('/api', apiLimiter);
 
