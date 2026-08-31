@@ -522,6 +522,8 @@
       onboarding_license_placeholder: 'es. E3, Business Standard...', onboarding_asset_created_prefix: 'Asset generato:',
       onboarding_completed_by_prefix: 'Completato da', no_onboarding_items_hint: 'Nessuna voce.',
       toast_onboarding_item_updated: 'Voce aggiornata', toast_onboarding_updated: 'Onboarding aggiornato',
+      btn_complete_all_onboarding: 'Completa tutto', confirm_complete_all_onboarding: 'Completare tutte le voci di questo onboarding? Tutti i ticket collegati ancora aperti verranno risolti.',
+      toast_onboarding_completed_all: '{n} voci completate',
       admin_onboarding_title: 'Onboarding — voci checklist', admin_onboarding_hint: 'Definisci le voci disponibili per le pratiche di onboarding e a quale team vengono instradate.',
       field_label_it: 'Nome (IT)', field_label_en: 'Nome (EN)', onboarding_kind_label: 'Tipo di voce', onboarding_routed_to_label: 'Instradata a',
       btn_add_onboarding_item: 'Aggiungi voce', onboarding_enabled_label: 'Attiva', confirm_delete_onboarding_item: 'Eliminare questa voce?',
@@ -812,6 +814,8 @@
       onboarding_license_placeholder: 'e.g. E3, Business Standard...', onboarding_asset_created_prefix: 'Asset created:',
       onboarding_completed_by_prefix: 'Completed by', no_onboarding_items_hint: 'No items.',
       toast_onboarding_item_updated: 'Item updated', toast_onboarding_updated: 'Onboarding updated',
+      btn_complete_all_onboarding: 'Complete all', confirm_complete_all_onboarding: 'Complete all items for this onboarding? All still-open linked tickets will be resolved.',
+      toast_onboarding_completed_all: '{n} items completed',
       admin_onboarding_title: 'Onboarding — checklist items', admin_onboarding_hint: 'Define the items available for onboarding requests and which team they route to.',
       field_label_it: 'Name (IT)', field_label_en: 'Name (EN)', onboarding_kind_label: 'Item type', onboarding_routed_to_label: 'Routed to',
       btn_add_onboarding_item: 'Add item', onboarding_enabled_label: 'Enabled', confirm_delete_onboarding_item: 'Delete this item?',
@@ -6282,18 +6286,21 @@
 
   async function renderOnboardingDetail(id) {
     appEl.innerHTML = `<div class="card spinner-row">${t('loading')}</div>`;
-    let request, items, attachments;
+    let request, items, attachments, staffAndUsers = [];
     try {
-      ({ request, items, attachments } = await api(`/onboarding/${id}`));
+      const [detailData, usersData] = await Promise.all([
+        api(`/onboarding/${id}`),
+        api('/users').catch(() => ({ users: [] })),
+      ]);
+      ({ request, items, attachments } = detailData);
+      staffAndUsers = usersData.users;
     } catch (err) {
       appEl.innerHTML = `<div class="card"><p class="error-text">${escapeHtml(err.message)}</p></div>`;
       return;
     }
 
-    let staffAndUsers = [];
-    try { staffAndUsers = (await api('/users')).users; } catch {}
-
     const canEditNotes = isStaff();
+    const hasPendingItems = items.some((it) => !['done', 'skipped'].includes(it.status));
 
     appEl.innerHTML = `
       <div class="view-header">
@@ -6301,7 +6308,10 @@
           <h1>${icon('userCircle')} ${escapeHtml(request.employee_name)}</h1>
           <p class="hint">${t('onboarding_requested_by_label')} ${escapeHtml(request.requested_by_name)} · ${formatDate(request.created_at)}</p>
         </div>
-        <span class="badge badge-${request.status}">${onboardingStatusLabels()[request.status] || request.status}</span>
+        <div style="display:flex;align-items:center;gap:0.75rem">
+          ${canEditNotes && hasPendingItems ? `<button type="button" class="btn btn-sm" id="onbCompleteAllBtn">${icon('check')} ${t('btn_complete_all_onboarding')}</button>` : ''}
+          <span class="badge badge-${request.status}">${onboardingStatusLabels()[request.status] || request.status}</span>
+        </div>
       </div>
       <div class="ticket-detail-grid">
         <div>
@@ -6418,6 +6428,20 @@
         try {
           await api(`/onboarding/${id}`, { method: 'PATCH', body: { notes: document.getElementById('onbNotesEdit').value.trim() } });
           showToast(t('toast_onboarding_updated'), 'success');
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      });
+    }
+
+    const completeAllBtn = document.getElementById('onbCompleteAllBtn');
+    if (completeAllBtn) {
+      completeAllBtn.addEventListener('click', async () => {
+        if (!confirm(t('confirm_complete_all_onboarding'))) return;
+        try {
+          const result = await api(`/onboarding/${id}/complete-all`, { method: 'POST' });
+          showToast(t('toast_onboarding_completed_all').replace('{n}', result.completedCount), 'success');
+          renderOnboardingDetail(id);
         } catch (err) {
           showToast(err.message, 'error');
         }
