@@ -473,6 +473,9 @@
       onboarding_addon_label_label: 'Componente aggiuntivo', onboarding_addon_label_placeholder: 'es. Dynamics',
       onboarding_pick_existing_user: 'Seleziona utente esistente...', onboarding_new_person_placeholder: 'oppure inserisci il nome se non è ancora un account',
       onboarding_addon_checkbox_prefix: 'Richiedi anche la licenza',
+      requester_context_title: 'Richiedente',
+      nav_orgchart: 'Organigramma', orgchart_hint: 'Struttura dei team e gerarchia dei manager, visibile a tutti.',
+      orgchart_search_placeholder: 'Cerca una persona per nome...', orgchart_view_members: 'Vedi membri', no_users_found: 'Nessuna persona trovata.',
     },
     en: {
       nav_dashboard: 'Tickets', nav_new: 'New ticket', nav_search: 'Search', nav_backlog: 'Backlog',
@@ -720,6 +723,9 @@
       onboarding_addon_label_label: 'Add-on', onboarding_addon_label_placeholder: 'e.g. Dynamics',
       onboarding_pick_existing_user: 'Select an existing user...', onboarding_new_person_placeholder: 'or type the name if they are not an account yet',
       onboarding_addon_checkbox_prefix: 'Also request the',
+      requester_context_title: 'Requester',
+      nav_orgchart: 'Org chart', orgchart_hint: 'Team structure and manager hierarchy, visible to everyone.',
+      orgchart_search_placeholder: 'Search a person by name...', orgchart_view_members: 'View members', no_users_found: 'No people found.',
     },
   };
   const LANG_LABELS = { it: 'Italiano', en: 'English' };
@@ -739,11 +745,11 @@
 
   const NAV_KEY_BY_ROUTE = {
     dashboard: 'nav_dashboard', new: 'nav_new', search: 'nav_search', backlog: 'nav_backlog',
-    assets: 'nav_assets', onboarding: 'nav_onboarding', report: 'nav_report', audit: 'nav_audit', admin: 'nav_admin', profile: 'nav_profile',
+    assets: 'nav_assets', onboarding: 'nav_onboarding', orgchart: 'nav_orgchart', report: 'nav_report', audit: 'nav_audit', admin: 'nav_admin', profile: 'nav_profile',
   };
   const NAV_ICON_BY_ROUTE = {
     dashboard: 'ticket', new: 'plus', search: 'inbox', backlog: 'check',
-    assets: 'monitor', onboarding: 'userCircle', report: 'activity', audit: 'eye', admin: 'shield', profile: 'userCircle',
+    assets: 'monitor', onboarding: 'userCircle', orgchart: 'globe', report: 'activity', audit: 'eye', admin: 'shield', profile: 'userCircle',
   };
 
   function applyChromeTranslations() {
@@ -1378,6 +1384,7 @@
         case 'backlog': return renderBacklog();
         case 'assets': return renderAssets();
         case 'onboarding': return renderOnboarding(param);
+        case 'orgchart': return renderOrgChartPublic();
         case 'search': return renderSearch();
         case 'report': return renderReport();
         case 'audit': return renderAudit();
@@ -2149,7 +2156,7 @@
           ${tk.assignee_name ? ` · ${t('assigned_to_label')} ${escapeHtml(tk.assignee_name)}` : ''}
           ${groupLabel(tk) ? ` · ${escapeHtml(groupLabel(tk))}` : ''}
         </div>
-        ${!tk.assignee_name && isStaff() ? `<button type="button" class="btn btn-sm assignMeBtn" data-id="${tk.id}">${icon('userCircle', 'badge-icon')} ${t('assign_to_me_btn')}</button>` : ''}
+        ${!tk.assignee_name && isStaff() ? `<button type="button" class="btn btn-sm assignMeBtn" data-id="${tk.id}" data-status="${tk.status}">${icon('userCircle', 'badge-icon')} ${t('assign_to_me_btn')}</button>` : ''}
       </a>`;
   }
 
@@ -2159,7 +2166,9 @@
         e.preventDefault();
         e.stopPropagation();
         try {
-          await api(`/tickets/${btn.dataset.id}`, { method: 'PATCH', body: { assigned_to: state.user.id } });
+          const body = { assigned_to: state.user.id };
+          if (btn.dataset.status === 'open') body.status = 'in_progress';
+          await api(`/tickets/${btn.dataset.id}`, { method: 'PATCH', body });
           showToast(t('toast_ticket_assigned_to_you'), 'success');
           route();
         } catch (err) {
@@ -2464,6 +2473,7 @@
     const canCancel = isOwner && !isStaff() && ['open', 'in_progress', 'waiting_customer'].includes(ticket.status) && !readOnly;
 
     let staffPanel = '';
+    let requesterPanel = '';
     let assigneesOptions = '';
     let groupOptions = '';
     let assetOptions = '';
@@ -2476,6 +2486,25 @@
             <optgroup label="${escapeHtml(group)}">
               ${members.map((u) => `<option value="${u.id}" ${ticket.assigned_to === u.id ? 'selected' : ''}>${escapeHtml(u.name)}</option>`).join('')}
             </optgroup>`).join('');
+
+        const requester = users.find((u) => u.id === ticket.created_by);
+        const beneficiary = ticket.on_behalf_of ? users.find((u) => u.id === ticket.on_behalf_of) : null;
+        const requesterCard = (person, label) => person ? `
+          <div class="requester-row">
+            <p class="hint" style="margin:0 0 0.2rem">${label}</p>
+            <p style="margin:0"><strong>${escapeHtml(person.name)}</strong> <span class="role-tag">${roleLabels()[person.role] || person.role}</span>${person.is_external ? ` <span class="role-tag role-tag-external">${t('external_badge')}</span>` : ''}</p>
+            <p class="hint" style="margin:0.1rem 0 0">${escapeHtml(person.email)}</p>
+            ${person.group_name ? `<p class="hint" style="margin:0.1rem 0 0">${t('field_group')}: ${escapeHtml(person.group_name)}${person.group_parent_name ? ` (${escapeHtml(person.group_parent_name)})` : ''}</p>` : ''}
+            ${person.manager_name ? `<p class="hint" style="margin:0.1rem 0 0">${t('manager_label')}: ${escapeHtml(person.manager_name)}</p>` : ''}
+          </div>` : '';
+        if (requester) {
+          requesterPanel = `
+            <div class="card">
+              <h3 class="section-title" style="margin-top:0">${icon('userCircle')} ${t('requester_context_title')}</h3>
+              ${requesterCard(requester, t('onboarding_requested_by_label'))}
+              ${beneficiary ? requesterCard(beneficiary, t('on_behalf_of_label')) : ''}
+            </div>`;
+        }
       } catch { assigneesOptions = ''; }
 
       try {
@@ -2644,7 +2673,7 @@
             </form>`}
           </div>
         </div>
-        <div>${staffPanel}</div>
+        <div>${staffPanel}${requesterPanel}</div>
       </div>`;
 
     const cannedPicker = document.getElementById('cannedPicker');
@@ -5424,6 +5453,94 @@
         reader.readAsDataURL(file);
       });
     }
+  }
+
+  async function renderOrgChartPublic() {
+    let groups = [];
+    let users = [];
+    try {
+      [groups, users] = await Promise.all([
+        api('/groups').then((r) => r.groups),
+        api('/users').then((r) => r.users),
+      ]);
+    } catch {}
+
+    const membersByGroup = new Map();
+    users.forEach((u) => {
+      if (!u.group_id) return;
+      if (!membersByGroup.has(u.group_id)) membersByGroup.set(u.group_id, []);
+      membersByGroup.get(u.group_id).push(u);
+    });
+    membersByGroup.forEach((list) => list.sort((a, b) => a.name.localeCompare(b.name)));
+
+    const tree = buildGroupTree(groups);
+
+    function personRow(u) {
+      return `
+        <div class="orgchart-person">
+          <span>${escapeHtml(u.name)}</span>
+          <span class="role-tag">${roleLabels()[u.role] || u.role}</span>
+          ${u.manager_name ? `<span class="hint">${t('manager_label')}: ${escapeHtml(u.manager_name)}</span>` : ''}
+        </div>`;
+    }
+
+    function nodeHtml(node) {
+      const members = membersByGroup.get(node.id) || [];
+      return `
+        <div class="org-branch">
+          <div class="org-node">
+            <div class="org-node-head">
+              ${node.children.length ? `<button type="button" class="org-collapse-toggle" data-branch-toggle title="${t('org_toggle_branch')}">${icon('chevronDown')}</button>` : '<span class="org-collapse-spacer"></span>'}
+              <div class="org-node-title">
+                <span class="org-node-name">${escapeHtml(node.name)}</span>
+                <span class="org-node-manager">${icon('userCircle', 'badge-icon')}${node.manager_name ? escapeHtml(node.manager_name) : t('org_no_manager')}</span>
+              </div>
+            </div>
+            <div class="org-node-stats">
+              <span class="org-node-badge">${icon('users', 'badge-icon')}${node.member_count || 0} ${t('org_member_count')}</span>
+            </div>
+            ${members.length ? `
+              <details class="orgchart-members">
+                <summary>${t('orgchart_view_members')}</summary>
+                <div class="orgchart-person-list">${members.map(personRow).join('')}</div>
+              </details>` : ''}
+          </div>
+          ${node.children.length ? `<div class="org-children">${node.children.map(nodeHtml).join('')}</div>` : ''}
+        </div>`;
+    }
+
+    appEl.innerHTML = `
+      <div class="view-header">
+        <div>
+          <h1>${icon('globe')} ${t('nav_orgchart')}</h1>
+          <p class="hint">${t('orgchart_hint')}</p>
+        </div>
+      </div>
+      <div class="field" style="max-width:420px;margin-bottom:1rem">
+        <input type="search" id="orgchartPersonSearch" placeholder="${t('orgchart_search_placeholder')}" autocomplete="off" />
+      </div>
+      <div id="orgchartPersonResults"></div>
+      <div class="card" id="orgchartTreeCard">
+        ${tree.length ? `<div class="org-chart">${tree.map(nodeHtml).join('')}</div>` : `<p class="hint">${t('no_groups_hint')}</p>`}
+      </div>`;
+
+    document.querySelectorAll('#orgchartTreeCard [data-branch-toggle]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        btn.closest('.org-branch').classList.toggle('collapsed');
+      });
+    });
+
+    const searchInput = document.getElementById('orgchartPersonSearch');
+    const resultsEl = document.getElementById('orgchartPersonResults');
+    searchInput.addEventListener('input', () => {
+      const q = searchInput.value.trim().toLowerCase();
+      if (!q) { resultsEl.innerHTML = ''; return; }
+      const matches = users.filter((u) => u.name.toLowerCase().includes(q)).slice(0, 12);
+      resultsEl.innerHTML = matches.length ? `
+        <div class="card" style="margin-bottom:1rem">
+          <div class="orgchart-person-list">${matches.map(personRow).join('')}</div>
+        </div>` : `<p class="hint" style="margin-bottom:1rem">${t('no_users_found')}</p>`;
+    });
   }
 
   async function renderSearch() {
