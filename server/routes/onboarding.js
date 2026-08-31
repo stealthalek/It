@@ -365,6 +365,69 @@ router.get(
   })
 );
 
+router.post(
+  '/:id/complete-all',
+  asyncHandler(async (req, res) => {
+    if (!(await canAccessRequest(req.user, req.params.id))) {
+      return res.status(403).json({ error: 'Permessi insufficienti' });
+    }
+    const request = await db.get('SELECT employee_name, employee_user_id FROM onboarding_requests WHERE id = ?', [req.params.id]);
+    if (!request) return res.status(404).json({ error: 'Richiesta non trovata' });
+
+    const pendingItems = await db.all(
+      `SELECT i.*, tk.status AS ticket_status, tk.created_by AS ticket_created_by
+       FROM onboarding_items i
+       JOIN tickets tk ON tk.id = i.ticket_id
+       WHERE i.request_id = ? AND i.status NOT IN ('done', 'skipped') AND tk.status NOT IN ('resolved', 'closed')`,
+      [req.params.id]
+    );
+
+    let completedCount = 0;
+    for (const item of pendingItems) {
+      await db.run("UPDATE tickets SET status = 'resolved', resolved_at = datetime('now'), updated_at = datetime('now') WHERE id = ?", [item.ticket_id]);
+      await db.run('INSERT INTO ticket_events (ticket_id, actor_id, message) VALUES (?, ?, ?)', [
+        item.ticket_id, req.user.id, `Ticket risolto (completamento massivo onboarding da ${req.user.name})`,
+      ]);
+
+      let generatedAssetId = null;
+      if (item.kind === 'asset' && !item.asset_id) {
+        const assetInfo = await db.run(
+          `INSERT INTO assets (name, asset_type, tag, assignment_type, assigned_to, status)
+           VALUES (?, ?, NULL, 'permanente', ?, ?)`,
+          [
+            `${item.label_it} - ${request.employee_name}`,
+            item.asset_type || 'altro',
+            request.employee_user_id || null,
+            request.employee_user_id ? 'in_uso' : 'disponibile',
+          ]
+        );
+        generatedAssetId = Number(assetInfo.lastInsertRowid);
+      }
+      await db.run(
+        `UPDATE onboarding_items SET status = 'done', completed_by = ?, completed_at = strftime('%Y-%m-%d %H:%M:%f', 'now')${generatedAssetId ? ', asset_id = ?' : ''} WHERE id = ?`,
+        generatedAssetId ? [req.user.id, generatedAssetId, item.id] : [req.user.id, item.id]
+      );
+
+      if (item.ticket_created_by !== req.user.id) {
+        notifyUser(item.ticket_created_by, item.ticket_id, {
+          it: `Il ticket #${formatTicketNumber(item.ticket_id)} è stato risolto: ${item.label_it}`,
+          en: `Ticket #${formatTicketNumber(item.ticket_id)} has been resolved: ${item.label_it}`,
+        }).catch(() => {});
+      }
+      completedCount += 1;
+    }
+
+    if (completedCount > 0) {
+      await syncRequestStatus(req.params.id);
+      logAudit(req.user.id, 'onboarding_request', Number(req.params.id), `Completate ${completedCount} voci in blocco per "${request.employee_name}"`).catch(() => {});
+    }
+
+    const updatedRequest = await db.get(`${REQUEST_SELECT} WHERE r.id = ?`, [req.params.id]);
+    const items = await db.all(`${ITEM_SELECT} WHERE i.request_id = ? ORDER BY i.id ASC`, [req.params.id]);
+    res.json({ request: updatedRequest, items, completedCount });
+  })
+);
+
 router.patch(
   '/:id',
   asyncHandler(async (req, res) => {
