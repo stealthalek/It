@@ -153,6 +153,8 @@
     star: '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>',
     grip: '<circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/>',
     x: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+    sun: '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>',
+    moon: '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>',
   };
 
   const CATEGORY_ICON_CHOICES = ['ticket', 'wifi', 'globe', 'printer', 'mail', 'monitor', 'server', 'phone', 'grid', 'lock', 'shield', 'users', 'laptop', 'tablet', 'package', 'bulb', 'flame', 'truck', 'megaphone'];
@@ -369,6 +371,7 @@
       toast_password_updated: 'Password aggiornata', toast_email_updated: 'Email aggiornata',
       settings_language_title: 'Lingua', settings_lang_hint: 'Scegli la lingua dell\'interfaccia.',
       personalization_title: 'Personalizzazione', personalization_hint: 'Scegli il colore principale dell\'interfaccia.',
+      theme_mode_title: 'Aspetto', theme_mode_hint: 'Scegli l\'aspetto dell\'interfaccia.', theme_mode_light: 'Chiaro', theme_mode_dark: 'Scuro', theme_mode_auto: 'Sistema',
       cold_start_hint: 'Il server si sta risvegliando dopo un periodo di inattività, un momento...',
       admin_title: 'Amministrazione', access_denied: 'Accesso non consentito.', person_card_title: 'Scheda persona',
       org_open_tickets: 'aperti', org_sla_breach: 'in ritardo', org_node_hint: 'Clic per vedere i ticket del team',
@@ -472,7 +475,7 @@
       delete_account_btn: 'Elimina account', toast_account_deleted: 'Account eliminato',
       confirm_delete_account_prefix: 'Eliminare definitivamente l\'account di', confirm_delete_account_suffix: '? Questa azione non può essere annullata ed elimina anche i ticket aperti da questa persona.',
       btn_copy: 'Copia', toast_copied: 'Copiato negli appunti', toast_copy_failed: 'Impossibile copiare',
-      motion_fluid_label: 'Animazioni fluide', toast_accent_updated: 'Colore aggiornato', toast_motion_updated: 'Preferenza animazioni aggiornata',
+      motion_fluid_label: 'Animazioni fluide', toast_accent_updated: 'Colore aggiornato', toast_motion_updated: 'Preferenza animazioni aggiornata', toast_theme_updated: 'Aspetto aggiornato',
       desktop_notif_label: 'Notifiche desktop', desktop_notif_hint: 'Ricevi un avviso pop-up del sistema operativo per nuovi ticket e commenti, anche a scheda non attiva.',
       toast_desktop_notif_enabled: 'Notifiche desktop attivate', toast_desktop_notif_disabled: 'Notifiche desktop disattivate',
       toast_desktop_notif_denied: 'Permesso negato dal browser: abilita le notifiche per questo sito nelle impostazioni del browser',
@@ -653,6 +656,7 @@
       toast_password_updated: 'Password updated', toast_email_updated: 'Email updated',
       settings_language_title: 'Language', settings_lang_hint: 'Choose the interface language.',
       personalization_title: 'Personalization', personalization_hint: 'Choose the main interface color.',
+      theme_mode_title: 'Appearance', theme_mode_hint: 'Choose the interface appearance.', theme_mode_light: 'Light', theme_mode_dark: 'Dark', theme_mode_auto: 'System',
       cold_start_hint: 'The server is waking up after a period of inactivity, one moment...',
       admin_title: 'Administration', access_denied: 'Access not allowed.', person_card_title: 'Person profile',
       org_open_tickets: 'open', org_sla_breach: 'overdue', org_node_hint: 'Click to see the team\'s tickets',
@@ -756,7 +760,7 @@
       delete_account_btn: 'Delete account', toast_account_deleted: 'Account deleted',
       confirm_delete_account_prefix: 'Permanently delete the account for', confirm_delete_account_suffix: '? This cannot be undone and also deletes tickets opened by this person.',
       btn_copy: 'Copy', toast_copied: 'Copied to clipboard', toast_copy_failed: 'Could not copy',
-      motion_fluid_label: 'Smooth animations', toast_accent_updated: 'Color updated', toast_motion_updated: 'Animation preference updated',
+      motion_fluid_label: 'Smooth animations', toast_accent_updated: 'Color updated', toast_motion_updated: 'Animation preference updated', toast_theme_updated: 'Appearance updated',
       desktop_notif_label: 'Desktop notifications', desktop_notif_hint: 'Get an OS-level pop-up alert for new tickets and comments, even when the tab is not active.',
       toast_desktop_notif_enabled: 'Desktop notifications enabled', toast_desktop_notif_disabled: 'Desktop notifications disabled',
       toast_desktop_notif_denied: 'Permission denied by the browser: enable notifications for this site in your browser settings',
@@ -843,11 +847,53 @@
   }
 
   const ACCENT_PRESETS = {
-    bordeaux: { primary: '#8f2436', primaryDark: '#711c2b', primarySoft: '#f7e6e6', label: 'Bordeaux' },
-    blu: { primary: '#1868a8', primaryDark: '#124e80', primarySoft: '#e1ecf5', label: 'Blu' },
-    verde: { primary: '#1f7a4d', primaryDark: '#175c3a', primarySoft: '#e1f0e6', label: 'Verde' },
-    viola: { primary: '#6a3fa0', primaryDark: '#52317d', primarySoft: '#ece3f7', label: 'Viola' },
+    bordeaux: {
+      label: 'Bordeaux',
+      light: { primary: '#8f2436', primaryDark: '#711c2b', primarySoft: '#f7e6e6' },
+      dark: { primary: '#c9435c', primaryDark: '#e2758c', primarySoft: '#3d2228' },
+    },
+    blu: {
+      label: 'Blu',
+      light: { primary: '#1868a8', primaryDark: '#124e80', primarySoft: '#e1ecf5' },
+      dark: { primary: '#4f9fd9', primaryDark: '#7cbdea', primarySoft: '#1c2e3d' },
+    },
+    verde: {
+      label: 'Verde',
+      light: { primary: '#1f7a4d', primaryDark: '#175c3a', primarySoft: '#e1f0e6' },
+      dark: { primary: '#3fae76', primaryDark: '#6fcb98', primarySoft: '#1c3527' },
+    },
+    viola: {
+      label: 'Viola',
+      light: { primary: '#6a3fa0', primaryDark: '#52317d', primarySoft: '#ece3f7' },
+      dark: { primary: '#9f75d1', primaryDark: '#bb9ce0', primarySoft: '#2b2440' },
+    },
   };
+
+  const THEME_MODES = ['light', 'dark', 'auto'];
+
+  function getTheme() {
+    const stored = localStorage.getItem('ticketing_theme');
+    return THEME_MODES.includes(stored) ? stored : 'auto';
+  }
+
+  function resolveTheme() {
+    const mode = getTheme();
+    if (mode === 'auto') return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    return mode;
+  }
+
+  function applyTheme(mode) {
+    if (mode === 'auto') document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme', mode);
+    applyAccent(getAccent());
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', resolveTheme() === 'dark' ? '#251e18' : '#8f2436');
+  }
+
+  function setTheme(mode) {
+    localStorage.setItem('ticketing_theme', mode);
+    applyTheme(mode);
+  }
 
   function getAccent() {
     return localStorage.getItem('ticketing_accent') || 'bordeaux';
@@ -855,10 +901,11 @@
 
   function applyAccent(key) {
     const preset = ACCENT_PRESETS[key] || ACCENT_PRESETS.bordeaux;
+    const variant = preset[resolveTheme()] || preset.light;
     const root = document.documentElement.style;
-    root.setProperty('--primary', preset.primary);
-    root.setProperty('--primary-dark', preset.primaryDark);
-    root.setProperty('--primary-soft', preset.primarySoft);
+    root.setProperty('--primary', variant.primary);
+    root.setProperty('--primary-dark', variant.primaryDark);
+    root.setProperty('--primary-soft', variant.primarySoft);
   }
 
   function setAccent(key) {
@@ -7317,6 +7364,7 @@
   function renderSettings() {
     const currentLang = getLang();
     const currentAccent = getAccent();
+    const currentTheme = getTheme();
     const isAdmin = state.user && state.user.role === 'admin';
     appEl.innerHTML = `
       <div class="view-header"><h1>${icon('plug')} ${t('settings_title')}</h1></div>
@@ -7333,10 +7381,19 @@
         </div>
         <div class="card">
           <h3 class="section-title" style="margin-top:0">${t('personalization_title')}</h3>
-          <p class="hint">${t('personalization_hint')}</p>
+          <p class="hint">${t('theme_mode_hint')}</p>
+          <div class="theme-mode-switch" role="group" aria-label="${t('theme_mode_title')}">
+            ${THEME_MODES.map((mode) => `
+              <button type="button" class="theme-mode-btn ${currentTheme === mode ? 'active' : ''}" data-theme-mode="${mode}">
+                ${icon(mode === 'light' ? 'sun' : mode === 'dark' ? 'moon' : 'monitor')}
+                <span>${t(`theme_mode_${mode}`)}</span>
+              </button>
+            `).join('')}
+          </div>
+          <p class="hint" style="margin-top:1.2rem">${t('personalization_hint')}</p>
           <div class="accent-swatches">
             ${Object.entries(ACCENT_PRESETS).map(([key, preset]) => `
-              <button type="button" class="accent-swatch ${currentAccent === key ? 'active' : ''}" data-accent="${key}" style="background:${preset.primary}" title="${escapeHtml(preset.label)}"></button>
+              <button type="button" class="accent-swatch ${currentAccent === key ? 'active' : ''}" data-accent="${key}" style="background:${preset.light.primary}" title="${escapeHtml(preset.label)}"></button>
             `).join('')}
           </div>
           <label class="checkbox-field" style="margin-top:1rem">
@@ -7402,6 +7459,15 @@
       renderNotifDropdown();
       showToast(t('lang_updated'), 'success');
       route();
+    });
+
+    document.querySelectorAll('.theme-mode-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        setTheme(btn.dataset.themeMode);
+        document.querySelectorAll('.theme-mode-btn').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        showToast(t('toast_theme_updated'), 'success');
+      });
     });
 
     document.querySelectorAll('.accent-swatch').forEach((btn) => {
@@ -7630,10 +7696,16 @@
     }
   });
 
-  applyAccent(getAccent());
+  applyTheme(getTheme());
   applyMotion(getMotionPref());
   applyChromeTranslations();
   updateChrome();
   loadOrgBranding();
   route();
+
+  if (window.matchMedia) {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+      if (getTheme() === 'auto') applyTheme('auto');
+    });
+  }
 })();
