@@ -16,11 +16,13 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const USER_SELECT = `
   SELECT u.id, u.name, u.email, u.role, u.group_id, g.name AS group_name, gParent.name AS group_parent_name,
-    u.locale, u.created_at, u.is_external, u.manager_id, manager.name AS manager_name
+    u.locale, u.created_at, u.is_external, u.manager_id, manager.name AS manager_name,
+    u.role_id, r.label_it AS role_label_it, r.label_en AS role_label_en, r.color AS role_color, r.read_only AS role_read_only
   FROM users u
   LEFT JOIN groups g ON g.id = u.group_id
   LEFT JOIN groups gParent ON gParent.id = g.parent_id
   LEFT JOIN users manager ON manager.id = u.manager_id
+  LEFT JOIN roles r ON r.id = u.role_id
 `;
 
 router.get(
@@ -52,7 +54,7 @@ router.post(
   '/',
   requireRole('admin'),
   asyncHandler(async (req, res) => {
-    const { name, email, role, groupId, locale, isExternal, managerId } = req.body || {};
+    const { name, email, role, groupId, locale, isExternal, managerId, roleId } = req.body || {};
 
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Il nome è obbligatorio' });
@@ -88,12 +90,21 @@ router.post(
       finalManagerId = manager.id;
     }
 
+    let finalRoleId = null;
+    if (roleId) {
+      const roleRow = await db.get('SELECT id FROM roles WHERE id = ?', [roleId]);
+      if (!roleRow) {
+        return res.status(400).json({ error: 'Ruolo specifico non valido' });
+      }
+      finalRoleId = roleRow.id;
+    }
+
     const tempPassword = crypto.randomBytes(6).toString('base64url');
     const hash = bcrypt.hashSync(tempPassword, 10);
 
     const info = await db.run(
-      'INSERT INTO users (name, email, password, role, group_id, locale, is_external, manager_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [name.trim(), email.toLowerCase(), hash, role, finalGroupId, finalLocale, isExternal ? 1 : 0, finalManagerId]
+      'INSERT INTO users (name, email, password, role, group_id, locale, is_external, manager_id, role_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [name.trim(), email.toLowerCase(), hash, role, finalGroupId, finalLocale, isExternal ? 1 : 0, finalManagerId, finalRoleId]
     );
 
     const user = await db.get(`${USER_SELECT} WHERE u.id = ?`, [Number(info.lastInsertRowid)]);
@@ -127,6 +138,36 @@ router.patch(
 
     const user = await db.get(`${USER_SELECT} WHERE u.id = ?`, [req.params.id]);
     logAudit(req.user.id, 'user', user.id, `Ruolo di "${user.name}" cambiato in ${role}`).catch(() => {});
+    res.json({ user });
+  })
+);
+
+router.patch(
+  '/:id/role_id',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const target = await db.get('SELECT is_super_admin FROM users WHERE id = ?', [req.params.id]);
+    if (target && target.is_super_admin && !req.user.is_super_admin) {
+      return res.status(404).json({ error: 'Utente non trovato' });
+    }
+
+    const { roleId } = req.body || {};
+    let finalRoleId = null;
+    if (roleId) {
+      const role = await db.get('SELECT id FROM roles WHERE id = ?', [roleId]);
+      if (!role) {
+        return res.status(400).json({ error: 'Ruolo non valido' });
+      }
+      finalRoleId = role.id;
+    }
+
+    const result = await db.run('UPDATE users SET role_id = ? WHERE id = ?', [finalRoleId, req.params.id]);
+    if (Number(result.rowsAffected) === 0) {
+      return res.status(404).json({ error: 'Utente non trovato' });
+    }
+
+    const user = await db.get(`${USER_SELECT} WHERE u.id = ?`, [req.params.id]);
+    logAudit(req.user.id, 'user', user.id, `Ruolo specifico di "${user.name}" ${user.role_label_it ? `impostato a "${user.role_label_it}"` : 'rimosso'}`).catch(() => {});
     res.json({ user });
   })
 );
@@ -257,6 +298,71 @@ router.post(
     mailer.sendPasswordReset(user, tempPassword).catch((err) => console.error('Invio email di reset fallito:', err.message));
     logAudit(req.user.id, 'user', user.id, `Password di "${user.name}" reimpostata dall'amministratore`).catch(() => {});
     res.json({ user, tempPassword });
+  })
+);
+
+router.patch(
+  '/:id/profile',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const target = await db.get('SELECT is_super_admin FROM users WHERE id = ?', [req.params.id]);
+    if (!target) {
+      return res.status(404).json({ error: 'Utente non trovato' });
+    }
+    if (target.is_super_admin && !req.user.is_super_admin) {
+      return res.status(404).json({ error: 'Utente non trovato' });
+    }
+
+    const { name, email } = req.body || {};
+    const updates = [];
+    const params = [];
+    if (name !== undefined) {
+      if (!name.trim()) {
+        return res.status(400).json({ error: 'Il nome è obbligatorio' });
+      }
+      updates.push('name = ?');
+      params.push(name.trim());
+    }
+    if (email !== undefined) {
+      if (!EMAIL_RE.test(email)) {
+        return res.status(400).json({ error: 'Email non valida' });
+      }
+      const existing = await db.get('SELECT id FROM users WHERE email = ? AND id != ?', [email.toLowerCase(), req.params.id]);
+      if (existing) {
+        return res.status(409).json({ error: 'Email già registrata' });
+      }
+      updates.push('email = ?');
+      params.push(email.toLowerCase());
+    }
+    if (!updates.length) {
+      return res.status(400).json({ error: 'Nessuna modifica valida fornita' });
+    }
+
+    params.push(req.params.id);
+    await db.run(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, params);
+    const user = await db.get(`${USER_SELECT} WHERE u.id = ?`, [req.params.id]);
+    logAudit(req.user.id, 'user', user.id, `Dati personali di "${user.name}" aggiornati`).catch(() => {});
+    res.json({ user });
+  })
+);
+
+router.delete(
+  '/:id',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    if (Number(req.params.id) === req.user.id) {
+      return res.status(400).json({ error: 'Non puoi eliminare il tuo stesso account' });
+    }
+    const target = await db.get('SELECT * FROM users WHERE id = ?', [req.params.id]);
+    if (!target) {
+      return res.status(404).json({ error: 'Utente non trovato' });
+    }
+    if (target.is_super_admin && !req.user.is_super_admin) {
+      return res.status(404).json({ error: 'Utente non trovato' });
+    }
+    await db.run('DELETE FROM users WHERE id = ?', [req.params.id]);
+    logAudit(req.user.id, 'user', Number(req.params.id), `Account "${target.name}" (${target.email}) eliminato`).catch(() => {});
+    res.status(204).end();
   })
 );
 

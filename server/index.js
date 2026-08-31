@@ -25,6 +25,7 @@ const tagRoutes = require('./routes/tags');
 const ticketTemplateRoutes = require('./routes/ticket-templates');
 const holidayRoutes = require('./routes/holidays');
 const onboardingRoutes = require('./routes/onboarding');
+const roleRoutes = require('./routes/roles');
 const { loadHolidays } = require('./sla');
 
 process.on('unhandledRejection', (reason) => {
@@ -65,6 +66,7 @@ app.use('/api/tags', tagRoutes);
 app.use('/api/ticket-templates', ticketTemplateRoutes);
 app.use('/api/holidays', holidayRoutes);
 app.use('/api/onboarding', onboardingRoutes);
+app.use('/api/roles', roleRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() });

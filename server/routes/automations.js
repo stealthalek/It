@@ -1,12 +1,13 @@
 const express = require('express');
 const db = require('../db/database');
 const { authenticate, requireRole } = require('../middleware/auth');
+const { requirePermission } = require('../lib/permissions');
 const asyncHandler = require('../middleware/asyncHandler');
 const { logAudit } = require('../audit');
 
 const router = express.Router();
 router.use(authenticate);
-router.use(requireRole('admin'));
+router.use(requireRole('agent', 'admin'));
 
 const TRIGGER_EVENTS = ['created', 'updated'];
 const STATUSES = ['open', 'in_progress', 'waiting_customer', 'resolved', 'closed'];
@@ -66,6 +67,7 @@ router.get(
 
 router.post(
   '/',
+  requirePermission('automations_manage'),
   asyncHandler(async (req, res) => {
     const parsed = parseRuleBody(req.body);
     if (parsed.error) return res.status(400).json({ error: parsed.error });
@@ -105,6 +107,7 @@ router.post(
 
 router.patch(
   '/:id',
+  requirePermission('automations_manage'),
   asyncHandler(async (req, res) => {
     const rule = await db.get('SELECT * FROM automation_rules WHERE id = ?', [req.params.id]);
     if (!rule) return res.status(404).json({ error: 'Regola non trovata' });
@@ -122,6 +125,7 @@ router.patch(
 
 router.delete(
   '/:id',
+  requirePermission('automations_manage'),
   asyncHandler(async (req, res) => {
     const rule = await db.get('SELECT name FROM automation_rules WHERE id = ?', [req.params.id]);
     if (!rule) return res.status(404).json({ error: 'Regola non trovata' });

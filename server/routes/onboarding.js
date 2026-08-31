@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../db/database');
-const { authenticate, requireRole } = require('../middleware/auth');
+const { authenticate } = require('../middleware/auth');
+const { requirePermission } = require('../lib/permissions');
 const asyncHandler = require('../middleware/asyncHandler');
 const { logAudit } = require('../audit');
 const { notifyUser } = require('../notifications');
@@ -57,7 +58,7 @@ function parseLicenseOptions(raw) {
 
 router.post(
   '/item-types',
-  requireRole('admin'),
+  requirePermission('onboarding_catalog_manage'),
   asyncHandler(async (req, res) => {
     const { itemKey, labelIt, labelEn, kind, assetType, defaultGroupId, licenseOptions, addonLabel } = req.body || {};
     if (!itemKey || !itemKey.trim() || !labelIt || !labelIt.trim() || !labelEn || !labelEn.trim()) {
@@ -91,7 +92,7 @@ router.post(
 
 router.patch(
   '/item-types/:id',
-  requireRole('admin'),
+  requirePermission('onboarding_catalog_manage'),
   asyncHandler(async (req, res) => {
     const existing = await db.get('SELECT * FROM onboarding_item_types WHERE id = ?', [req.params.id]);
     if (!existing) return res.status(404).json({ error: 'Voce non trovata' });
@@ -141,7 +142,7 @@ router.patch(
 
 router.delete(
   '/item-types/:id',
-  requireRole('admin'),
+  requirePermission('onboarding_catalog_manage'),
   asyncHandler(async (req, res) => {
     const existing = await db.get('SELECT * FROM onboarding_item_types WHERE id = ?', [req.params.id]);
     if (!existing) return res.status(404).json({ error: 'Voce non trovata' });
