@@ -4,6 +4,7 @@ const { authenticate, requireRole } = require('../middleware/auth');
 const { requirePermission } = require('../lib/permissions');
 const asyncHandler = require('../middleware/asyncHandler');
 const { logAudit } = require('../audit');
+const { createAssignmentLetter } = require('../lib/assetLetters');
 
 const router = express.Router();
 router.use(authenticate);
@@ -68,6 +69,9 @@ router.post(
     );
     const asset = await db.get(`${ASSET_SELECT} WHERE a.id = ?`, [Number(info.lastInsertRowid)]);
     logAudit(req.user.id, 'asset', asset.id, `Creato asset "${asset.name}"${asset.assignee_name ? `, assegnato a "${asset.assignee_name}"` : ''}`).catch(() => {});
+    if (asset.assigned_to) {
+      createAssignmentLetter(asset.id, asset.assigned_to, req.user.id).catch(() => {});
+    }
     res.status(201).json({ asset });
   })
 );
@@ -170,6 +174,9 @@ router.patch(
     await db.run(`UPDATE assets SET ${updates.join(', ')} WHERE id = ?`, params);
     const updated = await db.get(`${ASSET_SELECT} WHERE a.id = ?`, [req.params.id]);
     logAudit(req.user.id, 'asset', updated.id, `Asset "${updated.name}" aggiornato${assignedTo !== undefined ? (updated.assignee_name ? `, assegnato a "${updated.assignee_name}"` : ', assegnazione rimossa') : ''}`).catch(() => {});
+    if (assignedTo !== undefined && assignedTo && Number(assignedTo) !== asset.assigned_to) {
+      createAssignmentLetter(updated.id, Number(assignedTo), req.user.id).catch(() => {});
+    }
     res.json({ asset: updated });
   })
 );

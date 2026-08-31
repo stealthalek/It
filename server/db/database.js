@@ -696,6 +696,18 @@ async function migrate() {
   if (roleCount.n === 0) {
     await seedDefaultRoles();
   }
+
+  await run(`CREATE TABLE IF NOT EXISTS asset_assignment_letters (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    asset_id INTEGER NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    assigned_at TEXT NOT NULL DEFAULT (datetime('now')),
+    signed_at TEXT,
+    signed_name TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`);
+  await run('CREATE INDEX IF NOT EXISTS idx_asset_letters_user_id ON asset_assignment_letters(user_id)');
+  await run('CREATE INDEX IF NOT EXISTS idx_asset_letters_asset_id ON asset_assignment_letters(asset_id)');
 }
 
 async function seedDefaultRoles() {

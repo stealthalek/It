@@ -360,6 +360,19 @@
       search_hint: 'Cerca per numero ticket, parola chiave o richiedente: i risultati compaiono mentre scrivi.',
       search_placeholder_full: 'Numero ticket, parola chiave, richiedente...', all_groups_option: 'Tutti i gruppi', all_tags_option: 'Tutte le etichette',
       filter_assigned_to_label: 'Assegnati a', filter_created_by_label: 'Aperti da', assets_assigned_title: 'Asset assegnati', no_assets_assigned: 'Nessun asset assegnato.',
+      asset_letters_title: 'Lettere di assegnazione', no_asset_letters: 'Nessuna lettera di assegnazione.',
+      asset_letter_pending_badge: 'Da firmare', asset_letter_signed_badge: 'Firmata',
+      asset_letter_banner_one: 'Hai un asset da confermare: firma la lettera di assegnazione.',
+      asset_letter_banner_many: 'Hai {n} asset da confermare: firma le lettere di assegnazione.',
+      btn_review_and_sign: 'Vai alla firma',
+      btn_sign_letter: 'Firma e accetto',
+      asset_letter_signed_on: 'Firmata il',
+      asset_letter_signed_by: 'da',
+      field_full_name_sign: 'Nome e cognome (firma)',
+      asset_letter_intro: 'Ti è stato assegnato il seguente dispositivo aziendale. Prima di poterlo utilizzare, ti chiediamo di leggere e firmare la lettera di assegnazione riportata di seguito.',
+      asset_letter_body: 'Con la firma della presente, il sottoscritto dichiara di aver ricevuto il dispositivo sopra indicato in perfette condizioni di funzionamento e si impegna a: utilizzarlo esclusivamente per finalità lavorative, con la dovuta diligenza e nel rispetto delle policy aziendali; segnalare tempestivamente al Service Desk eventuali malfunzionamenti, danni, smarrimenti o furti; restituirlo, comprensivo di accessori, al termine del rapporto di lavoro, in caso di sostituzione o su richiesta dell\'azienda. La firma elettronica apposta di seguito ha valore di accettazione dei termini sopra descritti.',
+      asset_letter_already_signed: 'Questa lettera è già stata firmata.',
+      toast_letter_signed: 'Lettera firmata con successo',
       assets_search_placeholder: 'Cerca per nome o tag...',
       nav_insights: 'Report e Audit', insights_hint: 'Analisi delle prestazioni e traccia completa delle attività, in un unico posto.',
       report_hint: 'Volumi, tempi di risoluzione e rispetto SLA per gruppo e per agente.',
@@ -659,6 +672,19 @@
       search_hint: 'Search by ticket number, keyword or requester: results appear as you type.',
       search_placeholder_full: 'Ticket number, keyword, requester...', all_groups_option: 'All groups', all_tags_option: 'All tags',
       filter_assigned_to_label: 'Assigned to', filter_created_by_label: 'Opened by', assets_assigned_title: 'Assigned assets', no_assets_assigned: 'No assets assigned.',
+      asset_letters_title: 'Assignment letters', no_asset_letters: 'No assignment letters.',
+      asset_letter_pending_badge: 'To sign', asset_letter_signed_badge: 'Signed',
+      asset_letter_banner_one: 'You have an asset to confirm: sign the assignment letter.',
+      asset_letter_banner_many: 'You have {n} assets to confirm: sign the assignment letters.',
+      btn_review_and_sign: 'Go to sign',
+      btn_sign_letter: 'Sign and accept',
+      asset_letter_signed_on: 'Signed on',
+      asset_letter_signed_by: 'by',
+      field_full_name_sign: 'Full name (signature)',
+      asset_letter_intro: 'You have been assigned the following company device. Before you can use it, please read and sign the assignment letter below.',
+      asset_letter_body: 'By signing this letter, the undersigned declares to have received the device indicated above in full working order and commits to: use it exclusively for work purposes, with due care and in compliance with company policies; promptly report to the Service Desk any malfunction, damage, loss or theft; return it, together with its accessories, at the end of employment, in case of replacement, or upon company request. The electronic signature below constitutes acceptance of the terms described.',
+      asset_letter_already_signed: 'This letter has already been signed.',
+      toast_letter_signed: 'Letter signed successfully',
       assets_search_placeholder: 'Search by name or tag...',
       nav_insights: 'Report & Audit', insights_hint: 'Performance analytics and a complete activity trail, in one place.',
       report_hint: 'Volumes, resolution times and SLA compliance by group and agent.',
@@ -1649,6 +1675,7 @@
         case 'search': return renderSearch();
         case 'report': return renderInsights('report');
         case 'audit': return renderInsights('audit');
+        case 'asset-letters': return renderAssetLetterSign(param);
         default: return renderNotFound();
       }
     } catch (err) {
@@ -2039,6 +2066,7 @@
         </div>
       </div>
       <div id="dashImpersonatePanel" hidden></div>
+      <div id="assetLetterBanner" hidden></div>
       <div id="personalCounter"></div>
       <div id="statsRow" class="stat-row"></div>
       <div id="chartsRow" class="charts-row"></div>
@@ -2111,6 +2139,17 @@
         });
         searchInput.focus();
       });
+    }
+
+    if (!viewingAs) {
+      api('/asset-letters?mine=1&pending=1').then(({ letters }) => {
+        const banner = document.getElementById('assetLetterBanner');
+        if (!banner || !letters.length) return;
+        banner.hidden = false;
+        banner.className = 'presence-banner asset-letter-banner';
+        const text = letters.length === 1 ? t('asset_letter_banner_one') : t('asset_letter_banner_many').replace('{n}', letters.length);
+        banner.innerHTML = `${icon('file', 'badge-icon')} <span>${text}</span> <a class="btn btn-ghost btn-sm" href="#/asset-letters/${letters[0].id}">${t('btn_review_and_sign')}</a>`;
+      }).catch(() => {});
     }
 
     const listEl = document.getElementById('ticketList');
@@ -7259,6 +7298,57 @@
     load();
   }
 
+  async function renderAssetLetterSign(id) {
+    appEl.innerHTML = `<div class="card spinner-row">${t('loading')}</div>`;
+    let letter;
+    try {
+      ({ letter } = await api(`/asset-letters/${id}`));
+    } catch (err) {
+      appEl.innerHTML = `<div class="card"><p class="error-text">${escapeHtml(err.message)}</p></div>`;
+      return;
+    }
+
+    appEl.innerHTML = `
+      <div class="view-header">
+        <div>
+          <h1>${icon('file')} ${t('asset_letters_title')}</h1>
+        </div>
+        <a class="btn btn-ghost" href="#/profile">${icon('arrowLeft')} ${t('back_to_list')}</a>
+      </div>
+      <div class="card" style="max-width:680px">
+        <h3 class="section-title" style="margin-top:0">${escapeHtml(letter.asset_name)}</h3>
+        <p class="hint">${assetTypeLabels()[letter.asset_type] || letter.asset_type}${letter.asset_tag ? ` · ${escapeHtml(letter.asset_tag)}` : ''}</p>
+        ${letter.signed_at ? `
+          <div class="presence-banner">${icon('check', 'badge-icon')} <span>${t('asset_letter_already_signed')} ${t('asset_letter_signed_on')} ${formatDate(letter.signed_at)} ${t('asset_letter_signed_by')} ${escapeHtml(letter.signed_name)}</span></div>
+        ` : `
+          <p>${t('asset_letter_intro')}</p>
+          <p style="white-space:pre-wrap;background:var(--surface-alt);padding:0.9rem;border-radius:var(--radius-sm);font-size:0.88rem;line-height:1.6">${t('asset_letter_body')}</p>
+          <form id="letterSignForm" class="form-grid" style="max-width:none">
+            <div class="field"><label for="letterSignName">${t('field_full_name_sign')}</label><input id="letterSignName" required value="${escapeHtml(letter.user_name || '')}" /></div>
+            <p class="error-text" id="letterSignError"></p>
+            <div><button class="btn btn-sm" type="submit">${t('btn_sign_letter')}</button></div>
+          </form>
+        `}
+      </div>`;
+
+    const form = document.getElementById('letterSignForm');
+    if (form) {
+      guardForm(form, async () => {
+        const errEl = document.getElementById('letterSignError');
+        errEl.textContent = '';
+        const fullName = document.getElementById('letterSignName').value.trim();
+        if (!fullName) return;
+        try {
+          await api(`/asset-letters/${id}/sign`, { method: 'POST', body: { fullName } });
+          showToast(t('toast_letter_signed'), 'success');
+          renderAssetLetterSign(id);
+        } catch (err) {
+          errEl.textContent = err.message;
+        }
+      });
+    }
+  }
+
   function renderProfile() {
     appEl.innerHTML = `
       <div class="view-header"><h1>${icon('userCircle')} ${t('nav_profile')}</h1></div>
@@ -7270,6 +7360,7 @@
           <p><span class="role-tag">${roleLabels()[state.user.role] || state.user.role}</span></p>
         </div>
         ${isStaff() ? `<div class="card" id="managerCard"></div><div class="card" id="reportsCard"></div>` : ''}
+        <div class="card" id="assetLettersCard"></div>
         <div class="card">
           <h3 class="section-title" style="margin-top:0">${icon('lock')} ${t('change_password_title')}</h3>
           <form id="pwForm" class="form-grid" style="max-width:none">
@@ -7329,6 +7420,18 @@
         }
       }).catch(() => {});
     }
+
+    api('/asset-letters?mine=1').then(({ letters }) => {
+      const card = document.getElementById('assetLettersCard');
+      if (!card) return;
+      card.innerHTML = `
+        <h3 class="section-title" style="margin-top:0">${icon('file')} ${t('asset_letters_title')}</h3>
+        ${letters.length ? `<ul class="plain-list">${letters.map((l) => `
+          <li style="display:flex;justify-content:space-between;align-items:center;gap:0.5rem">
+            <span>${escapeHtml(l.asset_name)}${l.asset_tag ? ` · ${escapeHtml(l.asset_tag)}` : ''}</span>
+            ${l.signed_at ? `<span class="badge badge-resolved">${t('asset_letter_signed_badge')}</span>` : `<a class="btn btn-ghost btn-sm" href="#/asset-letters/${l.id}">${t('btn_review_and_sign')}</a>`}
+          </li>`).join('')}</ul>` : `<p class="hint">${t('no_asset_letters')}</p>`}`;
+    }).catch(() => {});
 
     attachPasswordStrength('newPassword', 'newPwStrengthMeter');
     attachPasswordMatch('newPassword', 'newPassword2', 'newPwMatchHint');
