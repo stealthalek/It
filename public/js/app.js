@@ -140,6 +140,7 @@
     paperclip: '<path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>',
     file: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>',
     star: '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>',
+    grip: '<circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/>',
   };
 
   const CATEGORY_ICON_CHOICES = ['ticket', 'wifi', 'globe', 'printer', 'mail', 'monitor', 'server', 'phone', 'grid', 'lock', 'shield', 'users', 'laptop', 'tablet', 'package', 'bulb', 'flame', 'truck', 'megaphone'];
@@ -476,6 +477,7 @@
       requester_context_title: 'Richiedente',
       nav_orgchart: 'Organigramma', orgchart_hint: 'Struttura dei team e gerarchia dei manager, visibile a tutti.',
       orgchart_search_placeholder: 'Cerca una persona per nome...', orgchart_view_members: 'Vedi membri', no_users_found: 'Nessuna persona trovata.',
+      admin_block_drag_hint: 'Trascina per riordinare',
     },
     en: {
       nav_dashboard: 'Tickets', nav_new: 'New ticket', nav_search: 'Search', nav_backlog: 'Backlog',
@@ -726,6 +728,7 @@
       requester_context_title: 'Requester',
       nav_orgchart: 'Org chart', orgchart_hint: 'Team structure and manager hierarchy, visible to everyone.',
       orgchart_search_placeholder: 'Search a person by name...', orgchart_view_members: 'View members', no_users_found: 'No people found.',
+      admin_block_drag_hint: 'Drag to reorder',
     },
   };
   const LANG_LABELS = { it: 'Italiano', en: 'English' };
@@ -3195,6 +3198,78 @@
       </div>`;
   }
 
+  function adminBlockOrderKey(section) {
+    return `ticketing_admin_block_order_${section}`;
+  }
+
+  function getAdminBlockOrder(section) {
+    try {
+      const raw = localStorage.getItem(adminBlockOrderKey(section));
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function setAdminBlockOrder(section, order) {
+    try {
+      localStorage.setItem(adminBlockOrderKey(section), JSON.stringify(order));
+    } catch {}
+  }
+
+  function applyAdminBlockOrder(section) {
+    const order = getAdminBlockOrder(section);
+    document.querySelectorAll(`.admin-grid .card[data-admin-panel="${section}"]`).forEach((card) => {
+      const idx = order.indexOf(card.dataset.blockId);
+      card.style.order = idx === -1 ? 999 : idx;
+    });
+  }
+
+  function wireAdminBlockDragging(section) {
+    const cards = Array.from(document.querySelectorAll(`.admin-grid .card[data-admin-panel="${section}"]`));
+    if (cards.length < 2) return;
+    cards.forEach((card) => {
+      const h3 = card.querySelector('.section-title');
+      if (h3 && !h3.querySelector('.admin-block-handle')) {
+        const handle = document.createElement('span');
+        handle.className = 'admin-block-handle';
+        handle.title = t('admin_block_drag_hint');
+        handle.innerHTML = icon('grip');
+        h3.insertBefore(handle, h3.firstChild);
+      }
+    });
+    cards.forEach((card) => {
+      const handle = card.querySelector('.admin-block-handle');
+      if (!handle) return;
+      handle.setAttribute('draggable', 'true');
+      handle.addEventListener('dragstart', (e) => {
+        e.dataTransfer.setData('text/plain', card.dataset.blockId);
+        e.dataTransfer.effectAllowed = 'move';
+        card.classList.add('admin-block-dragging');
+      });
+      handle.addEventListener('dragend', () => card.classList.remove('admin-block-dragging'));
+      card.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        card.classList.add('admin-block-drop-target');
+      });
+      card.addEventListener('dragleave', () => card.classList.remove('admin-block-drop-target'));
+      card.addEventListener('drop', (e) => {
+        e.preventDefault();
+        card.classList.remove('admin-block-drop-target');
+        const draggedId = e.dataTransfer.getData('text/plain');
+        if (!draggedId || draggedId === card.dataset.blockId) return;
+        const currentOrder = cards.map((c) => c.dataset.blockId);
+        const fromIdx = currentOrder.indexOf(draggedId);
+        const toIdx = currentOrder.indexOf(card.dataset.blockId);
+        if (fromIdx === -1 || toIdx === -1) return;
+        currentOrder.splice(fromIdx, 1);
+        currentOrder.splice(toIdx, 0, draggedId);
+        setAdminBlockOrder(section, currentOrder);
+        renderAdmin();
+      });
+    });
+  }
+
   async function renderAdmin() {
     if (!isStaff()) {
       appEl.innerHTML = `<div class="card"><p class="error-text">Accesso non consentito.</p></div>`;
@@ -3233,7 +3308,7 @@
       </div>` : ''}
       ${isAdmin ? `
       <div class="admin-grid" style="margin-bottom:1.25rem">
-        <div class="card" data-admin-panel="users" ${activeSection === 'users' ? '' : 'hidden'}>
+        <div class="card" data-admin-panel="users" data-block-id="createStaff" ${activeSection === 'users' ? '' : 'hidden'}>
           <h3 class="section-title" style="margin-top:0">${icon('plus')} ${t('admin_create_staff_title')}</h3>
           <form id="createStaffForm" class="form-grid" style="max-width:none">
             <div class="field"><label for="newName">${t('field_name')}</label><input id="newName" required /></div>
@@ -3270,7 +3345,7 @@
           </form>
           <div id="tempPasswordBox"></div>
         </div>
-        <div class="card admin-grid-full" data-admin-panel="catalog" ${activeSection === 'catalog' ? '' : 'hidden'}>
+        <div class="card admin-grid-full" data-admin-panel="catalog" data-block-id="categories" ${activeSection === 'catalog' ? '' : 'hidden'}>
           <h3 class="section-title" style="margin-top:0">${icon('ticket')} ${t('admin_categories_title')}</h3>
           <p class="hint">${t('admin_categories_hint')}</p>
           <form id="newCategoryForm" style="display:flex;flex-wrap:wrap;gap:0.6rem;align-items:flex-end;margin:0.75rem 0">
@@ -3286,7 +3361,7 @@
           <p class="error-text" id="categoryError"></p>
           <div id="categoriesList" class="spinner-row">${t('loading')}</div>
         </div>
-        <div class="card admin-grid-full" data-admin-panel="groups" ${activeSection === 'groups' ? '' : 'hidden'}>
+        <div class="card admin-grid-full" data-admin-panel="groups" data-block-id="groupsOrg" ${activeSection === 'groups' ? '' : 'hidden'}>
           <h3 class="section-title" style="margin-top:0">${icon('users')} ${t('admin_groups_title')}</h3>
           <p class="hint">${t('admin_groups_hint')}</p>
           <form id="newGroupForm" style="display:flex;flex-wrap:wrap;gap:0.6rem;align-items:flex-end;margin:0.75rem 0">
@@ -3306,7 +3381,7 @@
           </div>
           <div id="groupsList" class="spinner-row">${t('loading')}</div>
         </div>
-        <div class="card admin-grid-full" data-admin-panel="automation" ${activeSection === 'automation' ? '' : 'hidden'}>
+        <div class="card admin-grid-full" data-admin-panel="automation" data-block-id="automations" ${activeSection === 'automation' ? '' : 'hidden'}>
           <h3 class="section-title" style="margin-top:0">${icon('activity')} ${t('admin_automations_title')}</h3>
           <p class="hint">${t('admin_automations_hint')}</p>
           <form id="newRuleForm" class="form-grid" style="max-width:none;margin:0.75rem 0">
@@ -3344,7 +3419,7 @@
           </form>
           <div id="rulesList" class="spinner-row">${t('loading')}</div>
         </div>
-        <div class="card admin-grid-full" data-admin-panel="catalog" ${activeSection === 'catalog' ? '' : 'hidden'}>
+        <div class="card admin-grid-full" data-admin-panel="catalog" data-block-id="customFields" ${activeSection === 'catalog' ? '' : 'hidden'}>
           <h3 class="section-title" style="margin-top:0">${icon('edit')} ${t('admin_custom_fields_title')}</h3>
           <p class="hint">${t('admin_custom_fields_hint')}</p>
           <form id="newFieldForm" style="display:flex;flex-wrap:wrap;gap:0.6rem;align-items:flex-end;margin:0.75rem 0">
@@ -3369,7 +3444,7 @@
           <p class="error-text" id="fieldError"></p>
           <div id="fieldsList" class="spinner-row">${t('loading')}</div>
         </div>
-        <div class="card admin-grid-full" data-admin-panel="automation" ${activeSection === 'automation' ? '' : 'hidden'}>
+        <div class="card admin-grid-full" data-admin-panel="automation" data-block-id="cannedResponses" ${activeSection === 'automation' ? '' : 'hidden'}>
           <h3 class="section-title" style="margin-top:0">${icon('message')} ${t('admin_canned_title')}</h3>
           <p class="hint">${t('admin_canned_hint')}</p>
           <form id="newCannedForm" class="form-grid" style="max-width:none;margin:0.75rem 0">
@@ -3380,7 +3455,7 @@
           <p class="error-text" id="cannedError"></p>
           <div id="cannedList" class="spinner-row">${t('loading')}</div>
         </div>
-        <div class="card admin-grid-full" data-admin-panel="automation" ${activeSection === 'automation' ? '' : 'hidden'}>
+        <div class="card admin-grid-full" data-admin-panel="automation" data-block-id="ticketTemplates" ${activeSection === 'automation' ? '' : 'hidden'}>
           <h3 class="section-title" style="margin-top:0">${icon('plus')} ${t('admin_templates_title')}</h3>
           <p class="hint">${t('admin_templates_hint')}</p>
           <form id="newTemplateForm" class="form-grid" style="max-width:none;margin:0.75rem 0">
@@ -3399,7 +3474,7 @@
           <p class="error-text" id="templateError"></p>
           <div id="templatesList" class="spinner-row">${t('loading')}</div>
         </div>
-        <div class="card admin-grid-full" data-admin-panel="org" ${activeSection === 'org' ? '' : 'hidden'}>
+        <div class="card admin-grid-full" data-admin-panel="org" data-block-id="holidays" ${activeSection === 'org' ? '' : 'hidden'}>
           <h3 class="section-title" style="margin-top:0">${icon('activity')} ${t('admin_holidays_title')}</h3>
           <p class="hint">${t('admin_holidays_hint')}</p>
           <form id="newHolidayForm" style="display:flex;flex-wrap:wrap;gap:0.6rem;align-items:flex-end;margin:0.75rem 0">
@@ -3410,7 +3485,7 @@
           <p class="error-text" id="holidayError"></p>
           <div id="holidaysList" class="spinner-row">${t('loading')}</div>
         </div>
-        <div class="card admin-grid-full" data-admin-panel="onboarding" ${activeSection === 'onboarding' ? '' : 'hidden'}>
+        <div class="card admin-grid-full" data-admin-panel="onboarding" data-block-id="onboardingCatalog" ${activeSection === 'onboarding' ? '' : 'hidden'}>
           <h3 class="section-title" style="margin-top:0">${icon('userCircle')} ${t('admin_onboarding_title')}</h3>
           <p class="hint">${t('admin_onboarding_hint')}</p>
           <form id="newOnbItemForm" class="form-grid" style="max-width:none;margin:0.75rem 0">
@@ -3454,6 +3529,11 @@
           renderAdmin();
         });
       });
+
+      if (activeSection !== 'overview') {
+        applyAdminBlockOrder(activeSection);
+        wireAdminBlockDragging(activeSection);
+      }
 
       async function loadAdminOverviewCounts() {
         try {
