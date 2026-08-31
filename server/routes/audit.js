@@ -27,6 +27,12 @@ function groupClause(alias, group, params) {
   return `AND ${alias}.group_id = ?`;
 }
 
+function companyClause(alias, user, params) {
+  if (user.is_super_admin) return '';
+  params.push(user.company_id);
+  return `AND (${alias}.company_id IS NULL OR ${alias}.company_id = ?)`;
+}
+
 router.get(
   '/',
   asyncHandler(async (req, res) => {
@@ -44,7 +50,7 @@ router.get(
          FROM comments c
          JOIN tickets t ON t.id = c.ticket_id
          JOIN users u ON u.id = c.user_id
-         WHERE 1 = 1 ${dateClause('c', from, to, commentParams)} ${groupClause('t', group, commentParams)}`,
+         WHERE 1 = 1 ${dateClause('c', from, to, commentParams)} ${groupClause('t', group, commentParams)} ${companyClause('t', req.user, commentParams)}`,
         commentParams
       )
     ).map((c) => ({ kind: 'comment', ...c }));
@@ -57,7 +63,7 @@ router.get(
          FROM ticket_events e
          JOIN tickets t ON t.id = e.ticket_id
          LEFT JOIN users u ON u.id = e.actor_id
-         WHERE 1 = 1 ${dateClause('e', from, to, eventParams)} ${groupClause('t', group, eventParams)}`,
+         WHERE 1 = 1 ${dateClause('e', from, to, eventParams)} ${groupClause('t', group, eventParams)} ${companyClause('t', req.user, eventParams)}`,
         eventParams
       )
     ).map((e) => ({ kind: 'event', ...e }));
@@ -67,14 +73,16 @@ router.get(
     if (group && /^\d+$/.test(group)) {
       groupAdminClause = `AND ((a.target_type = 'ticket' AND a.target_id IN (SELECT id FROM tickets WHERE group_id = ?)) OR (a.target_type = 'group' AND a.target_id = ?))`;
     }
+    const adminCompanyParams = [];
+    const adminCompanyClause = companyClause('a', req.user, adminCompanyParams);
     const adminActions = (
       await db.all(
         `SELECT a.id, a.target_type, a.target_id, a.message, a.created_at,
                 u.name AS actor_name, u.role AS actor_role
          FROM audit_log a
          LEFT JOIN users u ON u.id = a.actor_id
-         WHERE 1 = 1 ${dateClause('a', from, to, adminParams)} ${groupAdminClause}`,
-        [...adminParams, ...(groupAdminClause ? [Number(group), Number(group)] : [])]
+         WHERE 1 = 1 ${dateClause('a', from, to, adminParams)} ${groupAdminClause} ${adminCompanyClause}`,
+        [...adminParams, ...(groupAdminClause ? [Number(group), Number(group)] : []), ...adminCompanyParams]
       )
     ).map((a) => ({ kind: 'admin', ticket_id: null, ticket_subject: null, ...a }));
 
