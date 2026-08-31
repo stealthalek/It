@@ -6,6 +6,7 @@ const asyncHandler = require('../middleware/asyncHandler');
 const { logAudit } = require('../audit');
 const { notifyUser } = require('../notifications');
 const { formatTicketNumber } = require('../lib/ticketNumber');
+const { createAssignmentLetter } = require('../lib/assetLetters');
 
 const router = express.Router();
 router.use(authenticate);
@@ -404,6 +405,9 @@ router.post(
           ]
         );
         generatedAssetId = Number(assetInfo.lastInsertRowid);
+        if (request.employee_user_id) {
+          createAssignmentLetter(generatedAssetId, request.employee_user_id, req.user.id).catch(() => {});
+        }
       }
       await db.run(
         `UPDATE onboarding_items SET status = 'done', completed_by = ?, completed_at = strftime('%Y-%m-%d %H:%M:%f', 'now')${generatedAssetId ? ', asset_id = ?' : ''} WHERE id = ?`,
@@ -606,6 +610,9 @@ router.patch(
       generatedAssetId = Number(assetInfo.lastInsertRowid);
       updates.push('asset_id = ?');
       params.push(generatedAssetId);
+      if (request.employee_user_id) {
+        createAssignmentLetter(generatedAssetId, request.employee_user_id, req.user.id).catch(() => {});
+      }
     }
 
     params.push(req.params.itemId);
