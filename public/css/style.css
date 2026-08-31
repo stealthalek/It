@@ -1154,6 +1154,28 @@ body:not(.role-customer):not(.role-agent):not(.role-admin) .nav-toggle { display
 .widget-tile-value { font-size: 1.5rem; font-weight: 800; color: var(--primary); line-height: 1.1; }
 .widget-tile-label { font-size: 0.78rem; color: var(--muted); margin-top: 0.2rem; }
 
+.system-status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+.system-status-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.85rem 1rem;
+}
+.system-status-label { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); }
+.system-status-value { font-size: 1.4rem; font-weight: 800; color: var(--text); line-height: 1.1; }
+.system-bar { height: 7px; border-radius: 999px; background: var(--border); overflow: hidden; }
+.system-bar-fill { height: 100%; border-radius: 999px; transition: width 0.3s ease; }
+.system-bar-ok { background: var(--success); }
+.system-bar-warning { background: var(--warning); }
+.system-bar-danger { background: var(--danger); }
+
 .sla-watch-list { display: flex; flex-direction: column; gap: 0.6rem; }
 .sla-watch-row {
   display: block;

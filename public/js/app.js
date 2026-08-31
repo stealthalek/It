@@ -16,6 +16,14 @@
     }
   }
 
+  let adminSystemStatusTimer = null;
+  function teardownAdminSystemStatusPolling() {
+    if (adminSystemStatusTimer) {
+      clearInterval(adminSystemStatusTimer);
+      adminSystemStatusTimer = null;
+    }
+  }
+
   let ticketSocket = null;
   function teardownTicketSocket() {
     if (ticketSocket) {
@@ -492,7 +500,11 @@
       onboarding_callout_title: 'Devi far entrare una nuova persona in azienda?', onboarding_callout_hint: 'Avvia una pratica di onboarding: postazione, accessi e account, tutto tracciato in un unico posto.',
       admin_section_overview: 'Panoramica', admin_section_users: 'Utenti', admin_section_groups: 'Gruppi e organigramma',
       admin_section_catalog: 'Catalogo e campi', admin_section_automation: 'Automazione', admin_section_onboarding: 'Onboarding',
-      admin_section_org: 'Organizzazione', admin_section_roles: 'Ruoli',
+      admin_section_org: 'Organizzazione', admin_section_roles: 'Ruoli', admin_section_system: 'Sistema',
+      admin_system_title: 'Stato del server', admin_system_hint: 'Indicatori in tempo reale su carico, memoria e limiti tecnici della piattaforma (solo admin).',
+      system_uptime_label: 'Attivo da', system_memory_label: 'Memoria (RSS)', system_requests_label: 'Richieste API (15 min)',
+      system_requests_reset_prefix: 'si azzera tra', system_requests_reset_suffix: 'min', system_requests_total_suffix: 'totali dall\'avvio',
+      system_db_label: 'Latenza database', system_db_error: 'Errore', system_db_mode_turso: 'Turso (persistente)', system_db_mode_local: 'File locale (non persistente)',
       admin_roles_title: 'Ruoli personalizzati', admin_roles_hint: 'Crea ruoli con permessi specifici da assegnare al personale, oltre ad Agente e Amministratore.',
       field_color: 'Colore', field_role_read_only: 'Sola lettura (non può modificare i ticket)', field_role_permissions: 'Permessi',
       btn_add_role: 'Crea ruolo', no_roles_hint: 'Nessun ruolo personalizzato ancora creato.',
@@ -771,7 +783,11 @@
       onboarding_callout_title: 'Bringing a new person on board?', onboarding_callout_hint: 'Start an onboarding request: workstation, access and accounts, all tracked in one place.',
       admin_section_overview: 'Overview', admin_section_users: 'Users', admin_section_groups: 'Groups and org chart',
       admin_section_catalog: 'Catalog and fields', admin_section_automation: 'Automation', admin_section_onboarding: 'Onboarding',
-      admin_section_org: 'Organization', admin_section_roles: 'Roles',
+      admin_section_org: 'Organization', admin_section_roles: 'Roles', admin_section_system: 'System',
+      admin_system_title: 'Server status', admin_system_hint: 'Real-time indicators of platform load, memory and technical limits (admin only).',
+      system_uptime_label: 'Up for', system_memory_label: 'Memory (RSS)', system_requests_label: 'API requests (15 min)',
+      system_requests_reset_prefix: 'resets in', system_requests_reset_suffix: 'min', system_requests_total_suffix: 'total since start',
+      system_db_label: 'Database latency', system_db_error: 'Error', system_db_mode_turso: 'Turso (persistent)', system_db_mode_local: 'Local file (not persistent)',
       admin_roles_title: 'Custom roles', admin_roles_hint: 'Create roles with specific permissions to assign to staff, beyond Agent and Administrator.',
       field_color: 'Color', field_role_read_only: 'Read-only (cannot modify tickets)', field_role_permissions: 'Permissions',
       btn_add_role: 'Create role', no_roles_hint: 'No custom roles created yet.',
@@ -1497,6 +1513,7 @@
 
     if (page !== 'ticket') teardownTicketSocket();
     if (page !== 'dashboard') teardownDashboardAutoUpdate();
+    if (page !== 'admin') teardownAdminSystemStatusPolling();
 
     appEl.classList.remove('route-fade');
     void appEl.offsetWidth;
@@ -3893,6 +3910,7 @@
       { key: 'onboarding', icon: 'userCircle', label: t('admin_section_onboarding') },
       { key: 'roles', icon: 'shield', label: t('admin_section_roles') },
       { key: 'org', icon: 'globe', label: t('admin_section_org') },
+      { key: 'system', icon: 'server', label: t('admin_section_system') },
     ];
     const activeSection = isAdmin ? (ADMIN_SECTIONS.some((s) => s.key === state.adminSection) ? state.adminSection : 'overview') : 'users';
 
@@ -4161,6 +4179,11 @@
           <p class="error-text" id="newRoleError"></p>
           <div id="rolesList" class="spinner-row">${t('loading')}</div>
         </div>
+        <div class="card admin-grid-full" data-admin-panel="system" data-block-id="systemStatus" ${activeSection === 'system' ? '' : 'hidden'}>
+          <h3 class="section-title" style="margin-top:0">${icon('server')} ${t('admin_system_title')}</h3>
+          <p class="hint">${t('admin_system_hint')}</p>
+          <div id="systemStatusBody" class="spinner-row">${t('loading')}</div>
+        </div>
       </div>` : ''}
       <div id="usersWrap" class="card spinner-row" ${isAdmin && activeSection !== 'users' ? 'hidden' : ''}>${t('loading')}</div>`;
 
@@ -4177,6 +4200,68 @@
         const adminScope = `admin_block_order_${activeSection}`;
         applyBlockOrder(adminScope, adminSelector);
         wireBlockDragging(adminScope, adminSelector, '.section-title', renderAdmin);
+      }
+
+      function statusBarClass(pct) {
+        if (pct >= 90) return 'system-bar-danger';
+        if (pct >= 70) return 'system-bar-warning';
+        return 'system-bar-ok';
+      }
+
+      function formatUptime(seconds) {
+        const days = Math.floor(seconds / 86400);
+        const hours = Math.floor((seconds % 86400) / 3600);
+        const mins = Math.floor((seconds % 3600) / 60);
+        if (days > 0) return `${days}g ${hours}h ${mins}m`;
+        if (hours > 0) return `${hours}h ${mins}m`;
+        return `${mins}m`;
+      }
+
+      async function loadSystemStatus() {
+        const bodyEl = document.getElementById('systemStatusBody');
+        if (!bodyEl) return;
+        try {
+          const status = await api('/admin/status');
+          const memPct = Math.min(100, Math.round((status.memory.rssMb / 512) * 100));
+          const reqPct = Math.min(100, Math.round((status.requestWindow.windowCount / status.requestWindow.windowMax) * 100));
+          const latencyClass = status.db.latencyMs === null ? 'system-bar-danger' : status.db.latencyMs > 400 ? 'system-bar-danger' : status.db.latencyMs > 100 ? 'system-bar-warning' : 'system-bar-ok';
+          bodyEl.className = '';
+          bodyEl.innerHTML = `
+            <div class="system-status-grid">
+              <div class="system-status-card">
+                <span class="system-status-label">${t('system_uptime_label')}</span>
+                <span class="system-status-value">${formatUptime(status.uptimeSeconds)}</span>
+                <span class="hint">Node ${escapeHtml(status.nodeVersion)} · ${status.cpuCount} CPU</span>
+              </div>
+              <div class="system-status-card">
+                <span class="system-status-label">${t('system_memory_label')}</span>
+                <span class="system-status-value">${status.memory.rssMb} MB</span>
+                <div class="system-bar"><div class="system-bar-fill ${statusBarClass(memPct)}" style="width:${memPct}%"></div></div>
+                <span class="hint">Heap ${status.memory.heapUsedMb} / ${status.memory.heapTotalMb} MB</span>
+              </div>
+              <div class="system-status-card">
+                <span class="system-status-label">${t('system_requests_label')}</span>
+                <span class="system-status-value">${status.requestWindow.windowCount} / ${status.requestWindow.windowMax}</span>
+                <div class="system-bar"><div class="system-bar-fill ${statusBarClass(reqPct)}" style="width:${reqPct}%"></div></div>
+                <span class="hint">${t('system_requests_reset_prefix')} ${Math.ceil(status.requestWindow.resetInSeconds / 60)} ${t('system_requests_reset_suffix')} · ${status.requestWindow.totalCount} ${t('system_requests_total_suffix')}</span>
+              </div>
+              <div class="system-status-card">
+                <span class="system-status-label">${t('system_db_label')}</span>
+                <span class="system-status-value">${status.db.latencyMs !== null ? `${status.db.latencyMs} ms` : t('system_db_error')}</span>
+                <div class="system-bar"><div class="system-bar-fill ${latencyClass}" style="width:${status.db.latencyMs !== null ? Math.min(100, Math.round((status.db.latencyMs / 500) * 100)) : 100}%"></div></div>
+                <span class="hint">${status.db.mode === 'turso' ? t('system_db_mode_turso') : t('system_db_mode_local')}</span>
+              </div>
+            </div>`;
+        } catch (err) {
+          bodyEl.className = '';
+          bodyEl.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
+        }
+      }
+
+      if (activeSection === 'system') {
+        loadSystemStatus();
+        teardownAdminSystemStatusPolling();
+        adminSystemStatusTimer = setInterval(loadSystemStatus, 10000);
       }
 
       async function loadAdminOverviewCounts() {

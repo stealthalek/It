@@ -1,0 +1,18 @@
+name: Keep backend awake
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping backend health endpoint
+        run: |
+          if [ -z "${{ vars.BACKEND_URL }}" ]; then
+            echo "Variabile di repository BACKEND_URL non impostata (Settings -> Secrets and variables -> Actions -> Variables): salto il ping."
+            exit 0
+          fi
+          curl -sf --max-time 20 "${{ vars.BACKEND_URL }}/api/health" || echo "Ping non riuscito, il servizio potrebbe essere in fase di risveglio."
