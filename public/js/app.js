@@ -469,6 +469,8 @@
       onboarding_attachment_hint: 'Puoi allegare il modulo compilato (PDF o immagine): sarà consultabile dalla pratica.',
       btn_start_onboarding: 'Avvia onboarding', toast_onboarding_created: 'Onboarding avviato',
       onboarding_requested_by_label: 'Richiesto da', onboarding_details_title: 'Dettagli',
+      onboarding_group_prefix: 'Onboarding:', onboarding_group_open_suffix: 'aperti', onboarding_group_done_suffix: 'completati',
+      onboarding_group_all_done: 'Tutti completati', onboarding_ticket_link_label: 'Fa parte dell\'onboarding di',
       onboarding_copy_from_label: 'Copia utenza da', onboarding_license_label: 'Licenza',
       onboarding_license_placeholder: 'es. E3, Business Standard...', onboarding_asset_created_prefix: 'Asset generato:',
       onboarding_completed_by_prefix: 'Completato da', no_onboarding_items_hint: 'Nessuna voce.',
@@ -731,6 +733,8 @@
       onboarding_attachment_hint: 'You can attach the filled-in form (PDF or image): it will be viewable from the request.',
       btn_start_onboarding: 'Start onboarding', toast_onboarding_created: 'Onboarding started',
       onboarding_requested_by_label: 'Requested by', onboarding_details_title: 'Details',
+      onboarding_group_prefix: 'Onboarding:', onboarding_group_open_suffix: 'open', onboarding_group_done_suffix: 'done',
+      onboarding_group_all_done: 'All done', onboarding_ticket_link_label: 'Part of the onboarding for',
       onboarding_copy_from_label: 'Copy entitlements from', onboarding_license_label: 'License',
       onboarding_license_placeholder: 'e.g. E3, Business Standard...', onboarding_asset_created_prefix: 'Asset created:',
       onboarding_completed_by_prefix: 'Completed by', no_onboarding_items_hint: 'No items.',
@@ -2323,7 +2327,7 @@
       container.innerHTML = sortedKeys.map((key) => `
         <div class="group-section">
           <h3 class="group-section-title">${escapeHtml(key)} <span class="group-section-count">${groups.get(key).length}</span></h3>
-          <div class="ticket-list">${ticketListHeaderHtml()}${groups.get(key).map((tk) => ticketRowHtml(tk, opts)).join('')}</div>
+          <div class="ticket-list">${ticketListHeaderHtml()}${ticketRowsHtml(groups.get(key), opts)}</div>
         </div>`).join('');
       wireTicketCardActions(container);
       wireTicketListColumnResize(container);
@@ -2503,6 +2507,7 @@
         <span class="ticket-row-col-subject">
           <strong>${escapeHtml(tk.subject)}</strong>
           <span class="ticket-row-desc">${escapeHtml(tk.description)}</span>
+          ${tk.onboarding_request_id ? `<span class="onboarding-chip" title="${escapeHtml(tk.onboarding_employee_name || '')}">${icon('userCircle')} ${escapeHtml(tk.onboarding_employee_name || '')}</span>` : ''}
           ${tk.tag_names ? `<span class="tag-chips">${tk.tag_names.split(',').map((n) => `<span class="tag-chip">${escapeHtml(n)}</span>`).join('')}</span>` : ''}
         </span>
         <span class="ticket-row-col-requester">${escapeHtml(tk.creator_name)}${tk.on_behalf_name ? `<span class="ticket-row-sub">${t('on_behalf_of_label')} ${escapeHtml(tk.on_behalf_name)}</span>` : ''}</span>
@@ -2517,6 +2522,67 @@
         <span class="ticket-row-col-updated">${formatDate(tk.updated_at)}</span>
         <span class="ticket-row-col-actions">${!tk.assignee_name && isStaff() ? `<button type="button" class="btn btn-sm btn-icon-sm assignMeBtn" data-id="${tk.id}" data-status="${tk.status}" title="${t('assign_to_me_btn')}" aria-label="${t('assign_to_me_btn')}">${icon('userCircle')}</button>` : ''}</span>
       </a>`;
+  }
+
+  function onboardingGroupRowHtml(requestId, groupTickets, opts) {
+    const employeeName = groupTickets[0].onboarding_employee_name || '';
+    const openTickets = groupTickets.filter((tk) => tk.status !== 'resolved' && tk.status !== 'closed');
+    const doneCount = groupTickets.length - openTickets.length;
+    const latestUpdate = groupTickets.reduce((max, tk) => (tk.updated_at > max ? tk.updated_at : max), groupTickets[0].updated_at);
+    return `
+      <div class="ticket-row onboarding-group-row ${opts.selectable ? 'selectable-row' : ''}" data-onboarding-group="${requestId}" role="button" tabindex="0">
+        <span class="ticket-row-col-type">${icon('userCircle')}</span>
+        <span class="ticket-row-col-number">× ${groupTickets.length}</span>
+        <span class="ticket-row-col-subject">
+          <strong>${t('onboarding_group_prefix')} ${escapeHtml(employeeName)}</strong>
+          <span class="ticket-row-desc">${openTickets.length} ${t('onboarding_group_open_suffix')} · ${doneCount} ${t('onboarding_group_done_suffix')}</span>
+        </span>
+        <span class="ticket-row-col-requester">—</span>
+        <span class="ticket-row-col-assignee">—</span>
+        <span class="ticket-row-col-group">—</span>
+        <span class="ticket-row-col-priority">—</span>
+        <span class="ticket-row-col-status">${openTickets.length ? `<span class="badge badge-open">${openTickets.length} ${t('onboarding_group_open_suffix')}</span>` : `<span class="badge badge-resolved">${t('onboarding_group_all_done')}</span>`}</span>
+        <span class="ticket-row-col-updated">${formatDate(latestUpdate)}</span>
+        <span class="ticket-row-col-actions"><span class="onboarding-group-chevron">${icon('chevronDown')}</span></span>
+      </div>
+      <div class="onboarding-group-children" data-group-children="${requestId}" hidden>
+        ${groupTickets.map((tk) => ticketRowHtml(tk, opts)).join('')}
+      </div>`;
+  }
+
+  function ticketRowsHtml(tickets, opts = {}) {
+    const byRequest = new Map();
+    tickets.forEach((tk) => {
+      if (!tk.onboarding_request_id) return;
+      if (!byRequest.has(tk.onboarding_request_id)) byRequest.set(tk.onboarding_request_id, []);
+      byRequest.get(tk.onboarding_request_id).push(tk);
+    });
+    const groupedRequestIds = new Set([...byRequest.entries()].filter(([, list]) => list.length > 1).map(([id]) => id));
+    const rendered = new Set();
+    return tickets.map((tk) => {
+      if (tk.onboarding_request_id && groupedRequestIds.has(tk.onboarding_request_id)) {
+        if (rendered.has(tk.onboarding_request_id)) return '';
+        rendered.add(tk.onboarding_request_id);
+        return onboardingGroupRowHtml(tk.onboarding_request_id, byRequest.get(tk.onboarding_request_id), opts);
+      }
+      return ticketRowHtml(tk, opts);
+    }).join('');
+  }
+
+  function wireOnboardingGroupToggles(container) {
+    container.querySelectorAll('.onboarding-group-row').forEach((row) => {
+      const groupId = row.dataset.onboardingGroup;
+      const children = container.querySelector(`.onboarding-group-children[data-group-children="${groupId}"]`);
+      if (!children) return;
+      const toggle = () => {
+        children.hidden = !children.hidden;
+        row.classList.toggle('onboarding-group-expanded', !children.hidden);
+      };
+      row.addEventListener('click', toggle);
+      row.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+      });
+    });
   }
 
   function wireTicketCardActions(container) {
@@ -2535,6 +2601,7 @@
         }
       });
     });
+    wireOnboardingGroupToggles(container);
   }
 
   function renderTicketList(container, tickets, opts = {}) {
@@ -2544,7 +2611,7 @@
       return;
     }
     container.className = 'ticket-list';
-    container.innerHTML = ticketListHeaderHtml() + tickets.map((tk) => ticketRowHtml(tk, opts)).join('');
+    container.innerHTML = ticketListHeaderHtml() + ticketRowsHtml(tickets, opts);
     wireTicketCardActions(container);
     wireTicketListColumnResize(container);
   }
@@ -2876,6 +2943,10 @@
               <h3 class="section-title" style="margin-top:0">${icon('userCircle')} ${t('requester_context_title')}</h3>
               ${requesterCard(requester, t('onboarding_requested_by_label'))}
               ${beneficiary ? requesterCard(beneficiary, t('on_behalf_of_label')) : ''}
+              ${ticket.onboarding_request_id && canAccessOnboarding() ? `
+              <a class="onboarding-ticket-link" href="#/onboarding/${ticket.onboarding_request_id}">
+                ${icon('userCircle', 'badge-icon')} ${t('onboarding_ticket_link_label')} ${escapeHtml(ticket.onboarding_employee_name || '')}
+              </a>` : ''}
             </div>`;
         }
       } catch { assigneesOptions = ''; }

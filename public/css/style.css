@@ -1354,6 +1354,47 @@ body.col-resizing-active { cursor: col-resize !important; user-select: none; }
   flex-direction: column;
 }
 .ticket-row-sub { color: var(--muted); font-size: 0.76rem; }
+.onboarding-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  width: fit-content;
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+  border-radius: 999px;
+  padding: 0.12rem 0.55rem 0.12rem 0.4rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+.onboarding-chip .icon { width: 0.8rem; height: 0.8rem; }
+.onboarding-group-row {
+  cursor: pointer;
+  background: var(--primary-soft);
+}
+.onboarding-group-row:hover { border-color: var(--primary); }
+.onboarding-group-chevron { display: inline-flex; color: var(--primary-dark); transition: transform 0.15s ease; }
+.onboarding-group-row.onboarding-group-expanded .onboarding-group-chevron { transform: rotate(180deg); }
+.onboarding-group-children {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin: -0.15rem 0 0 1.6rem;
+  padding-left: 0.9rem;
+  border-left: 2px solid var(--border);
+}
+.onboarding-group-children[hidden] { display: none; }
+.onboarding-ticket-link {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--border);
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: var(--primary-dark);
+}
+.onboarding-ticket-link:hover { text-decoration: underline; }
 .ticket-row-empty { color: var(--muted); font-style: italic; }
 .ticket-row-col-status { display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; }
 .ticket-row-col-updated { font-size: 0.8rem; color: var(--muted); white-space: nowrap; }
