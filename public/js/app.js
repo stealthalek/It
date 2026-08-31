@@ -283,6 +283,7 @@
       lang_updated: 'Lingua aggiornata', by_label: 'Di', assigned_to_label: 'Assegnato a', no_tickets_found: 'Nessun ticket trovato.',
       list_col_number: 'Numero', list_col_subject: 'Oggetto', list_col_requester: 'Richiedente', list_col_assignee: 'Assegnatario',
       list_col_group: 'Gruppo', list_col_priority: 'Priorità', list_col_status: 'Stato', list_col_updated: 'Aggiornato', list_unassigned: 'Non assegnato',
+      list_col_resize_hint: 'Trascina per ridimensionare, doppio clic per ripristinare',
       back_to_list: 'Torna alla lista', edit_subject_desc: 'Modifica oggetto e descrizione',
       field_subject: 'Oggetto', field_description: 'Descrizione', btn_save_changes: 'Salva modifiche',
       created_by: 'Creato da', on_date: 'il', reopen_ticket: 'Riapri ticket',
@@ -539,6 +540,7 @@
       lang_updated: 'Language updated', by_label: 'By', assigned_to_label: 'Assigned to', no_tickets_found: 'No tickets found.',
       list_col_number: 'Number', list_col_subject: 'Subject', list_col_requester: 'Requester', list_col_assignee: 'Assignee',
       list_col_group: 'Group', list_col_priority: 'Priority', list_col_status: 'Status', list_col_updated: 'Updated', list_unassigned: 'Unassigned',
+      list_col_resize_hint: 'Drag to resize, double-click to reset',
       back_to_list: 'Back to list', edit_subject_desc: 'Edit subject and description',
       field_subject: 'Subject', field_description: 'Description', btn_save_changes: 'Save changes',
       created_by: 'Created by', on_date: 'on', reopen_ticket: 'Reopen ticket',
@@ -1794,6 +1796,16 @@
         </select>` : ''}
         <input id="fQuery" type="search" placeholder="${isStaff() ? t('search_placeholder_staff') : t('search_placeholder_customer')}" />
       </div>
+      ${isStaff() && !viewingAs ? `
+      <div id="bulkBar" class="bulk-action-bar" hidden>
+        <span id="bulkCount" class="hint"></span>
+        <select id="bulkAssignSel"><option value="">${t('bulk_assign_placeholder')}</option></select>
+        <select id="bulkStatusSel">
+          <option value="">${t('bulk_status_placeholder')}</option>
+          ${Object.entries(statusLabels()).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
+        </select>
+        <button type="button" id="bulkClearBtn" class="btn btn-ghost btn-sm">${t('bulk_clear_selection')}</button>
+      </div>` : ''}
       <div id="ticketList" class="skeleton-grid">
         ${Array(4).fill('<div class="skeleton-card"></div>').join('')}
       </div>`;
@@ -1858,6 +1870,78 @@
             ${members.map((u) => `<option value="${u.id}">${escapeHtml(u.name)}</option>`).join('')}
           </optgroup>`).join(''));
       }).catch(() => {});
+    }
+
+    const bulkBar = document.getElementById('bulkBar');
+    const bulkCount = document.getElementById('bulkCount');
+    const bulkAssignSel = document.getElementById('bulkAssignSel');
+    const bulkStatusSel = document.getElementById('bulkStatusSel');
+    const bulkClearBtn = document.getElementById('bulkClearBtn');
+    const selected = new Set();
+
+    if (bulkAssignSel) {
+      api('/users').then(({ users }) => {
+        const staffUsers = users.filter((u) => u.role === 'agent' || u.role === 'admin');
+        bulkAssignSel.innerHTML = `<option value="">${t('bulk_assign_placeholder')}</option>` +
+          staffUsers.map((u) => `<option value="${u.id}">${escapeHtml(u.name)}</option>`).join('');
+      }).catch(() => {});
+    }
+
+    function updateBulkBar() {
+      if (!bulkBar) return;
+      bulkBar.hidden = selected.size === 0;
+      bulkCount.textContent = `${t('bulk_selected_count')} ${selected.size}`;
+    }
+
+    function wireSelectionCheckboxes() {
+      listEl.querySelectorAll('.ticketSelectBox').forEach((box) => {
+        box.checked = selected.has(Number(box.dataset.id));
+        box.addEventListener('change', () => {
+          const id = Number(box.dataset.id);
+          if (box.checked) selected.add(id); else selected.delete(id);
+          updateBulkBar();
+        });
+      });
+    }
+
+    if (bulkClearBtn) {
+      bulkClearBtn.addEventListener('click', () => {
+        selected.clear();
+        wireSelectionCheckboxes();
+        updateBulkBar();
+      });
+    }
+
+    if (bulkAssignSel) {
+      bulkAssignSel.addEventListener('change', async () => {
+        if (!bulkAssignSel.value || !selected.size) return;
+        const assignedTo = Number(bulkAssignSel.value);
+        try {
+          await Promise.all([...selected].map((id) => api(`/tickets/${id}`, { method: 'PATCH', body: { assigned_to: assignedTo } })));
+          showToast(t('toast_bulk_assigned'), 'success');
+          selected.clear();
+          bulkAssignSel.value = '';
+          load();
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      });
+    }
+
+    if (bulkStatusSel) {
+      bulkStatusSel.addEventListener('change', async () => {
+        if (!bulkStatusSel.value || !selected.size) return;
+        const status = bulkStatusSel.value;
+        try {
+          await Promise.all([...selected].map((id) => api(`/tickets/${id}`, { method: 'PATCH', body: { status } })));
+          showToast(t('toast_bulk_status_updated'), 'success');
+          selected.clear();
+          bulkStatusSel.value = '';
+          load();
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      });
     }
 
     function renderStats(tickets) {
@@ -2055,7 +2139,7 @@
     }
 
     let groupByTeam = false;
-    function renderGroupedTicketList(container, tickets) {
+    function renderGroupedTicketList(container, tickets, opts = {}) {
       if (!tickets.length) {
         container.className = '';
         container.innerHTML = `<div class="empty-state">${icon('inbox')}<span>${t('no_tickets_found')}</span></div>`;
@@ -2077,9 +2161,10 @@
       container.innerHTML = sortedKeys.map((key) => `
         <div class="group-section">
           <h3 class="group-section-title">${escapeHtml(key)} <span class="group-section-count">${groups.get(key).length}</span></h3>
-          <div class="ticket-list">${ticketListHeaderHtml()}${groups.get(key).map((tk) => ticketRowHtml(tk)).join('')}</div>
+          <div class="ticket-list">${ticketListHeaderHtml()}${groups.get(key).map((tk) => ticketRowHtml(tk, opts)).join('')}</div>
         </div>`).join('');
       wireTicketCardActions(container);
+      wireTicketListColumnResize(container);
     }
 
     let debounceTimer;
@@ -2104,8 +2189,17 @@
         renderPersonalCounter(tickets);
         renderCharts(tickets);
         renderScopedCharts();
-        if (groupByTeam) renderGroupedTicketList(listEl, tickets);
-        else renderTicketList(listEl, tickets);
+        if (bulkBar) {
+          const currentIds = new Set(tickets.map((tk) => tk.id));
+          [...selected].forEach((id) => { if (!currentIds.has(id)) selected.delete(id); });
+        }
+        const listOpts = { selectable: !!bulkBar };
+        if (groupByTeam) renderGroupedTicketList(listEl, tickets, listOpts);
+        else renderTicketList(listEl, tickets, listOpts);
+        if (bulkBar) {
+          wireSelectionCheckboxes();
+          updateBulkBar();
+        }
       } catch (err) {
         listEl.className = '';
         listEl.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
@@ -2152,18 +2246,87 @@
     return `${hours}h ${mins}m`;
   }
 
+  const TICKET_LIST_COL_DEFAULT = { requester: 104, assignee: 104, group: 104, priority: 78, status: 126, updated: 74 };
+  const TICKET_LIST_COL_MIN = { requester: 70, assignee: 70, group: 70, priority: 64, status: 96, updated: 60 };
+  const TICKET_LIST_COL_MAX = 420;
+
+  function getTicketListColWidths() {
+    let stored = {};
+    try { stored = JSON.parse(localStorage.getItem('ticketing_list_col_widths') || '{}'); } catch { stored = {}; }
+    const widths = { ...TICKET_LIST_COL_DEFAULT };
+    Object.keys(widths).forEach((key) => {
+      if (typeof stored[key] === 'number' && stored[key] >= TICKET_LIST_COL_MIN[key] && stored[key] <= TICKET_LIST_COL_MAX) {
+        widths[key] = stored[key];
+      }
+    });
+    return widths;
+  }
+
+  function setTicketListColWidths(widths) {
+    try { localStorage.setItem('ticketing_list_col_widths', JSON.stringify(widths)); } catch {}
+  }
+
+  function ticketListGridTemplateValue(widths) {
+    return `22px 76px minmax(140px, 2fr) ${widths.requester}px ${widths.assignee}px ${widths.group}px ${widths.priority}px ${widths.status}px ${widths.updated}px 40px`;
+  }
+
+  function applyTicketListColWidths(widths) {
+    document.documentElement.style.setProperty('--tl-grid', ticketListGridTemplateValue(widths || getTicketListColWidths()));
+  }
+
+  function wireTicketListColumnResize(container) {
+    container.querySelectorAll('.col-resize-handle').forEach((handle) => {
+      handle.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const col = handle.dataset.col;
+        const startX = e.clientX;
+        const widths = getTicketListColWidths();
+        const startWidth = widths[col];
+        const min = TICKET_LIST_COL_MIN[col] || 60;
+        handle.classList.add('col-resizing');
+        document.body.classList.add('col-resizing-active');
+        function onMove(ev) {
+          const delta = ev.clientX - startX;
+          widths[col] = Math.min(TICKET_LIST_COL_MAX, Math.max(min, startWidth + delta));
+          applyTicketListColWidths(widths);
+        }
+        function onUp() {
+          document.removeEventListener('pointermove', onMove);
+          document.removeEventListener('pointerup', onUp);
+          handle.classList.remove('col-resizing');
+          document.body.classList.remove('col-resizing-active');
+          setTicketListColWidths(widths);
+        }
+        document.addEventListener('pointermove', onMove);
+        document.addEventListener('pointerup', onUp);
+      });
+      handle.addEventListener('dblclick', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const col = handle.dataset.col;
+        const widths = getTicketListColWidths();
+        widths[col] = TICKET_LIST_COL_DEFAULT[col];
+        applyTicketListColWidths(widths);
+        setTicketListColWidths(widths);
+      });
+    });
+  }
+
   function ticketListHeaderHtml() {
+    applyTicketListColWidths();
+    const resizeHandle = (col) => `<span class="col-resize-handle" data-col="${col}" title="${t('list_col_resize_hint')}"></span>`;
     return `
       <div class="ticket-list-header">
         <span class="ticket-row-col-type"></span>
         <span class="ticket-row-col-number">${t('list_col_number')}</span>
         <span class="ticket-row-col-subject">${t('list_col_subject')}</span>
-        <span class="ticket-row-col-requester">${t('list_col_requester')}</span>
-        <span class="ticket-row-col-assignee">${t('list_col_assignee')}</span>
-        <span class="ticket-row-col-group">${t('list_col_group')}</span>
-        <span class="ticket-row-col-priority">${t('list_col_priority')}</span>
-        <span class="ticket-row-col-status">${t('list_col_status')}</span>
-        <span class="ticket-row-col-updated">${t('list_col_updated')}</span>
+        <span class="ticket-row-col-requester">${t('list_col_requester')}${resizeHandle('requester')}</span>
+        <span class="ticket-row-col-assignee">${t('list_col_assignee')}${resizeHandle('assignee')}</span>
+        <span class="ticket-row-col-group">${t('list_col_group')}${resizeHandle('group')}</span>
+        <span class="ticket-row-col-priority">${t('list_col_priority')}${resizeHandle('priority')}</span>
+        <span class="ticket-row-col-status">${t('list_col_status')}${resizeHandle('status')}</span>
+        <span class="ticket-row-col-updated">${t('list_col_updated')}${resizeHandle('updated')}</span>
         <span class="ticket-row-col-actions"></span>
       </div>`;
   }
@@ -2221,6 +2384,7 @@
     container.className = 'ticket-list';
     container.innerHTML = ticketListHeaderHtml() + tickets.map((tk) => ticketRowHtml(tk, opts)).join('');
     wireTicketCardActions(container);
+    wireTicketListColumnResize(container);
   }
 
   async function renderNewTicket() {
