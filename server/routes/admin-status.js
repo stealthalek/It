@@ -4,6 +4,7 @@ const db = require('../db/database');
 const { authenticate, requireRole } = require('../middleware/auth');
 const asyncHandler = require('../middleware/asyncHandler');
 const { getStats, getEventLoopLagMs } = require('../lib/requestStats');
+const { getOnlineUsers } = require('../realtime');
 
 const router = express.Router();
 router.use(authenticate);
@@ -35,6 +36,7 @@ router.get(
       cpuCount: os.cpus().length,
       loadAvg1m: Math.round(os.loadavg()[0] * 100) / 100,
       eventLoopLagMs: getEventLoopLagMs(),
+      onlineUsers: getOnlineUsers(),
     });
   })
 );

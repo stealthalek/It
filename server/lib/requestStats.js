@@ -1,5 +1,5 @@
 const WINDOW_MS = 15 * 60 * 1000;
-const MAX_REQUESTS = 3000;
+const MAX_REQUESTS = 6000;
 
 let windowStart = Date.now();
 let windowCount = 0;

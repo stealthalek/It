@@ -6,6 +6,7 @@ const mailer = require('../mailer');
 const { authenticate, requireRole } = require('../middleware/auth');
 const asyncHandler = require('../middleware/asyncHandler');
 const { logAudit } = require('../audit');
+const { revokeAllSessions } = require('../lib/sessions');
 
 const router = express.Router();
 router.use(authenticate);
@@ -17,7 +18,8 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const USER_SELECT = `
   SELECT u.id, u.name, u.email, u.role, u.group_id, g.name AS group_name, gParent.name AS group_parent_name,
     u.locale, u.created_at, u.is_external, u.manager_id, manager.name AS manager_name,
-    u.role_id, r.label_it AS role_label_it, r.label_en AS role_label_en, r.color AS role_color, r.read_only AS role_read_only
+    u.role_id, r.label_it AS role_label_it, r.label_en AS role_label_en, r.color AS role_color, r.read_only AS role_read_only,
+    u.is_blocked, u.blocked_at, u.blocked_reason
   FROM users u
   LEFT JOIN groups g ON g.id = u.group_id
   LEFT JOIN groups gParent ON gParent.id = g.parent_id
@@ -29,7 +31,7 @@ router.get(
   '/',
   asyncHandler(async (req, res) => {
     const where = req.user.is_super_admin ? '' : 'WHERE u.is_super_admin = 0';
-    const users = await db.all(`${USER_SELECT} ${where} ORDER BY u.name ASC`);
+    const users = await db.all(`${USER_SELECT} ${where} ORDER BY u.name ASC LIMIT 5000`);
     res.json({ users });
   })
 );
@@ -342,6 +344,40 @@ router.patch(
     await db.run(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, params);
     const user = await db.get(`${USER_SELECT} WHERE u.id = ?`, [req.params.id]);
     logAudit(req.user.id, 'user', user.id, `Dati personali di "${user.name}" aggiornati`).catch(() => {});
+    res.json({ user });
+  })
+);
+
+router.patch(
+  '/:id/block',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    if (Number(req.params.id) === req.user.id) {
+      return res.status(400).json({ error: 'Non puoi bloccare il tuo stesso account' });
+    }
+    const target = await db.get('SELECT * FROM users WHERE id = ?', [req.params.id]);
+    if (!target) {
+      return res.status(404).json({ error: 'Utente non trovato' });
+    }
+    if (target.is_super_admin && !req.user.is_super_admin) {
+      return res.status(404).json({ error: 'Utente non trovato' });
+    }
+
+    const { blocked, reason } = req.body || {};
+    if (blocked) {
+      await db.run("UPDATE users SET is_blocked = 1, blocked_at = datetime('now'), blocked_reason = ? WHERE id = ?", [
+        reason && reason.trim() ? reason.trim().slice(0, 500) : null, req.params.id,
+      ]);
+      await revokeAllSessions(req.params.id);
+    } else {
+      await db.run("UPDATE users SET is_blocked = 0, blocked_at = NULL, blocked_reason = NULL WHERE id = ?", [req.params.id]);
+    }
+
+    const user = await db.get(`${USER_SELECT} WHERE u.id = ?`, [req.params.id]);
+    logAudit(
+      req.user.id, 'user', user.id,
+      blocked ? `Account "${user.name}" bloccato${reason && reason.trim() ? `: ${reason.trim()}` : ''}` : `Account "${user.name}" sbloccato`
+    ).catch(() => {});
     res.json({ user });
   })
 );

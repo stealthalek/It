@@ -30,4 +30,8 @@ async function revokeOtherSessions(userId, keepSessionId) {
   await db.run('UPDATE user_sessions SET revoked = 1 WHERE user_id = ? AND id != ?', [userId, keepSessionId]);
 }
 
-module.exports = { createSession, listSessions, revokeSession, revokeOtherSessions };
+async function revokeAllSessions(userId) {
+  await db.run('UPDATE user_sessions SET revoked = 1 WHERE user_id = ?', [userId]);
+}
+
+module.exports = { createSession, listSessions, revokeSession, revokeOtherSessions, revokeAllSessions };

@@ -4,9 +4,30 @@ const db = require('./db/database');
 const { JWT_SECRET } = require('./middleware/auth');
 
 let io = null;
+const onlineUsers = new Map();
 
 function isStaffRole(role) {
   return role === 'agent' || role === 'admin';
+}
+
+function trackConnect(socket) {
+  const existing = onlineUsers.get(socket.user.id);
+  if (existing) {
+    existing.count += 1;
+  } else {
+    onlineUsers.set(socket.user.id, { id: socket.user.id, name: socket.user.name, role: socket.user.role, count: 1 });
+  }
+}
+
+function trackDisconnect(socket) {
+  const existing = onlineUsers.get(socket.user.id);
+  if (!existing) return;
+  existing.count -= 1;
+  if (existing.count <= 0) onlineUsers.delete(socket.user.id);
+}
+
+function getOnlineUsers() {
+  return Array.from(onlineUsers.values()).map(({ id, name, role }) => ({ id, name, role }));
 }
 
 async function canAccessTicket(user, ticketId) {
@@ -49,6 +70,7 @@ function initRealtime(httpServer) {
   io.on('connection', (socket) => {
     socket.data.ticketRoom = null;
     socket.join(`user:${socket.user.id}`);
+    trackConnect(socket);
 
     socket.on('ticket:join', async (ticketId) => {
       try {
@@ -69,7 +91,10 @@ function initRealtime(httpServer) {
     });
 
     socket.on('ticket:leave', () => leaveCurrentRoom(socket));
-    socket.on('disconnect', () => leaveCurrentRoom(socket));
+    socket.on('disconnect', () => {
+      leaveCurrentRoom(socket);
+      trackDisconnect(socket);
+    });
   });
 
   return io;
@@ -96,4 +121,4 @@ function broadcastNotification(userId, notification) {
   io.to(`user:${userId}`).emit('notification:new', notification);
 }
 
-module.exports = { initRealtime, broadcastActivityItem, broadcastTicketUpdate, broadcastNotification };
+module.exports = { initRealtime, broadcastActivityItem, broadcastTicketUpdate, broadcastNotification, getOnlineUsers };
