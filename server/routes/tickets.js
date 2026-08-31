@@ -59,6 +59,7 @@ function isStaff(user) {
 function canAccessTicket(user, ticket) {
   if (!isStaff(user)) return ticket.created_by === user.id || ticket.on_behalf_of === user.id;
   if (user.is_super_admin) return true;
+  if (ticket.company_id && ticket.company_id !== user.company_id) return false;
   if (!ticket.group_id) return true;
   return ticket.group_id === user.group_id;
 }
@@ -157,8 +158,10 @@ async function listCustomValues(ticketId) {
 }
 
 async function notifyStaffOfNewTicket(ticket) {
-  const staff = await db.all("SELECT id, group_id, is_super_admin FROM users WHERE role IN ('agent', 'admin')");
-  const recipients = staff.filter((u) => u.id !== ticket.created_by && (u.is_super_admin || !ticket.group_id || u.group_id === ticket.group_id));
+  const staff = await db.all("SELECT id, group_id, company_id, is_super_admin FROM users WHERE role IN ('agent', 'admin')");
+  const recipients = staff.filter((u) => u.id !== ticket.created_by
+    && (u.is_super_admin || (!ticket.company_id || u.company_id === ticket.company_id))
+    && (u.is_super_admin || !ticket.group_id || u.group_id === ticket.group_id));
   for (const u of recipients) {
     notifyUser(u.id, ticket.id, {
       it: `Nuovo ticket #${formatTicketNumber(ticket.id)}: ${ticket.subject}`,
@@ -340,6 +343,8 @@ router.get(
     }
 
     if (isStaff(req.user) && !req.user.is_super_admin) {
+      clauses.push('(t.company_id IS NULL OR t.company_id = ?)');
+      params.push(req.user.company_id);
       if (req.user.group_id) {
         clauses.push('(t.group_id IS NULL OR t.group_id = ?)');
         params.push(req.user.group_id);
@@ -432,8 +437,11 @@ router.post(
     }
 
     const info = await db.run(
-      'INSERT INTO tickets (subject, description, priority, type, category, created_by, group_id, on_behalf_of) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [subject.trim(), description.trim(), finalPriority, finalType, finalCategory, req.user.id, autoGroupId, beneficiary ? beneficiary.id : null]
+      'INSERT INTO tickets (subject, description, priority, type, category, created_by, group_id, on_behalf_of, company_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [
+        subject.trim(), description.trim(), finalPriority, finalType, finalCategory, req.user.id, autoGroupId,
+        beneficiary ? beneficiary.id : null, req.user.company_id,
+      ]
     );
 
     const ticketId = Number(info.lastInsertRowid);

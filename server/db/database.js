@@ -775,6 +775,18 @@ async function migrate() {
   )`);
   await run('CREATE INDEX IF NOT EXISTS idx_time_entries_user_id ON time_entries(user_id)');
   await run('CREATE INDEX IF NOT EXISTS idx_time_entries_clock_in ON time_entries(clock_in)');
+
+  const ticketCols4 = await all('PRAGMA table_info(tickets)');
+  if (!ticketCols4.some((c) => c.name === 'company_id')) {
+    await run('ALTER TABLE tickets ADD COLUMN company_id INTEGER REFERENCES companies(id) ON DELETE SET NULL');
+  }
+  await run('CREATE INDEX IF NOT EXISTS idx_tickets_company_id ON tickets(company_id)');
+
+  const auditLogCols = await all('PRAGMA table_info(audit_log)');
+  if (auditLogCols.length && !auditLogCols.some((c) => c.name === 'company_id')) {
+    await run('ALTER TABLE audit_log ADD COLUMN company_id INTEGER REFERENCES companies(id) ON DELETE SET NULL');
+  }
+  await run('CREATE INDEX IF NOT EXISTS idx_audit_log_company_id ON audit_log(company_id)');
 }
 
 async function seedDefaultCompany() {
@@ -793,6 +805,12 @@ async function seedDefaultCompany() {
   }
   await run('UPDATE users SET company_id = ? WHERE company_id IS NULL', [defaultCompany.id]);
   await run('UPDATE groups SET company_id = ? WHERE company_id IS NULL', [defaultCompany.id]);
+  await run(`UPDATE tickets SET company_id = (
+    SELECT company_id FROM users WHERE users.id = tickets.created_by
+  ) WHERE company_id IS NULL`);
+  await run(`UPDATE audit_log SET company_id = (
+    SELECT company_id FROM users WHERE users.id = audit_log.actor_id
+  ) WHERE company_id IS NULL AND actor_id IS NOT NULL`);
 }
 
 async function seedDefaultRoles() {
