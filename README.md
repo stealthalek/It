@@ -55,7 +55,7 @@ Il server si mette in ascolto su `http://0.0.0.0:3000`, quindi è raggiungibile:
 - dallo stesso computer: `http://localhost:3000`
 - da **qualsiasi altro dispositivo sulla stessa rete** (telefono, tablet, altro PC): `http://<IP-del-computer>:3000` (trova l'IP con `ip addr` / `ifconfig` su Linux/Mac o `ipconfig` su Windows)
 
-Al primo avvio, se non esistono utenti, viene creato automaticamente un account amministratore. Le credenziali vengono stampate nel log del server (di default `admin@ticketing.local` / `Admin123!`, sovrascrivibili in `.env`). **Cambia la password dopo il primo accesso.**
+Al primo avvio, se non esistono utenti, viene creato automaticamente un account amministratore con le credenziali indicate nelle variabili d'ambiente `DEFAULT_ADMIN_EMAIL`/`DEFAULT_ADMIN_PASSWORD` (vedi sotto), stampate anche nel log del server al primo avvio. **Impostale sempre prima del primo deploy e cambia la password dopo il primo accesso.**
 
 ## Avvio con Docker (consigliato per l'uso "da qualsiasi dispositivo")
 
@@ -69,20 +69,20 @@ Per pubblicarla su Internet ed accedervi da qualsiasi luogo, esegui il deploy de
 
 ## Pubblicazione online: frontend su GitHub Pages + backend su Render
 
-GitHub Pages ospita solo file statici e non può eseguire il backend Node/SQLite: per avere un link pubblico tipo `https://stealthalek.github.io/It/` con dati reali condivisi tra chi apre i ticket e chi li gestisce, il frontend (statico) va su GitHub Pages e il backend (API + database) va ospitato separatamente. Il frontend è già predisposto: nessun URL è hardcoded, l'indirizzo del backend si configura da un pannello **Impostazioni** (icona ingranaggio in alto) e viene salvato nel browser.
+GitHub Pages ospita solo file statici e non può eseguire il backend Node/SQLite: per avere un link pubblico del tipo `https://<tuo-utente>.github.io/<nome-repo>/` con dati reali condivisi tra chi apre i ticket e chi li gestisce, il frontend (statico) va su GitHub Pages e il backend (API + database) va ospitato separatamente. Il frontend è già predisposto: nessun URL è hardcoded, l'indirizzo del backend si configura da un pannello **Impostazioni** (icona ingranaggio in alto) e viene salvato nel browser.
 
 ### 1. Pubblica il frontend su GitHub Pages
 
 1. Nel repository su GitHub vai su **Settings → Pages**.
 2. In "Build and deployment" imposta **Source: GitHub Actions**.
-3. Il workflow incluso (`.github/workflows/deploy-pages.yml`) pubblica automaticamente il contenuto di `public/` a ogni push sul branch principale. Dopo il primo run, il sito è live su `https://<utente>.github.io/<nome-repo>/` (es. `https://stealthalek.github.io/It/`).
+3. Il workflow incluso (`.github/workflows/deploy-pages.yml`) pubblica automaticamente il contenuto di `public/` a ogni push sul branch principale. Dopo il primo run, il sito è live su `https://<tuo-utente>.github.io/<nome-repo>/`.
 
 ### 2. Pubblica il backend su Render (piano gratuito)
 
 1. Crea un account su [render.com](https://render.com) (gratuito) e collega il tuo account GitHub.
 2. Su Render scegli **New → Blueprint**, seleziona questo repository: viene letto automaticamente `render.yaml` incluso nel progetto, che compila l'immagine dal `Dockerfile` esistente.
-3. Imposta la variabile `DEFAULT_ADMIN_PASSWORD` nel pannello Render prima del primo deploy (altrimenti resta il default `Admin123!`, da cambiare subito dopo il primo accesso).
-4. A deploy completato Render fornisce un URL tipo `https://it-ticketing-api.onrender.com`.
+3. Imposta le variabili `DEFAULT_ADMIN_EMAIL` e `DEFAULT_ADMIN_PASSWORD` nel pannello Render **prima** del primo deploy, con credenziali scelte da te.
+4. A deploy completato Render fornisce un URL del tipo `https://<nome-servizio>.onrender.com`.
 
 > **Importante — persistenza dei dati:** le istanze web gratuite di Render hanno un filesystem effimero: **senza un database esterno, ogni nuovo deploy cancella tutti gli utenti e i ticket**. Segui subito la sezione successiva per collegare un database Turso gratuito e persistente, altrimenti i dati vengono ripristinati da zero a ogni pubblicazione di una modifica.
 
@@ -103,7 +103,7 @@ Se le due variabili non sono impostate, il backend continua a funzionare con un 
 ### 3. Collega il frontend al backend
 
 1. Apri il sito GitHub Pages, clicca sull'icona ingranaggio in alto (Impostazioni connessione).
-2. Incolla l'URL del backend Render (es. `https://it-ticketing-api.onrender.com`, senza slash finale) e premi **Salva**: il pulsante "Verifica connessione" conferma che tutto funziona.
+2. Incolla l'URL del backend Render (senza slash finale) e premi **Salva**: il pulsante "Verifica connessione" conferma che tutto funziona.
 3. Da questo momento login, registrazione e gestione ticket dal sito GitHub Pages parlano con il backend remoto, da qualunque dispositivo e rete.
 
 Chi apre il sito da un altro dispositivo dovrà anch'esso impostare una volta sola lo stesso indirizzo backend nelle Impostazioni (il valore è salvato nel browser locale, non condiviso automaticamente tra dispositivi diversi).
@@ -116,7 +116,7 @@ L'accesso con account Google o Microsoft (personali o aziendali) è già impleme
 
 1. Vai su [Google Cloud Console](https://console.cloud.google.com/apis/credentials), crea un progetto (o usane uno esistente).
 2. **Crea credenziali → ID client OAuth**, tipo applicazione **Applicazione web**.
-3. In "Origini JavaScript autorizzate" aggiungi l'indirizzo del tuo frontend (es. `https://stealthalek.github.io`).
+3. In "Origini JavaScript autorizzate" aggiungi l'indirizzo del tuo frontend (es. `https://<tuo-utente>.github.io`).
 4. Copia il **Client ID** generato.
 5. Impostalo come variabile d'ambiente `GOOGLE_CLIENT_ID` sul backend (es. nel pannello Render → Environment).
 
@@ -124,7 +124,7 @@ L'accesso con account Google o Microsoft (personali o aziendali) è già impleme
 
 1. Vai su [Microsoft Entra ID (Azure Portal) → App registrations → New registration](https://portal.azure.com).
 2. Come tipo di account scegli se limitare l'accesso alla tua sola organizzazione o consentirlo a qualsiasi account Microsoft (personale o aziendale).
-3. In "Redirect URI" scegli tipo **SPA** e inserisci l'indirizzo del tuo frontend (es. `https://stealthalek.github.io/It/`).
+3. In "Redirect URI" scegli tipo **SPA** e inserisci l'indirizzo del tuo frontend (es. `https://<tuo-utente>.github.io/<nome-repo>/`).
 4. Copia l'**Application (client) ID**.
 5. Impostalo come variabile d'ambiente `MICROSOFT_CLIENT_ID` sul backend; se vuoi restringere l'accesso al solo tuo tenant aziendale imposta anche `MICROSOFT_TENANT_ID` con l'ID del tenant (altrimenti lascialo non impostato per accettare qualsiasi account Microsoft).
 
@@ -151,7 +151,7 @@ Quando uno staff member contrassegna un ticket come **risolto**, il cliente può
    - `SMTP_FROM` (opzionale, indirizzo mittente mostrato al destinatario; se omesso usa `SMTP_USER`)
 3. Render riavvia automaticamente il servizio: da questo momento, ogni volta che un ticket passa a "Risolto", il cliente riceve un'email.
 
-### Esempio: instradare tutte le email tramite un account Gmail dedicato (es. infotickting@gmail.com)
+### Esempio: instradare tutte le email tramite un account Gmail dedicato
 
 Per far sì che tutte le email in uscita della piattaforma (inviti, notifiche di risoluzione, reset password) partano da un unico indirizzo Gmail aziendale:
 
@@ -173,8 +173,8 @@ La ricezione delle risposte (email in arrivo che diventano commenti automatici s
 |---|---|---|
 | `PORT` | Porta HTTP del server | `3000` |
 | `JWT_SECRET` | Segreto per la firma dei token JWT — **obbligatorio in produzione** (l'avvio viene bloccato se manca) | `dev-secret-change-me` (solo in sviluppo locale) |
-| `DEFAULT_ADMIN_EMAIL` | Email dell'admin creato al primo avvio | `admin@ticketing.local` |
-| `DEFAULT_ADMIN_PASSWORD` | Password dell'admin creato al primo avvio | `Admin123!` |
+| `DEFAULT_ADMIN_EMAIL` | Email dell'admin creato al primo avvio | nessuno — impostala sempre prima del primo deploy |
+| `DEFAULT_ADMIN_PASSWORD` | Password dell'admin creato al primo avvio | nessuno — impostala sempre prima del primo deploy |
 | `GOOGLE_CLIENT_ID` | Client ID OAuth Google, abilita l'accesso "Sign in with Google" | non impostato (SSO Google disattivato) |
 | `MICROSOFT_CLIENT_ID` | Application ID Microsoft Entra, abilita l'accesso con Microsoft | non impostato (SSO Microsoft disattivato) |
 | `MICROSOFT_TENANT_ID` | Limita l'accesso Microsoft a un singolo tenant aziendale | `common` (qualsiasi account Microsoft) |

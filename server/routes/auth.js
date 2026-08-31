@@ -10,10 +10,36 @@ const { getSsoConfig, verifyGoogleCredential, verifyMicrosoftToken } = require('
 const { generateSecret, verifyTotp, buildOtpauthUri } = require('../lib/totp');
 const { createSession, listSessions, revokeSession, revokeOtherSessions } = require('../lib/sessions');
 const { resolvePermissions } = require('../lib/permissions');
+const { logAudit } = require('../audit');
 
 const router = express.Router();
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MAX_FAILED_LOGIN_ATTEMPTS = 5;
+const LOCKOUT_MINUTES = 15;
+
+function isAccountLocked(user) {
+  return !!(user.locked_until && new Date(`${user.locked_until.replace(' ', 'T')}Z`).getTime() > Date.now());
+}
+
+function lockedUntilMinutesLeft(user) {
+  return Math.max(1, Math.ceil((new Date(`${user.locked_until.replace(' ', 'T')}Z`).getTime() - Date.now()) / 60000));
+}
+
+async function registerFailedLoginAttempt(user) {
+  const count = (user.failed_login_count || 0) + 1;
+  if (count >= MAX_FAILED_LOGIN_ATTEMPTS) {
+    const lockedUntil = new Date(Date.now() + LOCKOUT_MINUTES * 60 * 1000).toISOString().slice(0, 19).replace('T', ' ');
+    await db.run('UPDATE users SET failed_login_count = 0, locked_until = ? WHERE id = ?', [lockedUntil, user.id]);
+    logAudit(user.id, 'user', user.id, `Account bloccato temporaneamente per ${LOCKOUT_MINUTES} minuti dopo ${MAX_FAILED_LOGIN_ATTEMPTS} tentativi di accesso falliti`).catch(() => {});
+  } else {
+    await db.run('UPDATE users SET failed_login_count = ? WHERE id = ?', [count, user.id]);
+  }
+}
+
+async function clearFailedLoginAttempts(userId) {
+  await db.run('UPDATE users SET failed_login_count = 0, locked_until = NULL WHERE id = ?', [userId]);
+}
 
 function passwordError(password) {
   if (!password || password.length < 8) {
@@ -130,9 +156,18 @@ router.post(
     }
 
     const user = await db.get('SELECT * FROM users WHERE email = ?', [email.toLowerCase()]);
-    if (!user || !bcrypt.compareSync(password, user.password)) {
+    if (!user) {
       return res.status(401).json({ error: 'Credenziali non valide' });
     }
+    if (isAccountLocked(user)) {
+      return res.status(423).json({ error: `Account temporaneamente bloccato per troppi tentativi falliti. Riprova tra ${lockedUntilMinutesLeft(user)} minuti.` });
+    }
+    if (!bcrypt.compareSync(password, user.password)) {
+      await registerFailedLoginAttempt(user);
+      return res.status(401).json({ error: 'Credenziali non valide' });
+    }
+
+    await clearFailedLoginAttempts(user.id);
 
     if (user.totp_enabled) {
       return res.json({ requires_2fa: true, challenge_token: issueChallengeToken(user) });
@@ -163,9 +198,17 @@ router.post(
     }
 
     const user = await db.get('SELECT * FROM users WHERE id = ?', [payload.sub]);
-    if (!user || !user.totp_enabled || !verifyTotp(user.totp_secret, code)) {
+    if (!user || !user.totp_enabled) {
       return res.status(401).json({ error: 'Codice non valido' });
     }
+    if (isAccountLocked(user)) {
+      return res.status(423).json({ error: `Account temporaneamente bloccato per troppi tentativi falliti. Riprova tra ${lockedUntilMinutesLeft(user)} minuti.` });
+    }
+    if (!verifyTotp(user.totp_secret, code)) {
+      await registerFailedLoginAttempt(user);
+      return res.status(401).json({ error: 'Codice non valido' });
+    }
+    await clearFailedLoginAttempts(user.id);
 
     const token = await issueSessionToken(user, req);
     res.json({ token, user: await publicUser(user) });

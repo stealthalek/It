@@ -404,6 +404,7 @@
       assign_to_me_btn: 'Assegna a me', toast_ticket_assigned_to_you: 'Ticket assegnato a te',
       group_by_team_label: 'Raggruppa per team',
       widgets_section_title: 'Cruscotto di gestione', widgets_customize_btn: 'Personalizza',
+      widgets_collapse_all_btn: 'Comprimi tutto', widgets_expand_all_btn: 'Espandi tutto', widget_collapse_toggle_title: 'Comprimi/espandi',
       widgets_all_hidden_hint: 'Nessun widget visibile. Usa "Personalizza" per riattivarli.',
       widget_unassigned_by_group_title: 'Non assegnati per gruppo', widget_unassigned_by_group_empty: 'Nessun ticket non assegnato al momento.',
       widget_sla_watch_title: 'Ticket a rischio SLA', widget_sla_watch_empty: 'Nessun ticket a rischio SLA al momento.',
@@ -682,6 +683,7 @@
       assign_to_me_btn: 'Assign to me', toast_ticket_assigned_to_you: 'Ticket assigned to you',
       group_by_team_label: 'Group by team',
       widgets_section_title: 'Management dashboard', widgets_customize_btn: 'Customize',
+      widgets_collapse_all_btn: 'Collapse all', widgets_expand_all_btn: 'Expand all', widget_collapse_toggle_title: 'Collapse/expand',
       widgets_all_hidden_hint: 'No widgets visible. Use "Customize" to turn them back on.',
       widget_unassigned_by_group_title: 'Unassigned by group', widget_unassigned_by_group_empty: 'No unassigned tickets right now.',
       widget_sla_watch_title: 'SLA at-risk tickets', widget_sla_watch_empty: 'No tickets at SLA risk right now.',
@@ -1796,13 +1798,14 @@
     const suffix = opts.suffix || '';
     const showPct = opts.showPct !== false && total > 0;
     const max = Math.max(1, ...rows.map((r) => r.value));
+    const selectable = !!opts.onSelect;
     return `
       <div class="bar-chart" role="img" aria-label="${rows.map((r) => `${r.label}: ${r.value}`).join(', ')}">
         ${rows.map((r) => {
           const pct = total ? Math.round((r.value / total) * 100) : 0;
           const width = Math.round((r.value / max) * 100);
           return `
-            <div class="bar-row">
+            <div class="bar-row ${selectable ? 'selectable' : ''}" data-key="${escapeHtml(r.key)}">
               <span class="bar-label" title="${escapeHtml(r.label)}">${escapeHtml(r.label)}</span>
               <div class="bar-track">
                 <div class="bar-fill" style="width:${width}%;background:${r.color}"></div>
@@ -1893,6 +1896,7 @@
       ${isStaff() && !viewingAs ? `
       <div class="widgets-section-head">
         <h2 class="section-title">${t('widgets_section_title')}</h2>
+        <button type="button" id="widgetsCollapseAllBtn" class="btn btn-ghost btn-sm">${icon('grid', 'badge-icon')} ${t('widgets_collapse_all_btn')}</button>
         <button type="button" id="widgetsCustomizeBtn" class="btn btn-ghost btn-sm">${icon('grid', 'badge-icon')} ${t('widgets_customize_btn')}</button>
       </div>
       <div id="widgetsPanel" class="widgets-customize-panel" hidden></div>
@@ -2074,6 +2078,7 @@
     const dashboardWidgetsEl = document.getElementById('dashboardWidgets');
     const widgetsPanel = document.getElementById('widgetsPanel');
     const widgetsCustomizeBtn = document.getElementById('widgetsCustomizeBtn');
+    const widgetsCollapseAllBtn = document.getElementById('widgetsCollapseAllBtn');
     const DASHBOARD_WIDGETS = [
       { id: 'unassignedByGroup', title: t('widget_unassigned_by_group_title') },
       { id: 'slaWatch', title: t('widget_sla_watch_title') },
@@ -2085,6 +2090,12 @@
     }
     function setHiddenWidgets(set) {
       try { localStorage.setItem('ticketing_dashboard_widget_hidden', JSON.stringify([...set])); } catch {}
+    }
+    function getCollapsedWidgets() {
+      try { return new Set(JSON.parse(localStorage.getItem('ticketing_dashboard_widget_collapsed') || '[]')); } catch { return new Set(); }
+    }
+    function setCollapsedWidgets(set) {
+      try { localStorage.setItem('ticketing_dashboard_widget_collapsed', JSON.stringify([...set])); } catch {}
     }
 
     function renderUnassignedByGroupWidget(tickets) {
@@ -2168,20 +2179,31 @@
     function renderDashboardWidgetsShell() {
       if (!dashboardWidgetsEl) return;
       const hidden = getHiddenWidgets();
+      const collapsed = getCollapsedWidgets();
       const visible = DASHBOARD_WIDGETS.filter((w) => !hidden.has(w.id));
       if (!visible.length) {
         dashboardWidgetsEl.innerHTML = `<p class="hint">${t('widgets_all_hidden_hint')}</p>`;
         return;
       }
       dashboardWidgetsEl.innerHTML = visible.map((w) => `
-        <div class="card widget-card" data-block-id="${w.id}">
+        <div class="card widget-card ${collapsed.has(w.id) ? 'collapsed' : ''}" data-block-id="${w.id}">
           <div class="chart-card-head">
             <h3 class="section-title" style="margin:0">${escapeHtml(w.title)}</h3>
+            <button type="button" class="icon-btn widget-collapse-toggle" data-widget-id="${w.id}" title="${t('widget_collapse_toggle_title')}">${icon('chevronDown')}</button>
           </div>
           <div id="widget-${w.id}" class="widget-body"><div class="spinner-row">${t('loading')}</div></div>
         </div>`).join('');
       applyBlockOrder('dashboard_widget_order', '#dashboardWidgets .widget-card');
       wireBlockDragging('dashboard_widget_order', '#dashboardWidgets .widget-card', '.chart-card-head', () => applyBlockOrder('dashboard_widget_order', '#dashboardWidgets .widget-card'));
+      dashboardWidgetsEl.querySelectorAll('.widget-collapse-toggle').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const set = getCollapsedWidgets();
+          if (set.has(btn.dataset.widgetId)) set.delete(btn.dataset.widgetId);
+          else set.add(btn.dataset.widgetId);
+          setCollapsedWidgets(set);
+          btn.closest('.widget-card').classList.toggle('collapsed');
+        });
+      });
     }
 
     function renderWidgetsPanel() {
@@ -2208,6 +2230,21 @@
       widgetsCustomizeBtn.addEventListener('click', () => {
         widgetsPanel.hidden = !widgetsPanel.hidden;
         if (!widgetsPanel.hidden) renderWidgetsPanel();
+      });
+    }
+
+    if (widgetsCollapseAllBtn) {
+      widgetsCollapseAllBtn.addEventListener('click', () => {
+        const hidden = getHiddenWidgets();
+        const visible = DASHBOARD_WIDGETS.filter((w) => !hidden.has(w.id));
+        const collapsed = getCollapsedWidgets();
+        const allCollapsed = visible.length > 0 && visible.every((w) => collapsed.has(w.id));
+        const next = new Set(allCollapsed ? [] : visible.map((w) => w.id));
+        setCollapsedWidgets(next);
+        dashboardWidgetsEl.querySelectorAll('.widget-card').forEach((card) => {
+          card.classList.toggle('collapsed', next.has(card.dataset.blockId));
+        });
+        widgetsCollapseAllBtn.innerHTML = `${icon('grid', 'badge-icon')} ${allCollapsed ? t('widgets_collapse_all_btn') : t('widgets_expand_all_btn')}`;
       });
     }
 
@@ -2347,6 +2384,7 @@
             else if (dim === 'priority') fPriority.value = key;
             else if (dim === 'type') fType.value = key;
             load();
+            listEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
           });
         });
       });
@@ -2367,7 +2405,7 @@
           <div class="chart-card-head">
             <h3 class="section-title" style="margin:0">${escapeHtml(title)}</h3>
           </div>
-          ${total ? donutChart(rows, total, { dim }) : `<p class="hint">${escapeHtml(emptyHint)}</p>`}
+          ${total ? donutChart(rows, total, { dim, onSelect: true }) : `<p class="hint">${escapeHtml(emptyHint)}</p>`}
         </div>`;
     }
 
@@ -2406,6 +2444,19 @@
           setCustomChartColor(dim, input.dataset.key, e.target.value);
           renderCharts(lastTickets);
           renderScopedCharts();
+        });
+      });
+      scopedChartsEl.querySelectorAll('.chart-card[data-dim]').forEach((card) => {
+        const dim = card.dataset.dim;
+        card.querySelectorAll('.donut-legend-item.selectable').forEach((item) => {
+          item.addEventListener('click', (e) => {
+            if (e.target.classList.contains('donut-color-input')) return;
+            const key = item.dataset.key;
+            if (dim === 'status') fStatus.value = key;
+            else if (dim === 'type') fType.value = key;
+            load();
+            listEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          });
         });
       });
     }
@@ -2527,8 +2578,8 @@
     return `${hours}h ${mins}m`;
   }
 
-  const TICKET_LIST_COL_DEFAULT = { requester: 104, assignee: 104, group: 104, priority: 78, status: 126, updated: 74 };
-  const TICKET_LIST_COL_MIN = { requester: 70, assignee: 70, group: 70, priority: 64, status: 96, updated: 60 };
+  const TICKET_LIST_COL_DEFAULT = { requester: 120, assignee: 120, group: 132, priority: 78, status: 126, updated: 150 };
+  const TICKET_LIST_COL_MIN = { requester: 70, assignee: 70, group: 70, priority: 64, status: 96, updated: 110 };
   const TICKET_LIST_COL_MAX = 420;
 
   function getTicketListColWidths() {
@@ -3922,6 +3973,10 @@
             <button class="btn btn-sm" type="submit">${t('btn_add')}</button>
           </form>
           <p class="error-text" id="categoryError"></p>
+          <div style="display:flex;gap:0.6rem;margin-bottom:0.6rem">
+            <button type="button" id="categoryExpandAllBtn" class="btn btn-ghost btn-sm">${t('widgets_expand_all_btn')}</button>
+            <button type="button" id="categoryCollapseAllBtn" class="btn btn-ghost btn-sm">${t('widgets_collapse_all_btn')}</button>
+          </div>
           <div id="categoriesList" class="spinner-row">${t('loading')}</div>
         </div>
         <div class="card admin-grid-full" data-admin-panel="groups" data-block-id="groupsOrg" ${activeSection === 'groups' ? '' : 'hidden'}>
@@ -4809,6 +4864,13 @@
       });
 
       loadCategories();
+
+      document.getElementById('categoryExpandAllBtn').addEventListener('click', () => {
+        document.querySelectorAll('#categoriesList .category-macro-block').forEach((el) => { el.open = true; });
+      });
+      document.getElementById('categoryCollapseAllBtn').addEventListener('click', () => {
+        document.querySelectorAll('#categoriesList .category-macro-block').forEach((el) => { el.open = false; });
+      });
 
       function ruleBadge(labelKey) {
         return `<span class="badge badge-in_progress">${t(labelKey)}</span>`;
@@ -6240,6 +6302,11 @@
           <h1>${icon('globe')} ${t('nav_orgchart')}</h1>
           <p class="hint">${t('orgchart_hint')}</p>
         </div>
+        ${tree.length ? `
+        <div style="display:flex;gap:0.6rem">
+          <button type="button" id="orgchartExpandAllBtn" class="btn btn-ghost btn-sm">${t('widgets_expand_all_btn')}</button>
+          <button type="button" id="orgchartCollapseAllBtn" class="btn btn-ghost btn-sm">${t('widgets_collapse_all_btn')}</button>
+        </div>` : ''}
       </div>
       <div class="field" style="max-width:420px;margin-bottom:1rem">
         <input type="search" id="orgchartPersonSearch" placeholder="${t('orgchart_search_placeholder')}" autocomplete="off" />
@@ -6254,6 +6321,21 @@
         btn.closest('.org-branch').classList.toggle('collapsed');
       });
     });
+
+    const orgchartExpandAllBtn = document.getElementById('orgchartExpandAllBtn');
+    if (orgchartExpandAllBtn) {
+      orgchartExpandAllBtn.addEventListener('click', () => {
+        document.querySelectorAll('#orgchartTreeCard .org-branch').forEach((el) => el.classList.remove('collapsed'));
+      });
+    }
+    const orgchartCollapseAllBtn = document.getElementById('orgchartCollapseAllBtn');
+    if (orgchartCollapseAllBtn) {
+      orgchartCollapseAllBtn.addEventListener('click', () => {
+        document.querySelectorAll('#orgchartTreeCard .org-branch').forEach((el) => {
+          if (el.querySelector('.org-children')) el.classList.add('collapsed');
+        });
+      });
+    }
 
     const searchInput = document.getElementById('orgchartPersonSearch');
     const resultsEl = document.getElementById('orgchartPersonResults');
@@ -6516,13 +6598,27 @@
     }
     populateMemberOptions();
 
+    function wireChartClick(container, onRowClick) {
+      container.querySelectorAll('.donut-legend-item.selectable').forEach((item) => {
+        item.addEventListener('click', (e) => {
+          if (e.target.classList.contains('donut-color-input')) return;
+          onRowClick(item.dataset.key);
+        });
+      });
+      container.querySelectorAll('.bar-row.selectable').forEach((row) => {
+        row.addEventListener('click', () => onRowClick(row.dataset.key));
+      });
+    }
+
     function renderChart(container, dim, rows, total, emptyHint, opts = {}) {
       if (!rows.length) { container.innerHTML = `<p class="hint">${emptyHint}</p>`; return; }
+      const selectable = !!opts.onRowClick;
       if (chartTypeSel.value === 'donut') {
-        container.innerHTML = donutChart(rows, opts.donutTotal ?? total, { dim });
+        container.innerHTML = donutChart(rows, opts.donutTotal ?? total, { dim, onSelect: selectable });
       } else {
-        container.innerHTML = barChart(rows, total, opts.barOpts || {});
+        container.innerHTML = barChart(rows, total, { ...(opts.barOpts || {}), onSelect: selectable });
       }
+      if (selectable) wireChartClick(container, opts.onRowClick);
     }
 
     function passesDateFilter(tk) {
@@ -6548,56 +6644,65 @@
       exportCountEl.textContent = `${t('report_export_count_label')} ${tickets.length}`;
       const noGroupLabel = t('no_group_label');
 
+      const groupKey = (tk) => tk.group_id != null ? String(tk.group_id) : 'none';
+
       const groupCounts = new Map();
       tickets.forEach((tk) => {
-        const key = groupLabel(tk) || noGroupLabel;
-        groupCounts.set(key, (groupCounts.get(key) || 0) + 1);
+        const key = groupKey(tk);
+        const label = groupLabel(tk) || noGroupLabel;
+        if (!groupCounts.has(key)) groupCounts.set(key, { label, value: 0 });
+        groupCounts.get(key).value += 1;
       });
-      const volumeRows = [...groupCounts.entries()].sort((a, b) => b[1] - a[1])
-        .map(([label, value]) => ({ key: label, label, value, color: 'var(--primary)' }));
+      const volumeRows = [...groupCounts.entries()].sort((a, b) => b[1].value - a[1].value)
+        .map(([key, { label, value }]) => ({ key, label, value, color: 'var(--primary)' }));
 
       const resolved = tickets.filter((tk) => tk.resolved_at);
       const avgByGroup = new Map();
       resolved.forEach((tk) => {
-        const key = groupLabel(tk) || noGroupLabel;
+        const key = groupKey(tk);
+        const label = groupLabel(tk) || noGroupLabel;
         const hours = (new Date(tk.resolved_at.replace(' ', 'T') + 'Z') - new Date(tk.created_at.replace(' ', 'T') + 'Z')) / 3600000;
-        if (!avgByGroup.has(key)) avgByGroup.set(key, []);
-        avgByGroup.get(key).push(hours);
+        if (!avgByGroup.has(key)) avgByGroup.set(key, { label, values: [] });
+        avgByGroup.get(key).values.push(hours);
       });
-      const avgRows = [...avgByGroup.entries()].map(([label, values]) => ({
-        key: label, label, value: Math.round((values.reduce((a, b) => a + b, 0) / values.length) * 10) / 10, color: 'var(--warning)',
+      const avgRows = [...avgByGroup.entries()].map(([key, { label, values }]) => ({
+        key, label, value: Math.round((values.reduce((a, b) => a + b, 0) / values.length) * 10) / 10, color: 'var(--warning)',
       })).sort((a, b) => b.value - a.value);
 
       const slaByGroup = new Map();
       resolved.filter((tk) => tk.sla_status).forEach((tk) => {
-        const key = groupLabel(tk) || noGroupLabel;
-        if (!slaByGroup.has(key)) slaByGroup.set(key, { met: 0, total: 0 });
+        const key = groupKey(tk);
+        const label = groupLabel(tk) || noGroupLabel;
+        if (!slaByGroup.has(key)) slaByGroup.set(key, { label, met: 0, total: 0 });
         const entry = slaByGroup.get(key);
         entry.total += 1;
         if (tk.sla_status === 'on_track') entry.met += 1;
       });
-      const slaRows = [...slaByGroup.entries()].map(([label, { met, total }]) => ({
-        key: label, label, value: Math.round((met / total) * 100), color: 'var(--success)',
+      const slaRows = [...slaByGroup.entries()].map(([key, { label, met, total }]) => ({
+        key, label, value: Math.round((met / total) * 100), color: 'var(--success)',
       })).sort((a, b) => b.value - a.value);
 
       const ratedTickets = tickets.filter((tk) => tk.rating);
       const csatByGroup = new Map();
       ratedTickets.forEach((tk) => {
-        const key = groupLabel(tk) || noGroupLabel;
-        if (!csatByGroup.has(key)) csatByGroup.set(key, []);
-        csatByGroup.get(key).push(tk.rating);
+        const key = groupKey(tk);
+        const label = groupLabel(tk) || noGroupLabel;
+        if (!csatByGroup.has(key)) csatByGroup.set(key, { label, values: [] });
+        csatByGroup.get(key).values.push(tk.rating);
       });
-      const csatRows = [...csatByGroup.entries()].map(([label, values]) => ({
-        key: label, label, value: Math.round((values.reduce((a, b) => a + b, 0) / values.length) * 10) / 10, color: '#f5a623',
+      const csatRows = [...csatByGroup.entries()].map(([key, { label, values }]) => ({
+        key, label, value: Math.round((values.reduce((a, b) => a + b, 0) / values.length) * 10) / 10, color: '#f5a623',
       })).sort((a, b) => b.value - a.value);
 
       const agentCounts = new Map();
       tickets.forEach((tk) => {
-        if (!tk.assignee_name) return;
-        agentCounts.set(tk.assignee_name, (agentCounts.get(tk.assignee_name) || 0) + 1);
+        if (!tk.assignee_name || !tk.assigned_to) return;
+        const key = String(tk.assigned_to);
+        if (!agentCounts.has(key)) agentCounts.set(key, { label: tk.assignee_name, value: 0 });
+        agentCounts.get(key).value += 1;
       });
-      const agentRows = [...agentCounts.entries()].sort((a, b) => b[1] - a[1])
-        .map(([label, value]) => ({ key: label, label, value, color: 'var(--primary)' }));
+      const agentRows = [...agentCounts.entries()].sort((a, b) => b[1].value - a[1].value)
+        .map(([key, { label, value }]) => ({ key, label, value, color: 'var(--primary)' }));
 
       chartsEl.className = 'charts-row';
       chartsEl.innerHTML = `
@@ -6607,11 +6712,23 @@
         <div class="card chart-card"><h3 class="section-title" style="margin-top:0">${t('chart_load_by_agent')}</h3><div id="reportChartAgent"></div></div>
         <div class="card chart-card"><h3 class="section-title" style="margin-top:0">${t('chart_csat')}</h3><div id="reportChartCsat"></div></div>`;
 
-      renderChart(document.getElementById('reportChartVolume'), 'report_volume', volumeRows, tickets.length, t('no_data'));
-      renderChart(document.getElementById('reportChartAvg'), 'report_avg', avgRows, 0, t('no_resolved_yet'), { barOpts: { showPct: false, suffix: ' h' }, donutTotal: avgRows.reduce((a, r) => a + r.value, 0) });
-      renderChart(document.getElementById('reportChartSla'), 'report_sla', slaRows, 0, t('no_group_sla_configured'), { barOpts: { showPct: false, suffix: '%' }, donutTotal: slaRows.reduce((a, r) => a + r.value, 0) });
-      renderChart(document.getElementById('reportChartAgent'), 'report_agent', agentRows, tickets.length, t('no_assigned_tickets'));
-      renderChart(document.getElementById('reportChartCsat'), 'report_csat', csatRows, 0, t('no_ratings_yet'), { barOpts: { showPct: false, suffix: ' /5' }, donutTotal: csatRows.reduce((a, r) => a + r.value, 0) });
+      const onTeamRowClick = (key) => {
+        teamSel.value = key === 'none' ? '' : key;
+        populateMemberOptions();
+        renderAll();
+        document.querySelector('.filters').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      };
+      const onAgentRowClick = (key) => {
+        memberSel.value = key;
+        renderAll();
+        document.querySelector('.filters').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      };
+
+      renderChart(document.getElementById('reportChartVolume'), 'report_volume', volumeRows, tickets.length, t('no_data'), { onRowClick: onTeamRowClick });
+      renderChart(document.getElementById('reportChartAvg'), 'report_avg', avgRows, 0, t('no_resolved_yet'), { barOpts: { showPct: false, suffix: ' h' }, donutTotal: avgRows.reduce((a, r) => a + r.value, 0), onRowClick: onTeamRowClick });
+      renderChart(document.getElementById('reportChartSla'), 'report_sla', slaRows, 0, t('no_group_sla_configured'), { barOpts: { showPct: false, suffix: '%' }, donutTotal: slaRows.reduce((a, r) => a + r.value, 0), onRowClick: onTeamRowClick });
+      renderChart(document.getElementById('reportChartAgent'), 'report_agent', agentRows, tickets.length, t('no_assigned_tickets'), { onRowClick: onAgentRowClick });
+      renderChart(document.getElementById('reportChartCsat'), 'report_csat', csatRows, 0, t('no_ratings_yet'), { barOpts: { showPct: false, suffix: ' /5' }, donutTotal: csatRows.reduce((a, r) => a + r.value, 0), onRowClick: onTeamRowClick });
     }
 
     teamSel.addEventListener('change', () => { populateMemberOptions(); renderAll(); });
