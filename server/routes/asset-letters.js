@@ -8,7 +8,7 @@ const router = express.Router();
 router.use(authenticate);
 
 const LETTER_SELECT = `
-  SELECT l.*, a.name AS asset_name, a.asset_type, a.tag AS asset_tag, a.assignment_type, u.name AS user_name, u.email AS user_email
+  SELECT l.*, a.name AS asset_name, a.asset_type, a.tag AS asset_tag, a.assignment_type, u.name AS user_name, u.email AS user_email, u.company_id AS user_company_id
   FROM asset_assignment_letters l
   JOIN assets a ON a.id = l.asset_id
   JOIN users u ON u.id = l.user_id
@@ -24,6 +24,9 @@ router.get(
     if (!isStaff || mine === '1') {
       clauses.push('l.user_id = ?');
       params.push(req.user.id);
+    } else if (!req.user.is_super_admin) {
+      clauses.push('u.company_id = ?');
+      params.push(req.user.company_id);
     }
     if (pending === '1') clauses.push('l.signed_at IS NULL');
     const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
@@ -39,6 +42,9 @@ router.get(
     if (!letter) return res.status(404).json({ error: 'Lettera non trovata' });
     const isStaff = req.user.role === 'agent' || req.user.role === 'admin';
     if (!isStaff && letter.user_id !== req.user.id) {
+      return res.status(403).json({ error: 'Permessi insufficienti' });
+    }
+    if (isStaff && letter.user_id !== req.user.id && !req.user.is_super_admin && letter.user_company_id !== req.user.company_id) {
       return res.status(403).json({ error: 'Permessi insufficienti' });
     }
     res.json({ letter });

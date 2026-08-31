@@ -180,9 +180,16 @@ const ITEM_SELECT = `
 `;
 
 async function canAccessRequest(user, requestId) {
-  if (isSuperAdmin(user) || user.role === 'admin') return true;
-  const request = await db.get('SELECT requested_by FROM onboarding_requests WHERE id = ?', [requestId]);
+  if (isSuperAdmin(user)) return true;
+  const request = await db.get(
+    `SELECT r.requested_by, requester.company_id AS company_id
+     FROM onboarding_requests r JOIN users requester ON requester.id = r.requested_by
+     WHERE r.id = ?`,
+    [requestId]
+  );
   if (!request) return false;
+  if (request.company_id !== user.company_id) return false;
+  if (user.role === 'admin') return true;
   if (request.requested_by === user.id) return true;
   const own = await db.get('SELECT COUNT(*) AS n FROM onboarding_items WHERE request_id = ? AND assigned_group_id = ?', [requestId, user.group_id]);
   return own.n > 0;
@@ -195,6 +202,10 @@ router.get(
     const clauses = [];
     const params = [];
 
+    if (!isSuperAdmin(req.user)) {
+      clauses.push('requester.company_id = ?');
+      params.push(req.user.company_id);
+    }
     if (!isSuperAdmin(req.user) && req.user.role !== 'admin') {
       clauses.push('(r.requested_by = ? OR EXISTS (SELECT 1 FROM onboarding_items i2 WHERE i2.request_id = r.id AND i2.assigned_group_id = ?))');
       params.push(req.user.id, req.user.group_id || -1);
@@ -245,8 +256,9 @@ function buildItemTicketDescription(itemType, customization, request) {
 }
 
 async function createTicketForOnboardingItem(itemType, customization, request, requesterId) {
+  const requester = await db.get('SELECT company_id FROM users WHERE id = ?', [requesterId]);
   const info = await db.run(
-    'INSERT INTO tickets (subject, description, priority, type, category, created_by, group_id, on_behalf_of) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    'INSERT INTO tickets (subject, description, priority, type, category, created_by, group_id, on_behalf_of, company_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
     [
       `Onboarding ${request.employeeName}: ${itemType.label_it}`,
       buildItemTicketDescription(itemType, customization, request),
@@ -256,6 +268,7 @@ async function createTicketForOnboardingItem(itemType, customization, request, r
       requesterId,
       itemType.default_group_id || null,
       request.employeeUserId || null,
+      requester ? requester.company_id : null,
     ]
   );
   const ticketId = Number(info.lastInsertRowid);
