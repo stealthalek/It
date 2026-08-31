@@ -67,11 +67,27 @@ L'app sarà disponibile su `http://<IP-del-server>:3000` da qualunque dispositiv
 
 Per pubblicarla su Internet ed accedervi da qualsiasi luogo, esegui il deploy dell'immagine Docker (o del progetto Node) su un qualsiasi host/VPS/PaaS che supporti container o Node.js, esponendo la porta 3000 (o quella indicata da `PORT`).
 
-## Pubblicazione online: frontend su GitHub Pages + backend su Render
+## Pubblicazione online: frontend statico + backend su Render
 
-GitHub Pages ospita solo file statici e non può eseguire il backend Node/SQLite: per avere un link pubblico del tipo `https://<tuo-utente>.github.io/<nome-repo>/` con dati reali condivisi tra chi apre i ticket e chi li gestisce, il frontend (statico) va su GitHub Pages e il backend (API + database) va ospitato separatamente. Il frontend è già predisposto: nessun URL è hardcoded, l'indirizzo del backend si configura da un pannello **Impostazioni** (icona ingranaggio in alto) e viene salvato nel browser.
+L'hosting statico (GitHub Pages, Cloudflare Pages, ecc.) non può eseguire il backend Node/SQLite: il frontend (statico) va pubblicato separatamente dal backend (API + database). Il frontend è già predisposto: nessun URL è hardcoded, l'indirizzo del backend si configura da un pannello **Impostazioni** (icona ingranaggio in alto) e viene salvato nel browser.
 
-### 1. Pubblica il frontend su GitHub Pages
+### 1. Pubblica il frontend con un link breve e gratuito (Cloudflare Pages, consigliato)
+
+Un link tipo `https://<utente>.github.io/<repo>/` non è ideale da condividere con clienti/colleghi in un contesto aziendale. Cloudflare Pages offre lo stesso hosting statico gratuito ma con un indirizzo più corto e sobrio (es. `https://it-platform.pages.dev`), senza esporre "github" nel link pubblico, con deploy automatico ad ogni push esattamente come GitHub Pages.
+
+1. Crea un account gratuito su [pages.cloudflare.com](https://pages.cloudflare.com) (puoi accedere direttamente con GitHub).
+2. **Workers & Pages → Crea → Pages → Connetti a Git**, seleziona questo repository.
+3. Nelle impostazioni di build imposta:
+   - **Framework preset:** Nessuno (`None`)
+   - **Comando di build:** `npm run build:frontend`
+   - **Directory di output build:** `dist`
+4. Avvia il deploy. Al termine, nel pannello del progetto puoi scegliere liberamente il nome del sottodominio pubblico in **Custom domains → Modifica sottodominio *.pages.dev** (es. `it-platform` → `https://it-platform.pages.dev`).
+
+Se in futuro vuoi un dominio tutto tuo (es. `it.tuaazienda.it`), lo colleghi gratuitamente dallo stesso pannello **Custom domains**, senza cambiare nient'altro.
+
+### 1bis. Alternativa: pubblica il frontend su GitHub Pages
+
+Se preferisci restare su GitHub Pages (link del tipo `https://<tuo-utente>.github.io/<nome-repo>/`):
 
 1. Nel repository su GitHub vai su **Settings → Pages**.
 2. In "Build and deployment" imposta **Source: GitHub Actions**.
@@ -102,9 +118,9 @@ Se le due variabili non sono impostate, il backend continua a funzionare con un 
 
 ### 3. Collega il frontend al backend
 
-1. Apri il sito GitHub Pages, clicca sull'icona ingranaggio in alto (Impostazioni connessione).
+1. Apri il sito pubblicato (Cloudflare Pages o GitHub Pages), clicca sull'icona ingranaggio in alto (Impostazioni connessione).
 2. Incolla l'URL del backend Render (senza slash finale) e premi **Salva**: il pulsante "Verifica connessione" conferma che tutto funziona.
-3. Da questo momento login, registrazione e gestione ticket dal sito GitHub Pages parlano con il backend remoto, da qualunque dispositivo e rete.
+3. Da questo momento login, registrazione e gestione ticket dal sito pubblicato parlano con il backend remoto, da qualunque dispositivo e rete.
 
 Chi apre il sito da un altro dispositivo dovrà anch'esso impostare una volta sola lo stesso indirizzo backend nelle Impostazioni (il valore è salvato nel browser locale, non condiviso automaticamente tra dispositivi diversi).
 
@@ -116,7 +132,7 @@ L'accesso con account Google o Microsoft (personali o aziendali) è già impleme
 
 1. Vai su [Google Cloud Console](https://console.cloud.google.com/apis/credentials), crea un progetto (o usane uno esistente).
 2. **Crea credenziali → ID client OAuth**, tipo applicazione **Applicazione web**.
-3. In "Origini JavaScript autorizzate" aggiungi l'indirizzo del tuo frontend (es. `https://<tuo-utente>.github.io`).
+3. In "Origini JavaScript autorizzate" aggiungi l'indirizzo del tuo frontend (es. `https://it-platform.pages.dev` o `https://<tuo-utente>.github.io`).
 4. Copia il **Client ID** generato.
 5. Impostalo come variabile d'ambiente `GOOGLE_CLIENT_ID` sul backend (es. nel pannello Render → Environment).
 
@@ -124,7 +140,7 @@ L'accesso con account Google o Microsoft (personali o aziendali) è già impleme
 
 1. Vai su [Microsoft Entra ID (Azure Portal) → App registrations → New registration](https://portal.azure.com).
 2. Come tipo di account scegli se limitare l'accesso alla tua sola organizzazione o consentirlo a qualsiasi account Microsoft (personale o aziendale).
-3. In "Redirect URI" scegli tipo **SPA** e inserisci l'indirizzo del tuo frontend (es. `https://<tuo-utente>.github.io/<nome-repo>/`).
+3. In "Redirect URI" scegli tipo **SPA** e inserisci l'indirizzo del tuo frontend (es. `https://it-platform.pages.dev/` o `https://<tuo-utente>.github.io/<nome-repo>/`).
 4. Copia l'**Application (client) ID**.
 5. Impostalo come variabile d'ambiente `MICROSOFT_CLIENT_ID` sul backend; se vuoi restringere l'accesso al solo tuo tenant aziendale imposta anche `MICROSOFT_TENANT_ID` con l'ID del tenant (altrimenti lascialo non impostato per accettare qualsiasi account Microsoft).
 
