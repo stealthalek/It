@@ -4,6 +4,7 @@ const { authenticate, requireRole } = require('../middleware/auth');
 const asyncHandler = require('../middleware/asyncHandler');
 const { logAudit } = require('../audit');
 const { notifyUser } = require('../notifications');
+const { formatTicketNumber } = require('../lib/ticketNumber');
 
 const router = express.Router();
 router.use(authenticate);
@@ -47,11 +48,18 @@ router.get(
   })
 );
 
+function parseLicenseOptions(raw) {
+  if (raw === undefined) return undefined;
+  if (!Array.isArray(raw)) return null;
+  const cleaned = raw.map((v) => String(v).trim()).filter(Boolean);
+  return cleaned.length ? JSON.stringify(cleaned) : null;
+}
+
 router.post(
   '/item-types',
   requireRole('admin'),
   asyncHandler(async (req, res) => {
-    const { itemKey, labelIt, labelEn, kind, assetType, defaultGroupId } = req.body || {};
+    const { itemKey, labelIt, labelEn, kind, assetType, defaultGroupId, licenseOptions, addonLabel } = req.body || {};
     if (!itemKey || !itemKey.trim() || !labelIt || !labelIt.trim() || !labelEn || !labelEn.trim()) {
       return res.status(400).json({ error: 'Chiave e nomi (IT/EN) obbligatori' });
     }
@@ -68,8 +76,12 @@ router.post(
     }
     const posRow = await db.get('SELECT COALESCE(MAX(position), -1) AS maxPos FROM onboarding_item_types');
     const info = await db.run(
-      'INSERT INTO onboarding_item_types (item_key, label_it, label_en, kind, asset_type, default_group_id, position) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [key, labelIt.trim(), labelEn.trim(), kind, kind === 'asset' ? assetType : null, defaultGroupId || null, posRow.maxPos + 1]
+      'INSERT INTO onboarding_item_types (item_key, label_it, label_en, kind, asset_type, default_group_id, position, license_options, addon_label) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [
+        key, labelIt.trim(), labelEn.trim(), kind, kind === 'asset' ? assetType : null, defaultGroupId || null, posRow.maxPos + 1,
+        kind === 'license' ? parseLicenseOptions(licenseOptions) || null : null,
+        addonLabel && addonLabel.trim() ? addonLabel.trim() : null,
+      ]
     );
     const type = await db.get(`${TYPE_SELECT} WHERE it.id = ?`, [Number(info.lastInsertRowid)]);
     logAudit(req.user.id, 'onboarding_item_type', type.id, `Creata voce onboarding "${type.label_it}"`).catch(() => {});
@@ -84,7 +96,7 @@ router.patch(
     const existing = await db.get('SELECT * FROM onboarding_item_types WHERE id = ?', [req.params.id]);
     if (!existing) return res.status(404).json({ error: 'Voce non trovata' });
 
-    const { labelIt, labelEn, defaultGroupId, enabled, position } = req.body || {};
+    const { labelIt, labelEn, defaultGroupId, enabled, position, licenseOptions, addonLabel } = req.body || {};
     const updates = [];
     const params = [];
     if (labelIt !== undefined) {
@@ -108,6 +120,14 @@ router.patch(
     if (position !== undefined && Number.isInteger(Number(position))) {
       updates.push('position = ?');
       params.push(Number(position));
+    }
+    if (licenseOptions !== undefined) {
+      updates.push('license_options = ?');
+      params.push(parseLicenseOptions(licenseOptions));
+    }
+    if (addonLabel !== undefined) {
+      updates.push('addon_label = ?');
+      params.push(addonLabel && addonLabel.trim() ? addonLabel.trim() : null);
     }
     if (!updates.length) return res.status(400).json({ error: 'Nessuna modifica valida fornita' });
 
@@ -146,12 +166,15 @@ const REQUEST_SELECT = `
 
 const ITEM_SELECT = `
   SELECT i.*, g.name AS group_name, copyUser.name AS copy_from_user_name, copyUser.email AS copy_from_user_email,
-    completer.name AS completed_by_name, asset.name AS asset_name, asset.tag AS asset_tag
+    completer.name AS completed_by_name, asset.name AS asset_name, asset.tag AS asset_tag,
+    tk.status AS ticket_status, tk.subject AS ticket_subject, itt.addon_label AS type_addon_label
   FROM onboarding_items i
   LEFT JOIN groups g ON g.id = i.assigned_group_id
   LEFT JOIN users copyUser ON copyUser.id = i.copy_from_user_id
   LEFT JOIN users completer ON completer.id = i.completed_by
   LEFT JOIN assets asset ON asset.id = i.asset_id
+  LEFT JOIN tickets tk ON tk.id = i.ticket_id
+  LEFT JOIN onboarding_item_types itt ON itt.id = i.item_type_id
 `;
 
 async function canAccessRequest(user, requestId) {
@@ -193,10 +216,67 @@ router.get(
   })
 );
 
+function buildItemTicketDescription(itemType, customization, request) {
+  const lines = [`Voce di onboarding: ${itemType.label_it}`, `Nuovo assunto: ${request.employeeName}`];
+  if (request.startDate) lines.push(`Data di inizio: ${request.startDate}`);
+  if (request.employeeEmail) lines.push(`Email: ${request.employeeEmail}`);
+  if (itemType.kind === 'copy_user') {
+    if (customization.copyFromUserName) {
+      lines.push(`Copiare permessi e configurazione da: ${customization.copyFromUserName}`);
+    } else if (customization.copyFromNameManual) {
+      lines.push(`Copiare permessi e configurazione da (utenza non ancora presente in piattaforma): ${customization.copyFromNameManual}`);
+    }
+  }
+  if (itemType.kind === 'license' && customization.licenseChoice) {
+    lines.push(`Licenza richiesta: ${customization.licenseChoice}`);
+  }
+  if (itemType.addon_label && customization.addonRequested) {
+    lines.push(`Richiedere anche la licenza ${itemType.addon_label}`);
+  }
+  if (itemType.kind === 'asset' && itemType.asset_type) {
+    lines.push(`Tipo di dispositivo: ${itemType.asset_type}`);
+  }
+  if (request.notes) lines.push(`Note: ${request.notes}`);
+  return lines.join('\n');
+}
+
+async function createTicketForOnboardingItem(itemType, customization, request, requesterId) {
+  const info = await db.run(
+    'INSERT INTO tickets (subject, description, priority, type, category, created_by, group_id, on_behalf_of) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    [
+      `Onboarding ${request.employeeName}: ${itemType.label_it}`,
+      buildItemTicketDescription(itemType, customization, request),
+      'medium',
+      'task',
+      'Onboarding',
+      requesterId,
+      itemType.default_group_id || null,
+      request.employeeUserId || null,
+    ]
+  );
+  const ticketId = Number(info.lastInsertRowid);
+  await db.run('INSERT INTO ticket_events (ticket_id, actor_id, message) VALUES (?, ?, ?)', [
+    ticketId, requesterId, 'Ticket creato automaticamente da una richiesta di onboarding',
+  ]);
+  if (itemType.default_group_id) {
+    const staff = await db.all(
+      "SELECT id FROM users WHERE role IN ('agent', 'admin') AND group_id = ? AND id != ?",
+      [itemType.default_group_id, requesterId]
+    );
+    for (const u of staff) {
+      notifyUser(u.id, ticketId, {
+        it: `Nuovo ticket onboarding #${formatTicketNumber(ticketId)}: ${itemType.label_it}`,
+        en: `New onboarding ticket #${formatTicketNumber(ticketId)}: ${itemType.label_it}`,
+      }).catch(() => {});
+    }
+  }
+  return ticketId;
+}
+
 router.post(
   '/',
   asyncHandler(async (req, res) => {
-    const { employeeName, employeeEmail, startDate, employeeUserId, notes, itemTypeIds } = req.body || {};
+    const { employeeName, employeeEmail, startDate, employeeUserId, notes, items: itemsInput, itemTypeIds } = req.body || {};
     if (!employeeName || !employeeName.trim()) {
       return res.status(400).json({ error: 'Il nome del nuovo assunto è obbligatorio' });
     }
@@ -208,31 +288,55 @@ router.post(
     const requestId = Number(info.lastInsertRowid);
 
     const types = await db.all(`${TYPE_SELECT} WHERE it.enabled = 1 ORDER BY it.position ASC, it.id ASC`);
-    const selected = Array.isArray(itemTypeIds) && itemTypeIds.length
-      ? types.filter((tItem) => itemTypeIds.includes(tItem.id))
-      : types;
+    const selections = Array.isArray(itemsInput) && itemsInput.length
+      ? itemsInput
+      : (Array.isArray(itemTypeIds) && itemTypeIds.length ? itemTypeIds.map((id) => ({ itemTypeId: id })) : types.map((tItem) => ({ itemTypeId: tItem.id })));
 
-    for (const itemType of selected) {
-      await db.run(
-        `INSERT INTO onboarding_items (request_id, item_type_id, item_key, label_it, label_en, kind, asset_type, assigned_group_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [requestId, itemType.id, itemType.item_key, itemType.label_it, itemType.label_en, itemType.kind, itemType.asset_type, itemType.default_group_id]
-      );
-    }
+    const requestContext = {
+      employeeName: employeeName.trim(),
+      employeeEmail: employeeEmail ? employeeEmail.trim() : null,
+      startDate: startDate || null,
+      employeeUserId: employeeUserId || null,
+      notes: notes ? notes.trim() : null,
+    };
 
-    const groupIds = [...new Set(selected.map((s) => s.default_group_id).filter(Boolean))];
-    if (groupIds.length) {
-      const placeholders = groupIds.map(() => '?').join(',');
-      const staff = await db.all(
-        `SELECT id FROM users WHERE role IN ('agent', 'admin') AND group_id IN (${placeholders}) AND id != ?`,
-        [...groupIds, req.user.id]
-      );
-      for (const u of staff) {
-        notifyUser(u.id, null, {
-          it: `Nuovo onboarding: ${employeeName.trim()}`,
-          en: `New onboarding: ${employeeName.trim()}`,
-        }).catch(() => {});
+    for (const selection of selections) {
+      const itemType = types.find((tItem) => tItem.id === Number(selection.itemTypeId));
+      if (!itemType) continue;
+
+      let copyFromUserId = null;
+      let copyFromUserName = null;
+      if (itemType.kind === 'copy_user' && selection.copyFromUserId) {
+        const copyUser = await db.get('SELECT id, name FROM users WHERE id = ?', [selection.copyFromUserId]);
+        if (copyUser) {
+          copyFromUserId = copyUser.id;
+          copyFromUserName = copyUser.name;
+        }
       }
+      const copyFromNameManual = itemType.kind === 'copy_user' && !copyFromUserId && selection.copyFromNameManual
+        ? String(selection.copyFromNameManual).trim().slice(0, 255) || null
+        : null;
+
+      const licenseOptions = itemType.license_options ? JSON.parse(itemType.license_options) : [];
+      const licenseChoice = itemType.kind === 'license' && selection.licenseChoice && licenseOptions.includes(selection.licenseChoice)
+        ? selection.licenseChoice
+        : (itemType.kind === 'license' && licenseOptions.length ? licenseOptions[0] : null);
+
+      const addonRequested = itemType.addon_label && selection.addonRequested ? 1 : 0;
+
+      const customization = { copyFromUserName, copyFromNameManual, licenseChoice, addonRequested: Boolean(addonRequested) };
+      const ticketId = await createTicketForOnboardingItem(itemType, customization, requestContext, req.user.id);
+
+      await db.run(
+        `INSERT INTO onboarding_items
+          (request_id, item_type_id, item_key, label_it, label_en, kind, asset_type, assigned_group_id,
+           copy_from_user_id, copy_from_name_manual, license_note, addon_requested, ticket_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          requestId, itemType.id, itemType.item_key, itemType.label_it, itemType.label_en, itemType.kind, itemType.asset_type, itemType.default_group_id,
+          copyFromUserId, copyFromNameManual, licenseChoice, addonRequested, ticketId,
+        ]
+      );
     }
 
     logAudit(req.user.id, 'onboarding_request', requestId, `Avviato onboarding per "${employeeName.trim()}"`).catch(() => {});
@@ -343,6 +447,9 @@ router.patch(
     const params = [];
 
     if (status !== undefined) {
+      if (item.ticket_id) {
+        return res.status(400).json({ error: 'Lo stato di questa voce segue quello del ticket collegato' });
+      }
       if (!ITEM_STATUSES.includes(status)) return res.status(400).json({ error: 'Stato non valido' });
       updates.push('status = ?');
       params.push(status);
@@ -485,3 +592,4 @@ router.delete(
 );
 
 module.exports = router;
+module.exports.syncRequestStatus = syncRequestStatus;

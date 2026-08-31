@@ -7,6 +7,7 @@ const mailer = require('../mailer');
 const { notifyUser } = require('../notifications');
 const { businessMillisBetween, computeSlaStatus, computeSlaRemaining, withSla } = require('../sla');
 const { formatTicketNumber } = require('../lib/ticketNumber');
+const { syncRequestStatus: syncOnboardingRequestStatus } = require('./onboarding');
 
 const router = express.Router();
 router.use(authenticate);
@@ -763,6 +764,32 @@ router.patch(
           it: `Il ticket #${formatTicketNumber(ticket.id)} è stato risolto: ${ticket.subject}`,
           en: `Ticket #${formatTicketNumber(ticket.id)} has been resolved: ${ticket.subject}`,
         }).catch(() => {});
+      }
+      const onboardingItem = await db.get('SELECT * FROM onboarding_items WHERE ticket_id = ?', [ticket.id]);
+      if (onboardingItem && !['done', 'skipped'].includes(onboardingItem.status)) {
+        let generatedAssetId = null;
+        if (onboardingItem.kind === 'asset' && !onboardingItem.asset_id) {
+          const onboardingRequest = await db.get(
+            'SELECT employee_name, employee_user_id FROM onboarding_requests WHERE id = ?',
+            [onboardingItem.request_id]
+          );
+          const assetInfo = await db.run(
+            `INSERT INTO assets (name, asset_type, tag, assignment_type, assigned_to, status)
+             VALUES (?, ?, NULL, 'permanente', ?, ?)`,
+            [
+              `${onboardingItem.label_it} - ${onboardingRequest.employee_name}`,
+              onboardingItem.asset_type || 'altro',
+              onboardingRequest.employee_user_id || null,
+              onboardingRequest.employee_user_id ? 'in_uso' : 'disponibile',
+            ]
+          );
+          generatedAssetId = Number(assetInfo.lastInsertRowid);
+        }
+        await db.run(
+          `UPDATE onboarding_items SET status = 'done', completed_by = ?, completed_at = strftime('%Y-%m-%d %H:%M:%f', 'now')${generatedAssetId ? ', asset_id = ?' : ''} WHERE id = ?`,
+          generatedAssetId ? [req.user.id, generatedAssetId, onboardingItem.id] : [req.user.id, onboardingItem.id]
+        );
+        await syncOnboardingRequestStatus(onboardingItem.request_id);
       }
     }
     if (justSetWaiting && ticket.created_by !== req.user.id) {

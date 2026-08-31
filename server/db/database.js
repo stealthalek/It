@@ -229,6 +229,8 @@ async function setupSchema() {
         default_group_id INTEGER REFERENCES groups(id) ON DELETE SET NULL,
         enabled INTEGER NOT NULL DEFAULT 1,
         position INTEGER NOT NULL DEFAULT 0,
+        license_options TEXT,
+        addon_label TEXT,
         created_at TEXT NOT NULL DEFAULT (datetime('now'))
       )`,
       `CREATE TABLE IF NOT EXISTS onboarding_requests (
@@ -255,9 +257,12 @@ async function setupSchema() {
         assigned_group_id INTEGER REFERENCES groups(id) ON DELETE SET NULL,
         status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'done', 'skipped')),
         copy_from_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        copy_from_name_manual TEXT,
         license_note TEXT,
+        addon_requested INTEGER NOT NULL DEFAULT 0,
         notes TEXT,
         asset_id INTEGER REFERENCES assets(id) ON DELETE SET NULL,
+        ticket_id INTEGER REFERENCES tickets(id) ON DELETE SET NULL,
         completed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
         completed_at TEXT,
         created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -610,6 +615,44 @@ async function migrate() {
   if (!userCols4.some((c) => c.name === 'totp_enabled')) {
     await run('ALTER TABLE users ADD COLUMN totp_enabled INTEGER NOT NULL DEFAULT 0');
   }
+
+  const onbTypeCols = await all('PRAGMA table_info(onboarding_item_types)');
+  if (!onbTypeCols.some((c) => c.name === 'license_options')) {
+    await run('ALTER TABLE onboarding_item_types ADD COLUMN license_options TEXT');
+  }
+  if (!onbTypeCols.some((c) => c.name === 'addon_label')) {
+    await run('ALTER TABLE onboarding_item_types ADD COLUMN addon_label TEXT');
+  }
+
+  const onbItemCols = await all('PRAGMA table_info(onboarding_items)');
+  if (!onbItemCols.some((c) => c.name === 'copy_from_name_manual')) {
+    await run('ALTER TABLE onboarding_items ADD COLUMN copy_from_name_manual TEXT');
+  }
+  if (!onbItemCols.some((c) => c.name === 'addon_requested')) {
+    await run('ALTER TABLE onboarding_items ADD COLUMN addon_requested INTEGER NOT NULL DEFAULT 0');
+  }
+  if (!onbItemCols.some((c) => c.name === 'ticket_id')) {
+    await run('ALTER TABLE onboarding_items ADD COLUMN ticket_id INTEGER REFERENCES tickets(id) ON DELETE SET NULL');
+  }
+
+  const damType = await get("SELECT id FROM onboarding_item_types WHERE item_key = 'dam'");
+  if (!damType) {
+    const serviceDesk = await get("SELECT id FROM groups WHERE name = 'Service Desk'");
+    const posRow = await get('SELECT COALESCE(MAX(position), -1) AS maxPos FROM onboarding_item_types');
+    await run(
+      'INSERT INTO onboarding_item_types (item_key, label_it, label_en, kind, default_group_id, position) VALUES (?, ?, ?, ?, ?, ?)',
+      ['dam', 'DAM', 'DAM', 'copy_user', serviceDesk ? serviceDesk.id : null, posRow.maxPos + 1]
+    );
+  }
+  await run("UPDATE onboarding_item_types SET license_options = ? WHERE item_key = 'mailbox' AND license_options IS NULL", [
+    JSON.stringify(['Nessuna', 'E5', 'F3', 'F3_1']),
+  ]);
+  await run("UPDATE onboarding_item_types SET addon_label = 'Dynamics' WHERE item_key = 'crm' AND addon_label IS NULL");
+
+  const onboardingCategory = await get("SELECT id FROM categories WHERE name = 'Onboarding'");
+  if (!onboardingCategory) {
+    await run("INSERT INTO categories (name, icon) VALUES ('Onboarding', 'userCircle')");
+  }
 }
 
 async function seedOnboardingItemTypes() {
@@ -617,23 +660,26 @@ async function seedOnboardingItemTypes() {
   (await all('SELECT id, name FROM groups')).forEach((g) => { groupIdByName[g.name] = g.id; });
   const g = (name) => groupIdByName[name] || null;
 
+  const mailboxLicenses = JSON.stringify(['Nessuna', 'E5', 'F3', 'F3_1']);
+
   const items = [
-    ['active_directory', 'Active Directory', 'Active Directory', 'checkbox', null, g('Security')],
-    ['mailbox', 'Mailbox', 'Mailbox', 'license', null, g('Service Desk')],
-    ['vpn', 'VPN', 'VPN', 'checkbox', null, g('Network')],
-    ['jde', 'JDE', 'JDE', 'copy_user', null, g('Service Desk')],
-    ['crm', 'CRM', 'CRM', 'copy_user', null, g('Service Desk')],
-    ['business_object', 'Business Object', 'Business Object', 'copy_user', null, g('Service Desk')],
-    ['faberwam', 'FaberWAM', 'FaberWAM', 'copy_user', null, g('Service Desk')],
-    ['laptop', 'Laptop', 'Laptop', 'asset', 'laptop', g('Endpoint')],
-    ['smartphone', 'Smartphone', 'Smartphone', 'asset', 'telefono', g('Endpoint')],
-    ['tablet', 'Tablet', 'Tablet', 'asset', 'tablet', g('Endpoint')],
+    ['active_directory', 'Active Directory', 'Active Directory', 'checkbox', null, g('Security'), null, null],
+    ['mailbox', 'Mailbox', 'Mailbox', 'license', null, g('Service Desk'), mailboxLicenses, null],
+    ['vpn', 'VPN', 'VPN', 'checkbox', null, g('Network'), null, null],
+    ['jde', 'JDE', 'JDE', 'copy_user', null, g('Service Desk'), null, null],
+    ['crm', 'CRM', 'CRM', 'copy_user', null, g('Service Desk'), null, 'Dynamics'],
+    ['business_object', 'Business Object', 'Business Object', 'copy_user', null, g('Service Desk'), null, null],
+    ['faberwam', 'FaberWAM', 'FaberWAM', 'copy_user', null, g('Service Desk'), null, null],
+    ['dam', 'DAM', 'DAM', 'copy_user', null, g('Service Desk'), null, null],
+    ['laptop', 'Laptop', 'Laptop', 'asset', 'laptop', g('Endpoint'), null, null],
+    ['smartphone', 'Smartphone', 'Smartphone', 'asset', 'telefono', g('Endpoint'), null, null],
+    ['tablet', 'Tablet', 'Tablet', 'asset', 'tablet', g('Endpoint'), null, null],
   ];
   for (let i = 0; i < items.length; i += 1) {
-    const [key, labelIt, labelEn, kind, assetType, groupId] = items[i];
+    const [key, labelIt, labelEn, kind, assetType, groupId, licenseOptions, addonLabel] = items[i];
     await run(
-      'INSERT INTO onboarding_item_types (item_key, label_it, label_en, kind, asset_type, default_group_id, position) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [key, labelIt, labelEn, kind, assetType, groupId, i]
+      'INSERT INTO onboarding_item_types (item_key, label_it, label_en, kind, asset_type, default_group_id, position, license_options, addon_label) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [key, labelIt, labelEn, kind, assetType, groupId, i, licenseOptions, addonLabel]
     );
   }
 }

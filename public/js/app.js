@@ -469,6 +469,10 @@
       admin_section_overview: 'Panoramica', admin_section_users: 'Utenti', admin_section_groups: 'Gruppi e organigramma',
       admin_section_catalog: 'Catalogo e campi', admin_section_automation: 'Automazione', admin_section_onboarding: 'Onboarding',
       admin_section_org: 'Organizzazione',
+      onboarding_license_options_label: 'Licenze selezionabili', onboarding_license_options_placeholder: 'Nessuna, E5, F3, F3_1...',
+      onboarding_addon_label_label: 'Componente aggiuntivo', onboarding_addon_label_placeholder: 'es. Dynamics',
+      onboarding_pick_existing_user: 'Seleziona utente esistente...', onboarding_new_person_placeholder: 'oppure inserisci il nome se non è ancora un account',
+      onboarding_addon_checkbox_prefix: 'Richiedi anche la licenza',
     },
     en: {
       nav_dashboard: 'Tickets', nav_new: 'New ticket', nav_search: 'Search', nav_backlog: 'Backlog',
@@ -712,6 +716,10 @@
       admin_section_overview: 'Overview', admin_section_users: 'Users', admin_section_groups: 'Groups and org chart',
       admin_section_catalog: 'Catalog and fields', admin_section_automation: 'Automation', admin_section_onboarding: 'Onboarding',
       admin_section_org: 'Organization',
+      onboarding_license_options_label: 'Selectable licenses', onboarding_license_options_placeholder: 'None, E5, F3, F3_1...',
+      onboarding_addon_label_label: 'Add-on', onboarding_addon_label_placeholder: 'e.g. Dynamics',
+      onboarding_pick_existing_user: 'Select an existing user...', onboarding_new_person_placeholder: 'or type the name if they are not an account yet',
+      onboarding_addon_checkbox_prefix: 'Also request the',
     },
   };
   const LANG_LABELS = { it: 'Italiano', en: 'English' };
@@ -3392,6 +3400,16 @@
               </div>
               <div class="field"><label for="newOnbItemGroup">${t('onboarding_routed_to_label')}</label><select id="newOnbItemGroup"><option value="">${t('option_none')}</option></select></div>
             </div>
+            <div class="field-row">
+              <div class="field" id="newOnbItemLicenseWrap" style="display:none">
+                <label for="newOnbItemLicenseOptions">${t('onboarding_license_options_label')}</label>
+                <input id="newOnbItemLicenseOptions" placeholder="${t('onboarding_license_options_placeholder')}" />
+              </div>
+              <div class="field">
+                <label for="newOnbItemAddonLabel">${t('onboarding_addon_label_label')}</label>
+                <input id="newOnbItemAddonLabel" placeholder="${t('onboarding_addon_label_placeholder')}" />
+              </div>
+            </div>
             <div><button class="btn btn-sm" type="submit">${t('btn_add_onboarding_item')}</button></div>
           </form>
           <p class="error-text" id="onbItemTypeError"></p>
@@ -3713,8 +3731,10 @@
 
       const onbKindSelect = document.getElementById('newOnbItemKind');
       const onbAssetTypeWrap = document.getElementById('newOnbItemAssetTypeWrap');
+      const onbLicenseWrap = document.getElementById('newOnbItemLicenseWrap');
       onbKindSelect.addEventListener('change', () => {
         onbAssetTypeWrap.style.display = onbKindSelect.value === 'asset' ? '' : 'none';
+        onbLicenseWrap.style.display = onbKindSelect.value === 'license' ? '' : 'none';
       });
 
       async function loadOnbItemTypes() {
@@ -3727,7 +3747,7 @@
           listEl.innerHTML = itemTypes.length ? `
             <div class="table-scroll">
               <table class="users-table">
-                <thead><tr><th>${t('field_label_it')}</th><th>${t('field_label_en')}</th><th>${t('onboarding_kind_label')}</th><th>${t('onboarding_routed_to_label')}</th><th>${t('table_status')}</th><th></th></tr></thead>
+                <thead><tr><th>${t('field_label_it')}</th><th>${t('field_label_en')}</th><th>${t('onboarding_kind_label')}</th><th>${t('onboarding_routed_to_label')}</th><th>${t('onboarding_license_options_label')}</th><th>${t('onboarding_addon_label_label')}</th><th>${t('table_status')}</th><th></th></tr></thead>
                 <tbody>
                   ${itemTypes.map((it) => `
                     <tr>
@@ -3740,6 +3760,8 @@
                           ${groupOptionsCache.map((g) => `<option value="${g.id}" ${it.default_group_id === g.id ? 'selected' : ''}>${escapeHtml(g.name)}</option>`).join('')}
                         </select>
                       </td>
+                      <td>${it.kind === 'license' ? `<input type="text" class="onbItemLicenseOptionsInput" data-id="${it.id}" value="${escapeHtml((it.license_options ? JSON.parse(it.license_options) : []).join(', '))}" placeholder="${t('onboarding_license_options_placeholder')}" />` : '—'}</td>
+                      <td>${it.kind !== 'asset' ? `<input type="text" class="onbItemAddonLabelInput" data-id="${it.id}" value="${escapeHtml(it.addon_label || '')}" placeholder="${t('onboarding_addon_label_placeholder')}" />` : '—'}</td>
                       <td><label class="checkbox-field"><input type="checkbox" class="onbItemEnabledCheck" data-id="${it.id}" ${it.enabled ? 'checked' : ''} /><span>${t('onboarding_enabled_label')}</span></label></td>
                       <td><button type="button" class="icon-btn deleteOnbItemBtn" data-id="${it.id}" title="${t('btn_delete')}">${icon('trash')}</button></td>
                     </tr>`).join('')}
@@ -3751,6 +3773,27 @@
             sel.addEventListener('change', async () => {
               try {
                 await api(`/onboarding/item-types/${sel.dataset.id}`, { method: 'PATCH', body: { defaultGroupId: sel.value || null } });
+                showToast(t('toast_onboarding_item_type_updated'), 'success');
+              } catch (err) {
+                showToast(err.message, 'error');
+              }
+            });
+          });
+          listEl.querySelectorAll('.onbItemLicenseOptionsInput').forEach((input) => {
+            input.addEventListener('change', async () => {
+              try {
+                const licenseOptions = input.value.split(',').map((s) => s.trim()).filter(Boolean);
+                await api(`/onboarding/item-types/${input.dataset.id}`, { method: 'PATCH', body: { licenseOptions } });
+                showToast(t('toast_onboarding_item_type_updated'), 'success');
+              } catch (err) {
+                showToast(err.message, 'error');
+              }
+            });
+          });
+          listEl.querySelectorAll('.onbItemAddonLabelInput').forEach((input) => {
+            input.addEventListener('change', async () => {
+              try {
+                await api(`/onboarding/item-types/${input.dataset.id}`, { method: 'PATCH', body: { addonLabel: input.value.trim() } });
                 showToast(t('toast_onboarding_item_type_updated'), 'success');
               } catch (err) {
                 showToast(err.message, 'error');
@@ -3793,6 +3836,9 @@
         const labelEn = document.getElementById('newOnbItemLabelEn').value.trim();
         if (!labelIt || !labelEn) return;
         try {
+          const licenseOptions = document.getElementById('newOnbItemLicenseOptions').value
+            .split(',').map((s) => s.trim()).filter(Boolean);
+          const addonLabel = document.getElementById('newOnbItemAddonLabel').value.trim();
           await api('/onboarding/item-types', {
             method: 'POST',
             body: {
@@ -3802,10 +3848,13 @@
               kind: onbKindSelect.value,
               assetType: document.getElementById('newOnbItemAssetType').value,
               defaultGroupId: document.getElementById('newOnbItemGroup').value || null,
+              licenseOptions,
+              addonLabel,
             },
           });
           document.getElementById('newOnbItemForm').reset();
           onbAssetTypeWrap.style.display = 'none';
+          onbLicenseWrap.style.display = 'none';
           showToast(t('toast_onboarding_item_type_created'), 'success');
           loadOnbItemTypes();
         } catch (err) {
@@ -5085,11 +5134,36 @@
           <div class="field">
             <label>${t('onboarding_checklist_label')}</label>
             <div class="onb-checklist">
-              ${itemTypes.map((it) => `
-                <label class="checkbox-field">
-                  <input type="checkbox" class="onbItemCheck" value="${it.id}" checked />
-                  <span>${escapeHtml(getLang() === 'en' ? it.label_en : it.label_it)}${it.default_group_name ? ` <span class="hint">→ ${escapeHtml(it.default_group_name)}</span>` : ''}</span>
-                </label>`).join('')}
+              ${itemTypes.map((it) => {
+                const licenseOptions = it.license_options ? JSON.parse(it.license_options) : [];
+                return `
+                <div class="onb-checklist-item" data-type-id="${it.id}">
+                  <label class="checkbox-field">
+                    <input type="checkbox" class="onbItemCheck" value="${it.id}" checked />
+                    <span>${escapeHtml(getLang() === 'en' ? it.label_en : it.label_it)}${it.default_group_name ? ` <span class="hint">→ ${escapeHtml(it.default_group_name)}</span>` : ''}</span>
+                  </label>
+                  <div class="onb-checklist-item-custom">
+                    ${it.kind === 'copy_user' ? `
+                      <select class="onbCustCopySel" data-type-id="${it.id}">
+                        <option value="">${t('onboarding_pick_existing_user')}</option>
+                        ${users.map((u) => `<option value="${u.id}">${escapeHtml(u.name)} · ${escapeHtml(u.email)}</option>`).join('')}
+                      </select>
+                      <input type="text" class="onbCustCopyManual" data-type-id="${it.id}" placeholder="${t('onboarding_new_person_placeholder')}" />
+                    ` : ''}
+                    ${it.kind === 'license' && licenseOptions.length ? `
+                      <select class="onbCustLicenseSel" data-type-id="${it.id}">
+                        ${licenseOptions.map((opt) => `<option value="${escapeHtml(opt)}">${escapeHtml(opt)}</option>`).join('')}
+                      </select>
+                    ` : ''}
+                    ${it.addon_label ? `
+                      <label class="checkbox-field">
+                        <input type="checkbox" class="onbCustAddonCheck" data-type-id="${it.id}" />
+                        <span>${t('onboarding_addon_checkbox_prefix')} ${escapeHtml(it.addon_label)}</span>
+                      </label>
+                    ` : ''}
+                  </div>
+                </div>`;
+              }).join('')}
             </div>
           </div>
           <div class="field">
@@ -5102,12 +5176,33 @@
         </form>
       </div>`;
 
+    document.querySelectorAll('.onbItemCheck').forEach((cb) => {
+      const panel = cb.closest('.onb-checklist-item').querySelector('.onb-checklist-item-custom');
+      if (panel) panel.hidden = !cb.checked;
+      cb.addEventListener('change', () => {
+        if (panel) panel.hidden = !cb.checked;
+      });
+    });
+
     guardForm(document.getElementById('onbForm'), async () => {
       const errEl = document.getElementById('onbFormError');
       errEl.textContent = '';
       const name = document.getElementById('onbEmployeeName').value.trim();
       if (!name) return;
-      const itemTypeIds = Array.from(document.querySelectorAll('.onbItemCheck:checked')).map((el) => Number(el.value));
+      const items = Array.from(document.querySelectorAll('.onbItemCheck:checked')).map((el) => {
+        const typeId = Number(el.value);
+        const copySel = document.querySelector(`.onbCustCopySel[data-type-id="${typeId}"]`);
+        const copyManual = document.querySelector(`.onbCustCopyManual[data-type-id="${typeId}"]`);
+        const licenseSel = document.querySelector(`.onbCustLicenseSel[data-type-id="${typeId}"]`);
+        const addonCheck = document.querySelector(`.onbCustAddonCheck[data-type-id="${typeId}"]`);
+        return {
+          itemTypeId: typeId,
+          copyFromUserId: copySel && copySel.value ? Number(copySel.value) : null,
+          copyFromNameManual: copyManual ? copyManual.value.trim() : null,
+          licenseChoice: licenseSel ? licenseSel.value : null,
+          addonRequested: addonCheck ? addonCheck.checked : false,
+        };
+      });
       try {
         const { request } = await api('/onboarding', {
           method: 'POST',
@@ -5117,7 +5212,7 @@
             startDate: document.getElementById('onbStartDate').value || null,
             employeeUserId: document.getElementById('onbEmployeeUser').value || null,
             notes: document.getElementById('onbNotes').value.trim(),
-            itemTypeIds,
+            items,
           },
         });
         const file = document.getElementById('onbAttachmentInput').files[0];
@@ -5210,11 +5305,14 @@
           <div class="onb-item-head">
             <span class="onb-item-name">${escapeHtml(getLang() === 'en' ? it.label_en : it.label_it)}</span>
             ${it.group_name ? `<span class="org-node-badge">${escapeHtml(it.group_name)}</span>` : ''}
-            <select class="onbItemStatusSel" data-id="${it.id}">
-              ${Object.entries(onboardingItemStatusLabels()).map(([v, l]) => `<option value="${v}" ${it.status === v ? 'selected' : ''}>${l}</option>`).join('')}
-            </select>
+            ${it.ticket_id ? `
+              <a class="badge badge-${it.ticket_status}" href="#/ticket/${it.ticket_id}">${statusLabels()[it.ticket_status] || it.ticket_status} · #${formatTicketNumber(it.ticket_id)}</a>
+            ` : `
+              <select class="onbItemStatusSel" data-id="${it.id}">
+                ${Object.entries(onboardingItemStatusLabels()).map(([v, l]) => `<option value="${v}" ${it.status === v ? 'selected' : ''}>${l}</option>`).join('')}
+              </select>`}
           </div>
-          ${it.kind === 'copy_user' ? `
+          ${it.kind === 'copy_user' && !it.ticket_id ? `
             <div class="field">
               <label>${t('onboarding_copy_from_label')}</label>
               <select class="onbCopyFromSel" data-id="${it.id}">
@@ -5222,11 +5320,15 @@
                 ${staffAndUsers.map((u) => `<option value="${u.id}" ${it.copy_from_user_id === u.id ? 'selected' : ''}>${escapeHtml(u.name)} · ${escapeHtml(u.email)}</option>`).join('')}
               </select>
             </div>` : ''}
-          ${it.kind === 'license' ? `
+          ${it.kind === 'copy_user' && it.ticket_id && (it.copy_from_user_name || it.copy_from_name_manual) ? `
+            <p class="hint">${t('onboarding_copy_from_label')}: ${escapeHtml(it.copy_from_user_name || it.copy_from_name_manual)}</p>` : ''}
+          ${it.kind === 'license' && !it.ticket_id ? `
             <div class="field">
               <label>${t('onboarding_license_label')}</label>
               <input type="text" class="onbLicenseInput" data-id="${it.id}" value="${escapeHtml(it.license_note || '')}" placeholder="${t('onboarding_license_placeholder')}" />
             </div>` : ''}
+          ${it.kind === 'license' && it.ticket_id && it.license_note ? `<p class="hint">${t('onboarding_license_label')}: ${escapeHtml(it.license_note)}</p>` : ''}
+          ${it.type_addon_label && it.addon_requested ? `<p class="hint">${t('onboarding_addon_checkbox_prefix')} ${escapeHtml(it.type_addon_label)}</p>` : ''}
           ${it.kind === 'asset' && it.asset_id ? `<p class="hint">${t('onboarding_asset_created_prefix')} ${escapeHtml(it.asset_name || '')}${it.asset_tag ? ' · ' + escapeHtml(it.asset_tag) : ''}</p>` : ''}
           ${it.status === 'done' && it.completed_by_name ? `<p class="hint">${t('onboarding_completed_by_prefix')} ${escapeHtml(it.completed_by_name)} · ${formatDate(it.completed_at)}</p>` : ''}
         </div>`).join('') || `<p class="hint">${t('no_onboarding_items_hint')}</p>`;

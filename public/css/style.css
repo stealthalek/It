@@ -944,6 +944,23 @@ body:not(.role-customer):not(.role-agent):not(.role-admin) .nav-toggle { display
 .attachment-meta { font-size: 0.78rem; color: var(--muted); }
 
 .onb-checklist { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.4rem; }
+.onb-checklist-item {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.6rem 0.75rem;
+}
+.onb-checklist-item-custom {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+.onb-checklist-item-custom select,
+.onb-checklist-item-custom input[type="text"] {
+  flex: 1 1 200px;
+}
 .onb-item-row {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
