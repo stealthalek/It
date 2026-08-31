@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const db = require('../db/database');
+const { resolvePermissions } = require('../lib/permissions');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
 
@@ -20,10 +21,13 @@ async function authenticate(req, res, next) {
 
   try {
     const row = await db.get(
-      `SELECT u.id, u.name, u.email, u.role, u.is_super_admin, u.group_id, u.totp_enabled,
-         (SELECT COUNT(*) FROM users r WHERE r.manager_id = u.id) > 0 AS is_manager,
+      `SELECT u.id, u.name, u.email, u.role, u.is_super_admin, u.group_id, u.totp_enabled, u.role_id,
+         r.label_it AS role_label_it, r.label_en AS role_label_en, r.color AS role_color,
+         r.read_only AS role_read_only, r.permissions AS role_permissions_json,
+         (SELECT COUNT(*) FROM users r2 WHERE r2.manager_id = u.id) > 0 AS is_manager,
          s.revoked AS session_revoked
        FROM users u
+       LEFT JOIN roles r ON r.id = u.role_id
        LEFT JOIN user_sessions s ON s.id = ?
        WHERE u.id = ?`,
       [payload.sid || null, payload.sub]
@@ -35,6 +39,11 @@ async function authenticate(req, res, next) {
       return res.status(401).json({ error: 'Sessione scaduta, effettua di nuovo l\'accesso' });
     }
     delete row.session_revoked;
+    row.role_permissions = row.role_permissions_json ? JSON.parse(row.role_permissions_json) : [];
+    row.read_only = !!row.role_read_only;
+    delete row.role_permissions_json;
+    delete row.role_read_only;
+    row.permissions = resolvePermissions(row);
     req.user = row;
     req.sessionId = payload.sid || null;
     if (payload.sid) {

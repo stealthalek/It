@@ -52,6 +52,16 @@ async function setupSchema() {
         locale TEXT NOT NULL DEFAULT 'it',
         created_at TEXT NOT NULL DEFAULT (datetime('now'))
       )`,
+      `CREATE TABLE IF NOT EXISTS roles (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        key TEXT NOT NULL UNIQUE,
+        label_it TEXT NOT NULL,
+        label_en TEXT NOT NULL,
+        color TEXT NOT NULL DEFAULT '#8f2436',
+        read_only INTEGER NOT NULL DEFAULT 0,
+        permissions TEXT NOT NULL DEFAULT '[]',
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`,
       `CREATE TABLE IF NOT EXISTS tickets (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         subject TEXT NOT NULL,
@@ -653,6 +663,52 @@ async function migrate() {
   const onboardingCategory = await get("SELECT id FROM categories WHERE name = 'Onboarding'");
   if (!onboardingCategory) {
     await run("INSERT INTO categories (name, icon) VALUES ('Onboarding', 'userCircle')");
+  }
+
+  const userCols5 = await all('PRAGMA table_info(users)');
+  if (!userCols5.some((c) => c.name === 'role_id')) {
+    await run('ALTER TABLE users ADD COLUMN role_id INTEGER REFERENCES roles(id) ON DELETE SET NULL');
+  }
+
+  const roleCount = await get('SELECT COUNT(*) AS n FROM roles');
+  if (roleCount.n === 0) {
+    await seedDefaultRoles();
+  }
+}
+
+async function seedDefaultRoles() {
+  const defaultRoles = [
+    {
+      key: 'supervisor', color: '#1868a8', readOnly: false,
+      labelIt: 'Supervisore', labelEn: 'Supervisor',
+      permissions: ['reports_view', 'automations_manage'],
+    },
+    {
+      key: 'asset_manager', color: '#2e7d32', readOnly: false,
+      labelIt: 'Gestore Risorse', labelEn: 'Asset Manager',
+      permissions: ['assets_delete'],
+    },
+    {
+      key: 'content_manager', color: '#b9822c', readOnly: false,
+      labelIt: 'Gestore Contenuti', labelEn: 'Content Manager',
+      permissions: ['canned_responses_manage', 'templates_manage'],
+    },
+    {
+      key: 'onboarding_lead', color: '#6b5a8f', readOnly: false,
+      labelIt: 'Responsabile Onboarding', labelEn: 'Onboarding Lead',
+      permissions: ['onboarding_catalog_manage'],
+    },
+    {
+      key: 'auditor', color: '#8a7565', readOnly: true,
+      labelIt: 'Auditor (sola lettura)', labelEn: 'Auditor (read-only)',
+      permissions: ['audit_view', 'reports_view'],
+    },
+  ];
+  for (const role of defaultRoles) {
+    await run(
+      'INSERT INTO roles (key, label_it, label_en, color, read_only, permissions) VALUES (?, ?, ?, ?, ?, ?)',
+      [role.key, role.labelIt, role.labelEn, role.color, role.readOnly ? 1 : 0, JSON.stringify(role.permissions)]
+    );
   }
 }
 

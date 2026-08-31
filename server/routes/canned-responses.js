@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../db/database');
 const { authenticate, requireRole } = require('../middleware/auth');
+const { requirePermission } = require('../lib/permissions');
 const asyncHandler = require('../middleware/asyncHandler');
 const { logAudit } = require('../audit');
 
@@ -24,7 +25,7 @@ router.get(
 
 router.post(
   '/',
-  requireRole('admin'),
+  requirePermission('canned_responses_manage'),
   asyncHandler(async (req, res) => {
     const { title, body } = req.body || {};
     if (!title || !title.trim()) {
@@ -47,7 +48,7 @@ router.post(
 
 router.delete(
   '/:id',
-  requireRole('admin'),
+  requirePermission('canned_responses_manage'),
   asyncHandler(async (req, res) => {
     const response = await db.get('SELECT title FROM canned_responses WHERE id = ?', [req.params.id]);
     if (!response) return res.status(404).json({ error: 'Risposta rapida non trovata' });

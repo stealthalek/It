@@ -9,6 +9,7 @@ const asyncHandler = require('../middleware/asyncHandler');
 const { getSsoConfig, verifyGoogleCredential, verifyMicrosoftToken } = require('../sso');
 const { generateSecret, verifyTotp, buildOtpauthUri } = require('../lib/totp');
 const { createSession, listSessions, revokeSession, revokeOtherSessions } = require('../lib/sessions');
+const { resolvePermissions } = require('../lib/permissions');
 
 const router = express.Router();
 
@@ -49,10 +50,22 @@ async function issueSessionToken(user, req) {
 
 async function publicUser(user) {
   const rep = await db.get('SELECT COUNT(*) AS n FROM users WHERE manager_id = ?', [user.id]);
+  let role = null;
+  if (user.role_id) {
+    role = await db.get('SELECT id, label_it, label_en, color, read_only, permissions FROM roles WHERE id = ?', [user.role_id]);
+  }
+  const rolePermissions = role ? JSON.parse(role.permissions || '[]') : [];
+  const permissions = resolvePermissions({ role: user.role, role_id: user.role_id, role_permissions: rolePermissions });
   return {
     id: user.id, name: user.name, email: user.email, role: user.role,
     is_super_admin: !!user.is_super_admin, is_manager: rep.n > 0,
     totp_enabled: !!user.totp_enabled,
+    role_id: user.role_id || null,
+    role_label_it: role ? role.label_it : null,
+    role_label_en: role ? role.label_en : null,
+    role_color: role ? role.color : null,
+    read_only: role ? !!role.read_only : false,
+    permissions,
   };
 }
 

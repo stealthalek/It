@@ -7,6 +7,7 @@ const mailer = require('../mailer');
 const { notifyUser } = require('../notifications');
 const { businessMillisBetween, computeSlaStatus, computeSlaRemaining, withSla } = require('../sla');
 const { formatTicketNumber } = require('../lib/ticketNumber');
+const { hasPermission } = require('../lib/permissions');
 const { syncRequestStatus: syncOnboardingRequestStatus } = require('./onboarding');
 
 const router = express.Router();
@@ -579,7 +580,7 @@ router.patch(
     let justResolved = false;
     let justSetWaiting = false;
 
-    if (isStaff(req.user)) {
+    if (isStaff(req.user) && !req.user.read_only) {
       if (body.status !== undefined) {
         if (!STATUSES.includes(body.status)) {
           return res.status(400).json({ error: 'Stato non valido' });
@@ -818,7 +819,7 @@ router.patch(
 router.delete(
   '/:id',
   asyncHandler(async (req, res) => {
-    if (req.user.role !== 'admin') {
+    if (req.user.role !== 'admin' && !hasPermission(req.user, 'tickets_delete')) {
       return res.status(403).json({ error: 'Solo un amministratore può eliminare un ticket' });
     }
     const ticket = await getTicketOr404(req, res);
@@ -836,6 +837,10 @@ router.post(
   asyncHandler(async (req, res) => {
     const ticket = await getTicketOr404(req, res);
     if (!ticket) return;
+
+    if (isStaff(req.user) && req.user.read_only) {
+      return res.status(403).json({ error: 'Il tuo ruolo consente solo la consultazione' });
+    }
 
     const { message, is_internal } = req.body || {};
     if (!message || !message.trim()) {

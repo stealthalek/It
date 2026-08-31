@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../db/database');
 const { authenticate } = require('../middleware/auth');
+const { hasPermission } = require('../lib/permissions');
 const asyncHandler = require('../middleware/asyncHandler');
 const { formatTicketNumber } = require('../lib/ticketNumber');
 
@@ -29,7 +30,7 @@ function groupClause(alias, group, params) {
 router.get(
   '/',
   asyncHandler(async (req, res) => {
-    if (!req.user.is_super_admin) {
+    if (!req.user.is_super_admin && !hasPermission(req.user, 'audit_view')) {
       return res.status(403).json({ error: 'Accesso riservato all\'amministratore globale' });
     }
 

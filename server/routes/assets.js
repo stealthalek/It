@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../db/database');
 const { authenticate, requireRole } = require('../middleware/auth');
+const { requirePermission } = require('../lib/permissions');
 const asyncHandler = require('../middleware/asyncHandler');
 const { logAudit } = require('../audit');
 
@@ -175,7 +176,7 @@ router.patch(
 
 router.delete(
   '/:id',
-  requireRole('admin'),
+  requirePermission('assets_delete'),
   asyncHandler(async (req, res) => {
     const asset = await db.get('SELECT name FROM assets WHERE id = ?', [req.params.id]);
     const result = await db.run('DELETE FROM assets WHERE id = ?', [req.params.id]);

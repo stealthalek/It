@@ -455,6 +455,11 @@
       password_reset_success_msg: 'Password reimpostata.',
       new_temp_password_hint: 'Nuova password temporanea (comunicala in modo sicuro, non sarà più visibile):',
       toast_password_reset: 'Password reimpostata', settings_title: 'Impostazioni',
+      field_specific_role: 'Ruolo specifico', specific_role_none_option: 'Nessuno (permessi base)',
+      specific_role_hint: 'Assegna un ruolo con permessi aggiuntivi, oltre al ruolo base.',
+      toast_specific_role_updated: 'Ruolo specifico aggiornato', toast_profile_updated: 'Dati account aggiornati',
+      delete_account_btn: 'Elimina account', toast_account_deleted: 'Account eliminato',
+      confirm_delete_account_prefix: 'Eliminare definitivamente l\'account di', confirm_delete_account_suffix: '? Questa azione non può essere annullata ed elimina anche i ticket aperti da questa persona.',
       btn_copy: 'Copia', toast_copied: 'Copiato negli appunti', toast_copy_failed: 'Impossibile copiare',
       motion_fluid_label: 'Animazioni fluide', toast_accent_updated: 'Colore aggiornato', toast_motion_updated: 'Preferenza animazioni aggiornata',
       desktop_notif_label: 'Notifiche desktop', desktop_notif_hint: 'Ricevi un avviso pop-up del sistema operativo per nuovi ticket e commenti, anche a scheda non attiva.',
@@ -485,7 +490,16 @@
       onboarding_callout_title: 'Devi far entrare una nuova persona in azienda?', onboarding_callout_hint: 'Avvia una pratica di onboarding: postazione, accessi e account, tutto tracciato in un unico posto.',
       admin_section_overview: 'Panoramica', admin_section_users: 'Utenti', admin_section_groups: 'Gruppi e organigramma',
       admin_section_catalog: 'Catalogo e campi', admin_section_automation: 'Automazione', admin_section_onboarding: 'Onboarding',
-      admin_section_org: 'Organizzazione',
+      admin_section_org: 'Organizzazione', admin_section_roles: 'Ruoli',
+      admin_roles_title: 'Ruoli personalizzati', admin_roles_hint: 'Crea ruoli con permessi specifici da assegnare al personale, oltre ad Agente e Amministratore.',
+      field_color: 'Colore', field_role_read_only: 'Sola lettura (non può modificare i ticket)', field_role_permissions: 'Permessi',
+      btn_add_role: 'Crea ruolo', no_roles_hint: 'Nessun ruolo personalizzato ancora creato.',
+      confirm_delete_role: 'Eliminare definitivamente questo ruolo? Gli utenti che lo hanno assegnato torneranno ai permessi base.',
+      toast_role_created: 'Ruolo creato', toast_role_deleted: 'Ruolo eliminato',
+      perm_automations_manage: 'Gestire automazioni', perm_holidays_manage: 'Gestire festività e orari',
+      perm_canned_responses_manage: 'Gestire risposte rapide', perm_templates_manage: 'Gestire modelli di ticket',
+      perm_onboarding_catalog_manage: 'Gestire catalogo onboarding', perm_assets_delete: 'Eliminare risorse',
+      perm_audit_view: 'Vedere audit', perm_reports_view: 'Vedere report', perm_tickets_delete: 'Eliminare ticket',
       onboarding_license_options_label: 'Licenze selezionabili', onboarding_license_options_placeholder: 'Nessuna, E5, F3, F3_1...',
       onboarding_addon_label_label: 'Componente aggiuntivo', onboarding_addon_label_placeholder: 'es. Dynamics',
       onboarding_pick_existing_user: 'Seleziona utente esistente...', onboarding_new_person_placeholder: 'oppure inserisci il nome se non è ancora un account',
@@ -719,6 +733,11 @@
       password_reset_success_msg: 'Password reset.',
       new_temp_password_hint: 'New temporary password (share it securely, it will not be shown again):',
       toast_password_reset: 'Password reset', settings_title: 'Settings',
+      field_specific_role: 'Specific role', specific_role_none_option: 'None (base permissions)',
+      specific_role_hint: 'Assign a role with extra permissions, on top of the base role.',
+      toast_specific_role_updated: 'Specific role updated', toast_profile_updated: 'Account details updated',
+      delete_account_btn: 'Delete account', toast_account_deleted: 'Account deleted',
+      confirm_delete_account_prefix: 'Permanently delete the account for', confirm_delete_account_suffix: '? This cannot be undone and also deletes tickets opened by this person.',
       btn_copy: 'Copy', toast_copied: 'Copied to clipboard', toast_copy_failed: 'Could not copy',
       motion_fluid_label: 'Smooth animations', toast_accent_updated: 'Color updated', toast_motion_updated: 'Animation preference updated',
       desktop_notif_label: 'Desktop notifications', desktop_notif_hint: 'Get an OS-level pop-up alert for new tickets and comments, even when the tab is not active.',
@@ -749,7 +768,16 @@
       onboarding_callout_title: 'Bringing a new person on board?', onboarding_callout_hint: 'Start an onboarding request: workstation, access and accounts, all tracked in one place.',
       admin_section_overview: 'Overview', admin_section_users: 'Users', admin_section_groups: 'Groups and org chart',
       admin_section_catalog: 'Catalog and fields', admin_section_automation: 'Automation', admin_section_onboarding: 'Onboarding',
-      admin_section_org: 'Organization',
+      admin_section_org: 'Organization', admin_section_roles: 'Roles',
+      admin_roles_title: 'Custom roles', admin_roles_hint: 'Create roles with specific permissions to assign to staff, beyond Agent and Administrator.',
+      field_color: 'Color', field_role_read_only: 'Read-only (cannot modify tickets)', field_role_permissions: 'Permissions',
+      btn_add_role: 'Create role', no_roles_hint: 'No custom roles created yet.',
+      confirm_delete_role: 'Permanently delete this role? Users with it assigned will revert to base permissions.',
+      toast_role_created: 'Role created', toast_role_deleted: 'Role deleted',
+      perm_automations_manage: 'Manage automations', perm_holidays_manage: 'Manage holidays and hours',
+      perm_canned_responses_manage: 'Manage canned responses', perm_templates_manage: 'Manage ticket templates',
+      perm_onboarding_catalog_manage: 'Manage onboarding catalog', perm_assets_delete: 'Delete assets',
+      perm_audit_view: 'View audit', perm_reports_view: 'View reports', perm_tickets_delete: 'Delete tickets',
       onboarding_license_options_label: 'Selectable licenses', onboarding_license_options_placeholder: 'None, E5, F3, F3_1...',
       onboarding_addon_label_label: 'Add-on', onboarding_addon_label_placeholder: 'e.g. Dynamics',
       onboarding_pick_existing_user: 'Select an existing user...', onboarding_new_person_placeholder: 'or type the name if they are not an account yet',
@@ -3724,6 +3752,7 @@
       { key: 'catalog', icon: 'ticket', label: t('admin_section_catalog') },
       { key: 'automation', icon: 'activity', label: t('admin_section_automation') },
       { key: 'onboarding', icon: 'userCircle', label: t('admin_section_onboarding') },
+      { key: 'roles', icon: 'shield', label: t('admin_section_roles') },
       { key: 'org', icon: 'globe', label: t('admin_section_org') },
     ];
     const activeSection = isAdmin ? (ADMIN_SECTIONS.some((s) => s.key === state.adminSection) ? state.adminSection : 'overview') : 'users';
@@ -3776,6 +3805,11 @@
             <div class="field">
               <label for="newManager">${t('field_manager')}</label>
               <select id="newManager"><option value="">${t('option_none')}</option></select>
+            </div>
+            <div class="field">
+              <label for="newRoleId">${t('field_specific_role')}</label>
+              <select id="newRoleId"><option value="">${t('specific_role_none_option')}</option></select>
+              <span class="hint">${t('specific_role_hint')}</span>
             </div>
             <label class="checkbox-field">
               <input type="checkbox" id="newIsExternal" />
@@ -3959,6 +3993,30 @@
           </form>
           <p class="error-text" id="onbItemTypeError"></p>
           <div id="onbItemTypesList" class="spinner-row">${t('loading')}</div>
+        </div>
+        <div class="card admin-grid-full" data-admin-panel="roles" data-block-id="rolesManagement" ${activeSection === 'roles' ? '' : 'hidden'}>
+          <h3 class="section-title" style="margin-top:0">${icon('shield')} ${t('admin_roles_title')}</h3>
+          <p class="hint">${t('admin_roles_hint')}</p>
+          <form id="newRoleForm" class="form-grid" style="max-width:none;margin:0.75rem 0">
+            <div class="field-row">
+              <div class="field"><label for="newRoleLabelIt">${t('field_label_it')}</label><input id="newRoleLabelIt" required /></div>
+              <div class="field"><label for="newRoleLabelEn">${t('field_label_en')}</label><input id="newRoleLabelEn" required /></div>
+            </div>
+            <div class="field-row">
+              <div class="field" style="flex:0 0 8rem"><label for="newRoleColor">${t('field_color')}</label><input id="newRoleColor" type="color" value="#8f2436" /></div>
+              <label class="checkbox-field">
+                <input type="checkbox" id="newRoleReadOnly" />
+                ${t('field_role_read_only')}
+              </label>
+            </div>
+            <div class="field">
+              <label>${t('field_role_permissions')}</label>
+              <div id="newRolePermissions" style="display:flex;flex-wrap:wrap;gap:0.4rem 1.4rem;margin-top:0.4rem"></div>
+            </div>
+            <div><button class="btn btn-sm" type="submit">${t('btn_add_role')}</button></div>
+          </form>
+          <p class="error-text" id="newRoleError"></p>
+          <div id="rolesList" class="spinner-row">${t('loading')}</div>
         </div>
       </div>` : ''}
       <div id="usersWrap" class="card spinner-row" ${isAdmin && activeSection !== 'users' ? 'hidden' : ''}>${t('loading')}</div>`;
@@ -4416,6 +4474,96 @@
 
       loadOnbItemTypes();
 
+      let rolesCache = [];
+
+      async function loadRoles() {
+        const listEl = document.getElementById('rolesList');
+        listEl.className = 'spinner-row';
+        listEl.textContent = t('loading');
+        try {
+          const { roles, permissions } = await api('/roles');
+          rolesCache = roles;
+
+          const permsWrap = document.getElementById('newRolePermissions');
+          if (permsWrap && !permsWrap.dataset.built) {
+            permsWrap.innerHTML = permissions.map((key) => `
+              <label class="checkbox-field">
+                <input type="checkbox" class="newRolePermCheck" value="${key}" />
+                <span>${t(`perm_${key}`)}</span>
+              </label>`).join('');
+            permsWrap.dataset.built = '1';
+          }
+
+          const roleIdSelect = document.getElementById('newRoleId');
+          if (roleIdSelect) {
+            roleIdSelect.innerHTML = `<option value="">${t('specific_role_none_option')}</option>` +
+              roles.map((r) => `<option value="${r.id}">${escapeHtml(state.user.locale === 'en' ? r.label_en : r.label_it)}</option>`).join('');
+          }
+
+          listEl.className = '';
+          listEl.innerHTML = roles.length ? `
+            <div class="table-scroll">
+              <table class="users-table">
+                <thead><tr><th>${t('field_role')}</th><th>${t('field_role_permissions')}</th><th>${t('field_role_read_only')}</th><th></th></tr></thead>
+                <tbody>
+                  ${roles.map((r) => `
+                    <tr>
+                      <td><span class="role-tag" style="background:${r.color}22;color:${r.color};border-color:${r.color}44">${escapeHtml(state.user.locale === 'en' ? r.label_en : r.label_it)}</span></td>
+                      <td>${r.permissions.length ? r.permissions.map((p) => `<span class="badge">${t(`perm_${p}`)}</span>`).join(' ') : `<span class="hint">${t('option_none')}</span>`}</td>
+                      <td>${r.read_only ? t('yes_label') : t('no_label')}</td>
+                      <td><button type="button" class="icon-btn deleteRoleBtn" data-id="${r.id}" title="${t('btn_delete')}">${icon('trash')}</button></td>
+                    </tr>`).join('')}
+                </tbody>
+              </table>
+            </div>` : `<p class="hint">${t('no_roles_hint')}</p>`;
+
+          listEl.querySelectorAll('.deleteRoleBtn').forEach((btn) => {
+            btn.addEventListener('click', async () => {
+              if (!confirm(t('confirm_delete_role'))) return;
+              try {
+                await api(`/roles/${btn.dataset.id}`, { method: 'DELETE' });
+                showToast(t('toast_role_deleted'), 'success');
+                loadRoles();
+              } catch (err) {
+                showToast(err.message, 'error');
+              }
+            });
+          });
+        } catch (err) {
+          listEl.className = '';
+          listEl.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
+        }
+      }
+
+      guardForm(document.getElementById('newRoleForm'), async () => {
+        const errEl = document.getElementById('newRoleError');
+        errEl.textContent = '';
+        const labelIt = document.getElementById('newRoleLabelIt').value.trim();
+        const labelEn = document.getElementById('newRoleLabelEn').value.trim();
+        if (!labelIt || !labelEn) return;
+        const permissions = Array.from(document.querySelectorAll('.newRolePermCheck:checked')).map((cb) => cb.value);
+        try {
+          await api('/roles', {
+            method: 'POST',
+            body: {
+              key: labelEn,
+              labelIt,
+              labelEn,
+              color: document.getElementById('newRoleColor').value,
+              readOnly: document.getElementById('newRoleReadOnly').checked,
+              permissions,
+            },
+          });
+          document.getElementById('newRoleForm').reset();
+          showToast(t('toast_role_created'), 'success');
+          loadRoles();
+        } catch (err) {
+          errEl.textContent = err.message;
+        }
+      });
+
+      loadRoles();
+
       guardForm(document.getElementById('createStaffForm'), async (e) => {
         const errEl = document.getElementById('createStaffError');
         errEl.textContent = '';
@@ -4427,6 +4575,7 @@
           locale: document.getElementById('newLocale').value,
           managerId: document.getElementById('newManager').value || null,
           isExternal: document.getElementById('newIsExternal').checked,
+          roleId: document.getElementById('newRoleId').value || null,
         };
         try {
           const { user, tempPassword } = await api('/users', { method: 'POST', body });
@@ -4988,7 +5137,7 @@
                 <tr class="user-row" data-user-id="${u.id}" tabindex="0" role="link">
                   <td>${escapeHtml(u.name)}</td>
                   <td>${escapeHtml(u.email)}</td>
-                  <td><span class="role-tag">${roleLabels()[u.role] || u.role}</span> ${u.is_external ? `<span class="role-tag role-tag-external">${t('external_badge')}</span>` : ''}</td>
+                  <td><span class="role-tag">${roleLabels()[u.role] || u.role}</span> ${u.role_label_it ? `<span class="role-tag" style="background:${u.role_color}22;color:${u.role_color};border-color:${u.role_color}44">${escapeHtml(state.user.locale === 'en' ? u.role_label_en : u.role_label_it)}</span>` : ''} ${u.is_external ? `<span class="role-tag role-tag-external">${t('external_badge')}</span>` : ''}</td>
                   <td>${escapeHtml(groupLabel(u) || '—')}</td>
                   <td>${formatDate(u.created_at)}</td>
                 </tr>`).join('') : `<tr><td colspan="5"><p class="hint">${t('no_people_found')}</p></td></tr>`}
@@ -5031,12 +5180,13 @@
 
     const isAdmin = state.user.role === 'admin';
     const isSelf = user.id === state.user.id;
-    const [groups, createdStats, assignedStats, allUsers, assignedAssets] = await Promise.all([
+    const [groups, createdStats, assignedStats, allUsers, assignedAssets, roles] = await Promise.all([
       isAdmin ? api('/groups').then((d) => d.groups).catch(() => []) : Promise.resolve([]),
       api(`/tickets?createdBy=${user.id}`).then((d) => d.tickets).catch(() => []),
       user.role !== 'customer' ? api(`/tickets?assigned=${user.id}`).then((d) => d.tickets).catch(() => []) : Promise.resolve([]),
       user.role !== 'customer' ? api('/users').then((d) => d.users).catch(() => []) : Promise.resolve([]),
       user.role !== 'customer' ? api(`/assets?assignedTo=${user.id}`).then((d) => d.assets).catch(() => []) : Promise.resolve([]),
+      isAdmin && user.role !== 'customer' ? api('/roles').then((d) => d.roles).catch(() => []) : Promise.resolve([]),
     ]);
     const directReports = allUsers.filter((u) => u.manager_id === user.id);
 
@@ -5063,6 +5213,14 @@
           <h3 class="section-title" style="margin-top:0">${t('account_details_title')}</h3>
           <div class="field"><label>${t('registered_on_label')}</label><p>${formatDate(user.created_at)}</p></div>
           ${isAdmin ? `
+          <form id="detailProfileForm" class="form-grid" style="max-width:none;margin-bottom:0.5rem">
+            <div class="field-row">
+              <div class="field"><label for="detailName">${t('field_name')}</label><input id="detailName" value="${escapeHtml(user.name)}" required /></div>
+              <div class="field"><label for="detailEmail">Email</label><input id="detailEmail" type="email" value="${escapeHtml(user.email)}" required /></div>
+            </div>
+            <p class="error-text" id="detailProfileError"></p>
+            <div><button class="btn btn-sm" type="submit">${t('btn_save_changes')}</button></div>
+          </form>
           <div class="field">
             <label for="detailRole">${t('field_role')}</label>
             <select id="detailRole" ${isSelf ? 'disabled' : ''}>
@@ -5084,6 +5242,14 @@
             <label for="detailManager">${t('field_manager')}</label>
             <select id="detailManager"><option value="">${t('option_none')}</option></select>
           </div>
+          <div class="field">
+            <label for="detailRoleId">${t('field_specific_role')}</label>
+            <select id="detailRoleId">
+              <option value="">${t('specific_role_none_option')}</option>
+              ${roles.map((r) => `<option value="${r.id}" ${user.role_id === r.id ? 'selected' : ''}>${escapeHtml(state.user.locale === 'en' ? r.label_en : r.label_it)}</option>`).join('')}
+            </select>
+            <span class="hint">${t('specific_role_hint')}</span>
+          </div>
           <label class="checkbox-field">
             <input type="checkbox" id="detailIsExternal" ${user.is_external ? 'checked' : ''} />
             ${t('field_is_external')}
@@ -5091,6 +5257,7 @@
           ` : ''}
           <button type="button" id="detailResetPwBtn" class="btn btn-sm btn-outline-danger" style="margin-top:0.5rem">${icon('refresh')} ${t('reset_password_btn')}</button>
           <div id="detailResetPwBox"></div>
+          ${!isSelf ? `<button type="button" id="detailDeleteBtn" class="btn btn-sm btn-danger" style="margin-top:0.5rem">${icon('trash')} ${t('delete_account_btn')}</button>` : ''}
           ` : `
           <div class="field"><label>${t('field_group')}</label><p>${escapeHtml(groupLabel(user) || '—')}</p></div>
           <div class="field"><label>${t('field_locale')}</label><p>${escapeHtml(LANG_LABELS[user.locale] || user.locale || '—')}</p></div>
@@ -5180,6 +5347,45 @@
           } catch (err) {
             showToast(err.message, 'error');
             renderUserDetail(id);
+          }
+        });
+      }
+      const detailRoleId = document.getElementById('detailRoleId');
+      if (detailRoleId) {
+        detailRoleId.addEventListener('change', async (e) => {
+          try {
+            await api(`/users/${user.id}/role_id`, { method: 'PATCH', body: { roleId: e.target.value || null } });
+            showToast(t('toast_specific_role_updated'), 'success');
+          } catch (err) {
+            showToast(err.message, 'error');
+            renderUserDetail(id);
+          }
+        });
+      }
+      guardForm(document.getElementById('detailProfileForm'), async () => {
+        const errEl = document.getElementById('detailProfileError');
+        errEl.textContent = '';
+        try {
+          const { user: updated } = await api(`/users/${user.id}/profile`, {
+            method: 'PATCH',
+            body: { name: document.getElementById('detailName').value.trim(), email: document.getElementById('detailEmail').value.trim() },
+          });
+          showToast(t('toast_profile_updated'), 'success');
+          renderUserDetail(updated.id);
+        } catch (err) {
+          errEl.textContent = err.message;
+        }
+      });
+      const detailDeleteBtn = document.getElementById('detailDeleteBtn');
+      if (detailDeleteBtn) {
+        detailDeleteBtn.addEventListener('click', async () => {
+          if (!confirm(`${t('confirm_delete_account_prefix')} ${user.name}${t('confirm_delete_account_suffix')}`)) return;
+          try {
+            await api(`/users/${user.id}`, { method: 'DELETE' });
+            showToast(t('toast_account_deleted'), 'success');
+            location.hash = '#/admin';
+          } catch (err) {
+            showToast(err.message, 'error');
           }
         });
       }
