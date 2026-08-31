@@ -676,6 +676,11 @@ async function migrate() {
     await run('ALTER TABLE users ADD COLUMN locked_until TEXT');
   }
 
+  const groupCols4 = await all('PRAGMA table_info(groups)');
+  if (!groupCols4.some((c) => c.name === 'display_name')) {
+    await run('ALTER TABLE groups ADD COLUMN display_name TEXT');
+  }
+
   const roleCount = await get('SELECT COUNT(*) AS n FROM roles');
   if (roleCount.n === 0) {
     await seedDefaultRoles();

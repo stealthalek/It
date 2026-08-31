@@ -2264,6 +2264,7 @@ body.col-resizing-active { cursor: col-resize !important; user-select: none; }
   font-size: 0.8rem;
 }
 .org-node-settings-body input[type="number"] { width: 3.4rem; text-align: center; }
+.org-node-settings-body .hint { font-size: 0.68rem; margin: -0.15rem 0 0; }
 .org-children {
   position: relative;
   display: flex;

@@ -411,6 +411,9 @@
       field_response_hours: 'Risposta (h)', field_resolve_hours: 'Risoluzione (h)', field_shift_start: 'Inizio turno', field_shift_end: 'Fine turno',
       btn_create_group: 'Crea gruppo', delete_group_title: 'Elimina gruppo', shift_from_label: 'Turno dalle', shift_to_label: 'alle',
       confirm_delete_group: 'Eliminare questo gruppo?', toast_sla_updated: 'SLA aggiornata', toast_work_hours_updated: 'Orario di lavoro aggiornato',
+      field_group_display_name: 'Nome visualizzato', field_group_display_name_placeholder: 'Usa il nome dell\'organizzazione',
+      field_group_display_name_hint: 'Se impostato, sostituisce il nome dell\'organizzazione per i membri di questo gruppo e dei suoi sotto-gruppi.',
+      toast_group_display_name_updated: 'Nome visualizzato aggiornato',
       toast_group_deleted: 'Gruppo eliminato', toast_group_created: 'Gruppo creato', toast_default_team_updated: 'Team predefinito aggiornato',
       org_drop_root_hint: 'Trascina qui un gruppo per renderlo di primo livello', toast_group_reparented: 'Gruppo riorganizzato',
       assign_to_me_btn: 'Assegna a me', toast_ticket_assigned_to_you: 'Ticket assegnato a te',
@@ -696,6 +699,9 @@
       field_response_hours: 'Response (h)', field_resolve_hours: 'Resolution (h)', field_shift_start: 'Shift start', field_shift_end: 'Shift end',
       btn_create_group: 'Create group', delete_group_title: 'Delete group', shift_from_label: 'Shift from', shift_to_label: 'to',
       confirm_delete_group: 'Delete this group?', toast_sla_updated: 'SLA updated', toast_work_hours_updated: 'Work hours updated',
+      field_group_display_name: 'Display name', field_group_display_name_placeholder: 'Use the organization name',
+      field_group_display_name_hint: 'When set, it replaces the organization name for members of this group and its sub-groups.',
+      toast_group_display_name_updated: 'Display name updated',
       toast_group_deleted: 'Group deleted', toast_group_created: 'Group created', toast_default_team_updated: 'Default team updated',
       org_drop_root_hint: 'Drag a group here to make it top-level', toast_group_reparented: 'Group reorganized',
       assign_to_me_btn: 'Assign to me', toast_ticket_assigned_to_you: 'Ticket assigned to you',
@@ -964,6 +970,7 @@
     if (token) localStorage.setItem('ticketing_token', token);
     else localStorage.removeItem('ticketing_token');
     updateChrome();
+    loadOrgBranding();
   }
 
   function updateChrome() {
@@ -4435,6 +4442,8 @@
                   <label>${t('field_resolve_hours')} <input type="number" min="1" class="slaInput" data-group-id="${node.id}" data-field="slaResolveHours" value="${node.sla_resolve_hours ?? ''}" /></label>
                   <label>${t('shift_from_label')} <input type="number" min="0" max="24" class="workHourInput" data-group-id="${node.id}" data-field="workStartHour" value="${node.work_start_hour ?? 9}" /></label>
                   <label>${t('shift_to_label')} <input type="number" min="0" max="24" class="workHourInput" data-group-id="${node.id}" data-field="workEndHour" value="${node.work_end_hour ?? 18}" /></label>
+                  <label>${t('field_group_display_name')} <input type="text" class="displayNameInput" data-group-id="${node.id}" value="${escapeHtml(node.display_name || '')}" placeholder="${t('field_group_display_name_placeholder')}" /></label>
+                  <p class="hint">${t('field_group_display_name_hint')}</p>
                 </div>
               </details>
             </div>
@@ -4581,6 +4590,19 @@
                   body: { workStartHour: startInput.value, workEndHour: endInput.value },
                 });
                 showToast(t('toast_work_hours_updated'), 'success');
+              } catch (err) {
+                showToast(err.message, 'error');
+              }
+            });
+          });
+
+          listEl.querySelectorAll('.displayNameInput').forEach((input) => {
+            input.addEventListener('change', async () => {
+              const groupId = input.dataset.groupId;
+              try {
+                await api(`/groups/${groupId}`, { method: 'PATCH', body: { displayName: input.value || null } });
+                showToast(t('toast_group_display_name_updated'), 'success');
+                loadGroupOptions();
               } catch (err) {
                 showToast(err.message, 'error');
               }
