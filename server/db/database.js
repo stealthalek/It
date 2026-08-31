@@ -764,6 +764,17 @@ async function migrate() {
 
   await run('CREATE INDEX IF NOT EXISTS idx_groups_company_id ON groups(company_id)');
   await run('CREATE INDEX IF NOT EXISTS idx_users_company_id ON users(company_id)');
+
+  await run(`CREATE TABLE IF NOT EXISTS time_entries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    clock_in TEXT NOT NULL DEFAULT (datetime('now')),
+    clock_out TEXT,
+    notes TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`);
+  await run('CREATE INDEX IF NOT EXISTS idx_time_entries_user_id ON time_entries(user_id)');
+  await run('CREATE INDEX IF NOT EXISTS idx_time_entries_clock_in ON time_entries(clock_in)');
 }
 
 async function seedDefaultCompany() {
