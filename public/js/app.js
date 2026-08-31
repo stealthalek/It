@@ -998,7 +998,7 @@
     const stored = localStorage.getItem('ticketing_api_base');
     if (stored) return stored.replace(/\/+$/, '');
     const host = location.hostname;
-    if (host.endsWith('github.io') || host.endsWith('.pages.dev') || host === 'pages.dev') return HOSTED_DEFAULT_API_BASE;
+    if (host.endsWith('github.io') || host.endsWith('.pages.dev') || host === 'pages.dev' || host.endsWith('.workers.dev')) return HOSTED_DEFAULT_API_BASE;
     return '';
   }
 
