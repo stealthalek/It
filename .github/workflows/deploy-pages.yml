@@ -27,13 +27,25 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build minified frontend
+        run: |
+          mkdir -p dist
+          cp -r public/. dist/
+          npx --yes terser@5 public/js/app.js --compress --mangle --output dist/js/app.js
+          npx --yes clean-css-cli@5 -o dist/css/style.css public/css/style.css
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
-      - name: Upload static site (public/)
+      - name: Upload static site (dist/)
         uses: actions/upload-pages-artifact@v3
         with:
-          path: public
+          path: dist
 
       - name: Deploy to GitHub Pages
         id: deployment
