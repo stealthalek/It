@@ -393,6 +393,8 @@ svg { display: block; }
   cursor: pointer;
 }
 .topbar-icon-btn:hover { color: var(--text); background: var(--surface-alt); }
+#themeToggleBtn .icon { transition: transform 0.3s ease; }
+#themeToggleBtn:hover .icon { transform: rotate(24deg); }
 
 .notif-wrap { position: relative; }
 .notif-badge {

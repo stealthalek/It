@@ -894,6 +894,8 @@
     applyAccent(getAccent());
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.setAttribute('content', resolveTheme() === 'dark' ? '#251e18' : '#8f2436');
+    const toggleBtn = document.getElementById('themeToggleBtn');
+    if (toggleBtn) toggleBtn.innerHTML = icon(resolveTheme() === 'dark' ? 'moon' : 'sun');
   }
 
   function setTheme(mode) {
@@ -1247,6 +1249,12 @@
   const settingsBtn = document.getElementById('settingsBtn');
   settingsBtn.innerHTML = icon('settings');
   settingsBtn.addEventListener('click', () => { location.hash = '#/settings'; });
+
+  const themeToggleBtn = document.getElementById('themeToggleBtn');
+  themeToggleBtn.addEventListener('click', () => {
+    setTheme(resolveTheme() === 'dark' ? 'light' : 'dark');
+    showToast(t('toast_theme_updated'), 'success');
+  });
 
   const quickJumpBtn = document.getElementById('quickJumpBtn');
   const quickJumpOverlay = document.getElementById('quickJumpOverlay');
