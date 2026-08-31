@@ -27,16 +27,23 @@ const holidayRoutes = require('./routes/holidays');
 const onboardingRoutes = require('./routes/onboarding');
 const { loadHolidays } = require('./sla');
 
+process.on('unhandledRejection', (reason) => {
+  console.error('Rejection non gestita:', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('Eccezione non gestita:', err);
+});
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: false }));
 app.use(cors());
-app.use(express.json({ limit: '8mb' }));
+app.use(express.json({ limit: '30mb' }));
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 300,
+  max: 3000,
   standardHeaders: true,
   legacyHeaders: false,
 });

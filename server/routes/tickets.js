@@ -932,7 +932,7 @@ router.post(
   })
 );
 
-const ATTACHMENT_MAX_BYTES = 5 * 1024 * 1024;
+const ATTACHMENT_MAX_BYTES = 20 * 1024 * 1024;
 const ATTACHMENT_ALLOWED_MIME = new Set([
   'image/png', 'image/jpeg', 'image/gif', 'image/webp',
   'application/pdf', 'text/plain', 'text/csv',
@@ -987,7 +987,7 @@ router.post(
     }
     const sizeBytes = Buffer.byteLength(base64Data, 'base64');
     if (sizeBytes > ATTACHMENT_MAX_BYTES) {
-      return res.status(400).json({ error: 'File troppo grande (max 5 MB)' });
+      return res.status(400).json({ error: 'File troppo grande (max 20 MB)' });
     }
 
     if (commentId) {
