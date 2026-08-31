@@ -331,6 +331,7 @@
       management_title: 'Gestione', field_group: 'Gruppo di assegnazione', field_linked_asset: 'Asset collegato',
       delete_ticket_btn: 'Elimina ticket', no_group_option: 'Nessun gruppo', no_asset_option: 'Nessun asset',
       confirm_delete_ticket: 'Eliminare definitivamente questo ticket?',
+      ticket_cancelled_banner: 'Il ticket è stato cancellato.',
       toast_ticket_updated: 'Ticket aggiornato', toast_ticket_reopened: 'Ticket riaperto', toast_ticket_deleted: 'Ticket eliminato',
       toast_ticket_cancelled: 'Richiesta annullata',
       toast_comment_added: 'Commento aggiunto', new_message_toast: 'Nuovo messaggio nel ticket',
@@ -525,6 +526,9 @@
       toast_onboarding_item_updated: 'Voce aggiornata', toast_onboarding_updated: 'Onboarding aggiornato',
       btn_complete_all_onboarding: 'Completa tutto', confirm_complete_all_onboarding: 'Completare tutte le voci di questo onboarding? Tutti i ticket collegati ancora aperti verranno risolti.',
       toast_onboarding_completed_all: '{n} voci completate',
+      btn_delete_onboarding: 'Elimina onboarding',
+      confirm_delete_onboarding: 'Eliminare questo onboarding? Tutti i ticket collegati ancora aperti verranno cancellati.',
+      toast_onboarding_deleted: 'Onboarding eliminato',
       admin_onboarding_title: 'Onboarding — voci checklist', admin_onboarding_hint: 'Definisci le voci disponibili per le pratiche di onboarding e a quale team vengono instradate.',
       field_label_it: 'Nome (IT)', field_label_en: 'Nome (EN)', onboarding_kind_label: 'Tipo di voce', onboarding_routed_to_label: 'Instradata a',
       btn_add_onboarding_item: 'Aggiungi voce', onboarding_enabled_label: 'Attiva', confirm_delete_onboarding_item: 'Eliminare questa voce?',
@@ -626,6 +630,7 @@
       management_title: 'Management', field_group: 'Assignment group', field_linked_asset: 'Linked asset',
       delete_ticket_btn: 'Delete ticket', no_group_option: 'No group', no_asset_option: 'No asset',
       confirm_delete_ticket: 'Permanently delete this ticket?',
+      ticket_cancelled_banner: 'This ticket has been cancelled.',
       toast_ticket_updated: 'Ticket updated', toast_ticket_reopened: 'Ticket reopened', toast_ticket_deleted: 'Ticket deleted',
       toast_ticket_cancelled: 'Request cancelled',
       toast_comment_added: 'Comment added', new_message_toast: 'New message on the ticket',
@@ -820,6 +825,9 @@
       toast_onboarding_item_updated: 'Item updated', toast_onboarding_updated: 'Onboarding updated',
       btn_complete_all_onboarding: 'Complete all', confirm_complete_all_onboarding: 'Complete all items for this onboarding? All still-open linked tickets will be resolved.',
       toast_onboarding_completed_all: '{n} items completed',
+      btn_delete_onboarding: 'Delete onboarding',
+      confirm_delete_onboarding: 'Delete this onboarding? All still-open linked tickets will be cancelled.',
+      toast_onboarding_deleted: 'Onboarding deleted',
       admin_onboarding_title: 'Onboarding — checklist items', admin_onboarding_hint: 'Define the items available for onboarding requests and which team they route to.',
       field_label_it: 'Name (IT)', field_label_en: 'Name (EN)', onboarding_kind_label: 'Item type', onboarding_routed_to_label: 'Routed to',
       btn_add_onboarding_item: 'Add item', onboarding_enabled_label: 'Enabled', confirm_delete_onboarding_item: 'Delete this item?',
@@ -3348,6 +3356,7 @@
         </div>
       </div>
       <div id="presenceBanner" class="presence-banner" hidden></div>
+      ${ticket.cancelled_at ? `<div class="presence-banner ticket-cancelled-banner">${icon('trash', 'badge-icon')} <span><strong>${t('ticket_cancelled_banner')}</strong>${ticket.cancelled_reason ? ` — ${escapeHtml(ticket.cancelled_reason)}` : ''}</span></div>` : ''}
       <div class="ticket-detail-grid">
         <div>
           <div class="card" style="margin-bottom:1rem">
@@ -6139,7 +6148,7 @@
         wrap.innerHTML = requests.length ? `
           <div class="table-scroll">
             <table class="users-table">
-              <thead><tr><th>${t('field_employee_name')}</th><th>${t('table_status')}</th><th>${t('onboarding_progress')}</th><th>${t('field_requested_by')}</th><th>${t('table_created')}</th></tr></thead>
+              <thead><tr><th>${t('field_employee_name')}</th><th>${t('table_status')}</th><th>${t('onboarding_progress')}</th><th>${t('field_requested_by')}</th><th>${t('table_created')}</th><th></th></tr></thead>
               <tbody>
                 ${requests.map((r) => `
                   <tr class="clickable-row" data-id="${r.id}">
@@ -6148,12 +6157,26 @@
                     <td>${r.item_done_count}/${r.item_count}</td>
                     <td>${escapeHtml(r.requested_by_name)}</td>
                     <td>${formatDate(r.created_at)}</td>
+                    <td><button type="button" class="btn btn-ghost btn-sm onbDeleteBtn" data-id="${r.id}" data-name="${escapeHtml(r.employee_name)}" title="${t('btn_delete_onboarding')}">${icon('trash', 'badge-icon')}</button></td>
                   </tr>`).join('')}
               </tbody>
             </table>
           </div>` : `<p class="hint">${t('no_onboarding_found')}</p>`;
         wrap.querySelectorAll('.clickable-row').forEach((row) => {
           row.addEventListener('click', () => { location.hash = `#/onboarding/${row.dataset.id}`; });
+        });
+        wrap.querySelectorAll('.onbDeleteBtn').forEach((btn) => {
+          btn.addEventListener('click', async (ev) => {
+            ev.stopPropagation();
+            if (!confirm(`${t('confirm_delete_onboarding')} (${btn.dataset.name})`)) return;
+            try {
+              await api(`/onboarding/${btn.dataset.id}`, { method: 'DELETE' });
+              showToast(t('toast_onboarding_deleted'), 'success');
+              load();
+            } catch (err) {
+              showToast(err.message, 'error');
+            }
+          });
         });
       } catch (err) {
         wrap.className = '';
@@ -6331,6 +6354,7 @@
         </div>
         <div style="display:flex;align-items:center;gap:0.75rem">
           ${canEditNotes && hasPendingItems ? `<button type="button" class="btn btn-sm" id="onbCompleteAllBtn">${icon('check')} ${t('btn_complete_all_onboarding')}</button>` : ''}
+          ${canEditNotes && request.status !== 'cancelled' ? `<button type="button" class="btn btn-sm btn-outline-danger" id="onbDeleteDetailBtn">${icon('trash', 'badge-icon')} ${t('btn_delete_onboarding')}</button>` : ''}
           <span class="badge badge-${request.status}">${onboardingStatusLabels()[request.status] || request.status}</span>
         </div>
       </div>
@@ -6463,6 +6487,20 @@
           const result = await api(`/onboarding/${id}/complete-all`, { method: 'POST' });
           showToast(t('toast_onboarding_completed_all').replace('{n}', result.completedCount), 'success');
           renderOnboardingDetail(id);
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      });
+    }
+
+    const deleteDetailBtn = document.getElementById('onbDeleteDetailBtn');
+    if (deleteDetailBtn) {
+      deleteDetailBtn.addEventListener('click', async () => {
+        if (!confirm(`${t('confirm_delete_onboarding')} (${request.employee_name})`)) return;
+        try {
+          await api(`/onboarding/${id}`, { method: 'DELETE' });
+          showToast(t('toast_onboarding_deleted'), 'success');
+          location.hash = '#/onboarding';
         } catch (err) {
           showToast(err.message, 'error');
         }

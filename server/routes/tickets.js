@@ -620,6 +620,9 @@ router.patch(
           } else if (ticket.resolved_at) {
             updates.push('resolved_at = NULL');
           }
+          if (ticket.cancelled_at) {
+            updates.push('cancelled_at = NULL', 'cancelled_reason = NULL');
+          }
           if (body.status === 'waiting_customer') {
             updates.push("waiting_since = datetime('now')");
             justSetWaiting = true;

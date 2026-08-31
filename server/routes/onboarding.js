@@ -479,6 +479,56 @@ router.patch(
   })
 );
 
+router.delete(
+  '/:id',
+  asyncHandler(async (req, res) => {
+    if (!(await canAccessRequest(req.user, req.params.id))) {
+      return res.status(403).json({ error: 'Permessi insufficienti' });
+    }
+    const request = await db.get('SELECT * FROM onboarding_requests WHERE id = ?', [req.params.id]);
+    if (!request) return res.status(404).json({ error: 'Richiesta non trovata' });
+    if (request.status === 'cancelled') return res.status(400).json({ error: 'Richiesta già eliminata' });
+
+    const linkedItems = await db.all(
+      `SELECT i.*, tk.status AS ticket_status, tk.created_by AS ticket_created_by, tk.on_behalf_of AS ticket_on_behalf_of
+       FROM onboarding_items i
+       JOIN tickets tk ON tk.id = i.ticket_id
+       WHERE i.request_id = ? AND tk.status NOT IN ('resolved', 'closed')`,
+      [req.params.id]
+    );
+
+    let cancelledCount = 0;
+    for (const item of linkedItems) {
+      await db.run(
+        "UPDATE tickets SET status = 'closed', cancelled_at = datetime('now'), cancelled_reason = ?, updated_at = datetime('now') WHERE id = ?",
+        [`La richiesta di onboarding di "${request.employee_name}" è stata eliminata`, item.ticket_id]
+      );
+      await db.run('INSERT INTO ticket_events (ticket_id, actor_id, message) VALUES (?, ?, ?)', [
+        item.ticket_id, req.user.id, `Ticket annullato: la richiesta di onboarding di "${request.employee_name}" è stata eliminata da ${req.user.name}`,
+      ]);
+      if (item.status !== 'done' && item.status !== 'skipped') {
+        await db.run(
+          "UPDATE onboarding_items SET status = 'skipped', completed_by = ?, completed_at = strftime('%Y-%m-%d %H:%M:%f', 'now') WHERE id = ?",
+          [req.user.id, item.id]
+        );
+      }
+      const notifyTargets = new Set([item.ticket_created_by, item.ticket_on_behalf_of].filter((uid) => uid && uid !== req.user.id));
+      for (const uid of notifyTargets) {
+        notifyUser(uid, item.ticket_id, {
+          it: `Il ticket #${formatTicketNumber(item.ticket_id)} è stato cancellato: la richiesta di onboarding è stata eliminata`,
+          en: `Ticket #${formatTicketNumber(item.ticket_id)} has been cancelled: the onboarding request was deleted`,
+        }).catch(() => {});
+      }
+      cancelledCount += 1;
+    }
+
+    await db.run("UPDATE onboarding_requests SET status = 'cancelled', updated_at = datetime('now') WHERE id = ?", [req.params.id]);
+    logAudit(req.user.id, 'onboarding_request', Number(req.params.id), `Onboarding di "${request.employee_name}" eliminato (${cancelledCount} ticket annullati)`).catch(() => {});
+
+    res.json({ cancelledCount });
+  })
+);
+
 async function syncRequestStatus(requestId) {
   const counts = await db.get(
     `SELECT COUNT(*) AS total, SUM(CASE WHEN status IN ('done', 'skipped') THEN 1 ELSE 0 END) AS closed,
