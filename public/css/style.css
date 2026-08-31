@@ -1577,6 +1577,18 @@ body:not(.role-customer):not(.role-agent):not(.role-admin) .nav-toggle { display
 
 .requester-row + .requester-row { margin-top: 0.85rem; padding-top: 0.85rem; border-top: 1px solid var(--border); }
 
+.admin-block-handle {
+  display: inline-flex;
+  align-items: center;
+  color: var(--muted);
+  cursor: grab;
+  touch-action: none;
+}
+.admin-block-handle:active { cursor: grabbing; }
+.admin-block-handle:hover { color: var(--primary); }
+.admin-grid .card.admin-block-dragging { opacity: 0.4; }
+.admin-grid .card.admin-block-drop-target { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-soft); }
+
 .toast {
   position: fixed;
   bottom: calc(1rem + env(safe-area-inset-bottom));
