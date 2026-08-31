@@ -67,6 +67,9 @@
   function priorityLabels() {
     return { low: t('priority_low'), medium: t('priority_medium'), high: t('priority_high'), urgent: t('priority_urgent') };
   }
+  function impactLabels() {
+    return { low: t('impact_low'), medium: t('impact_medium'), high: t('impact_high') };
+  }
   function typeLabels() {
     return { incident: t('type_incident'), task: t('type_task') };
   }
@@ -278,6 +281,8 @@
       rating_required_hint: 'Seleziona una valutazione da 1 a 5 stelle', toast_rating_submitted: 'Valutazione inviata, grazie!',
       loading: 'Caricamento...', no_results: 'Nessun risultato.', unassigned_label: 'Non assegnato',
       lang_updated: 'Lingua aggiornata', by_label: 'Di', assigned_to_label: 'Assegnato a', no_tickets_found: 'Nessun ticket trovato.',
+      list_col_number: 'Numero', list_col_subject: 'Oggetto', list_col_requester: 'Richiedente', list_col_assignee: 'Assegnatario',
+      list_col_group: 'Gruppo', list_col_priority: 'Priorità', list_col_status: 'Stato', list_col_updated: 'Aggiornato', list_unassigned: 'Non assegnato',
       back_to_list: 'Torna alla lista', edit_subject_desc: 'Modifica oggetto e descrizione',
       field_subject: 'Oggetto', field_description: 'Descrizione', btn_save_changes: 'Salva modifiche',
       created_by: 'Creato da', on_date: 'il', reopen_ticket: 'Riapri ticket',
@@ -426,6 +431,9 @@
       field_template: 'Parti da un modello', template_blank_option: 'Nessun modello (parti da zero)',
       field_on_behalf_of: 'Apri per conto di', on_behalf_of_none: 'Per me stesso', on_behalf_of_label: 'per conto di',
       field_category: 'Categoria', field_subject_placeholder: 'Un breve titolo per il problema', field_urgency: 'Quanto è urgente?',
+      field_impact: 'Chi riguarda questo problema?',
+      impact_low: 'Solo me', impact_medium: 'Il mio ufficio/team', impact_high: 'Tutti/più uffici',
+      impact_low_hint: 'Il problema riguarda solo il mio utilizzo personale', impact_medium_hint: 'Il problema riguarda anche colleghi del mio ufficio o team', impact_high_hint: 'Il problema blocca più persone o l\'intera azienda',
       category_search_placeholder: 'Cerca una categoria (es. laptop, arredamento, marketing...)',
       category_selected_label: 'Categoria selezionata:', field_parent_category: 'Categoria principale',
       option_top_level_category: '— Categoria principale (nessun genitore) —',
@@ -529,6 +537,8 @@
       rating_required_hint: 'Select a rating from 1 to 5 stars', toast_rating_submitted: 'Rating submitted, thank you!',
       loading: 'Loading...', no_results: 'No results.', unassigned_label: 'Unassigned',
       lang_updated: 'Language updated', by_label: 'By', assigned_to_label: 'Assigned to', no_tickets_found: 'No tickets found.',
+      list_col_number: 'Number', list_col_subject: 'Subject', list_col_requester: 'Requester', list_col_assignee: 'Assignee',
+      list_col_group: 'Group', list_col_priority: 'Priority', list_col_status: 'Status', list_col_updated: 'Updated', list_unassigned: 'Unassigned',
       back_to_list: 'Back to list', edit_subject_desc: 'Edit subject and description',
       field_subject: 'Subject', field_description: 'Description', btn_save_changes: 'Save changes',
       created_by: 'Created by', on_date: 'on', reopen_ticket: 'Reopen ticket',
@@ -677,6 +687,9 @@
       field_template: 'Start from a template', template_blank_option: 'No template (start from scratch)',
       field_on_behalf_of: 'Open on behalf of', on_behalf_of_none: 'For myself', on_behalf_of_label: 'on behalf of',
       field_category: 'Category', field_subject_placeholder: 'A short title for the issue', field_urgency: 'How urgent is it?',
+      field_impact: 'Who does this issue affect?',
+      impact_low: 'Just me', impact_medium: 'My office/team', impact_high: 'Everyone/multiple offices',
+      impact_low_hint: 'The issue only affects my own personal use', impact_medium_hint: 'The issue also affects colleagues in my office or team', impact_high_hint: 'The issue is blocking multiple people or the whole company',
       category_search_placeholder: 'Search a category (e.g. laptop, furniture, marketing...)',
       category_selected_label: 'Selected category:', field_parent_category: 'Parent category',
       option_top_level_category: '— Top-level category (no parent) —',
@@ -2064,7 +2077,7 @@
       container.innerHTML = sortedKeys.map((key) => `
         <div class="group-section">
           <h3 class="group-section-title">${escapeHtml(key)} <span class="group-section-count">${groups.get(key).length}</span></h3>
-          <div class="ticket-grid">${groups.get(key).map(ticketCardHtml).join('')}</div>
+          <div class="ticket-list">${ticketListHeaderHtml()}${groups.get(key).map((tk) => ticketRowHtml(tk)).join('')}</div>
         </div>`).join('');
       wireTicketCardActions(container);
     }
@@ -2139,27 +2152,45 @@
     return `${hours}h ${mins}m`;
   }
 
-  function ticketCardHtml(tk, opts = {}) {
+  function ticketListHeaderHtml() {
+    return `
+      <div class="ticket-list-header">
+        <span class="ticket-row-col-type"></span>
+        <span class="ticket-row-col-number">${t('list_col_number')}</span>
+        <span class="ticket-row-col-subject">${t('list_col_subject')}</span>
+        <span class="ticket-row-col-requester">${t('list_col_requester')}</span>
+        <span class="ticket-row-col-assignee">${t('list_col_assignee')}</span>
+        <span class="ticket-row-col-group">${t('list_col_group')}</span>
+        <span class="ticket-row-col-priority">${t('list_col_priority')}</span>
+        <span class="ticket-row-col-status">${t('list_col_status')}</span>
+        <span class="ticket-row-col-updated">${t('list_col_updated')}</span>
+        <span class="ticket-row-col-actions"></span>
+      </div>`;
+  }
+
+  function ticketRowHtml(tk, opts = {}) {
     const countdown = formatSlaCountdown(tk.sla_remaining_ms);
     return `
-      <a class="ticket-card prio-${tk.priority} ${opts.selectable ? 'selectable-card' : ''}" href="#/ticket/${tk.id}">
+      <a class="ticket-row prio-${tk.priority} ${opts.selectable ? 'selectable-row' : ''}" href="#/ticket/${tk.id}">
         ${opts.selectable ? `<label class="ticket-select-check" onclick="event.stopPropagation()"><input type="checkbox" class="ticketSelectBox" data-id="${tk.id}" /></label>` : ''}
-        <div class="badges">
-          <span class="badge badge-type-${tk.type}">${icon(tk.type, 'badge-icon')}${typeLabels()[tk.type] || tk.type}</span>
+        <span class="ticket-row-col-type" title="${typeLabels()[tk.type] || tk.type}">${icon(tk.type, 'badge-icon')}</span>
+        <span class="ticket-row-col-number">#${formatTicketNumber(tk.id)}</span>
+        <span class="ticket-row-col-subject">
+          <strong>${escapeHtml(tk.subject)}</strong>
+          <span class="ticket-row-desc">${escapeHtml(tk.description)}</span>
+          ${tk.tag_names ? `<span class="tag-chips">${tk.tag_names.split(',').map((n) => `<span class="tag-chip">${escapeHtml(n)}</span>`).join('')}</span>` : ''}
+        </span>
+        <span class="ticket-row-col-requester">${escapeHtml(tk.creator_name)}${tk.on_behalf_name ? `<span class="ticket-row-sub">${t('on_behalf_of_label')} ${escapeHtml(tk.on_behalf_name)}</span>` : ''}</span>
+        <span class="ticket-row-col-assignee">${tk.assignee_name ? escapeHtml(tk.assignee_name) : `<span class="ticket-row-empty">${t('list_unassigned')}</span>`}</span>
+        <span class="ticket-row-col-group">${groupLabel(tk) ? escapeHtml(groupLabel(tk)) : '—'}</span>
+        <span class="ticket-row-col-priority"><span class="badge badge-${tk.priority}">${priorityLabels()[tk.priority]}</span></span>
+        <span class="ticket-row-col-status">
           <span class="badge badge-${tk.status}">${statusLabels()[tk.status]}</span>
-          <span class="badge badge-${tk.priority}">${priorityLabels()[tk.priority]}</span>
           ${tk.sla_status && tk.sla_status !== 'on_track' ? `<span class="badge badge-sla-${tk.sla_status}">${slaLabels()[tk.sla_status]}</span>` : ''}
           ${countdown ? `<span class="badge badge-sla-countdown">${icon('activity', 'badge-icon')}${countdown}</span>` : ''}
-        </div>
-        <h3>#${formatTicketNumber(tk.id)} ${escapeHtml(tk.subject)}</h3>
-        <p class="ticket-desc">${escapeHtml(tk.description)}</p>
-        ${tk.tag_names ? `<div class="tag-chips">${tk.tag_names.split(',').map((n) => `<span class="tag-chip">${escapeHtml(n)}</span>`).join('')}</div>` : ''}
-        <div class="ticket-meta">
-          ${t('by_label')} ${escapeHtml(tk.creator_name)}${tk.on_behalf_name ? ` ${t('on_behalf_of_label')} ${escapeHtml(tk.on_behalf_name)}` : ''} · ${formatDate(tk.updated_at)}
-          ${tk.assignee_name ? ` · ${t('assigned_to_label')} ${escapeHtml(tk.assignee_name)}` : ''}
-          ${groupLabel(tk) ? ` · ${escapeHtml(groupLabel(tk))}` : ''}
-        </div>
-        ${!tk.assignee_name && isStaff() ? `<button type="button" class="btn btn-sm assignMeBtn" data-id="${tk.id}" data-status="${tk.status}">${icon('userCircle', 'badge-icon')} ${t('assign_to_me_btn')}</button>` : ''}
+        </span>
+        <span class="ticket-row-col-updated">${formatDate(tk.updated_at)}</span>
+        <span class="ticket-row-col-actions">${!tk.assignee_name && isStaff() ? `<button type="button" class="btn btn-sm btn-icon-sm assignMeBtn" data-id="${tk.id}" data-status="${tk.status}" title="${t('assign_to_me_btn')}" aria-label="${t('assign_to_me_btn')}">${icon('userCircle')}</button>` : ''}</span>
       </a>`;
   }
 
@@ -2187,8 +2218,8 @@
       container.innerHTML = `<div class="empty-state">${icon('inbox')}<span>${t('no_tickets_found')}</span></div>`;
       return;
     }
-    container.className = 'ticket-grid';
-    container.innerHTML = tickets.map((tk) => ticketCardHtml(tk, opts)).join('');
+    container.className = 'ticket-list';
+    container.innerHTML = ticketListHeaderHtml() + tickets.map((tk) => ticketRowHtml(tk, opts)).join('');
     wireTicketCardActions(container);
   }
 
@@ -2248,12 +2279,13 @@
                 <option value="task">${typeLabels().task} ${t('type_task_suffix')}</option>
               </select>
             </div>
-            <div class="field">
-              <label for="priority">${t('field_urgency')}</label>
-              <select id="priority">
-                ${Object.entries(priorityLabels()).map(([v, l]) => `<option value="${v}" ${v === 'medium' ? 'selected' : ''}>${l}</option>`).join('')}
-              </select>
-            </div>
+          </div>
+          <div class="field">
+            <label for="priority">${t('field_impact')}</label>
+            <select id="priority">
+              ${Object.entries(impactLabels()).map(([v, l]) => `<option value="${v}" ${v === 'low' ? 'selected' : ''}>${l}</option>`).join('')}
+            </select>
+            <p class="hint" id="impactHint"></p>
           </div>
           <div class="field">
             <label for="categorySearch">${t('field_category')}</label>
@@ -2411,6 +2443,15 @@
     renderCustomFieldsSection();
     categorySearchInput.addEventListener('input', () => renderCategoryTree(categorySearchInput.value));
 
+    const impactSelect = document.getElementById('priority');
+    const impactHint = document.getElementById('impactHint');
+    const impactHints = { low: t('impact_low_hint'), medium: t('impact_medium_hint'), high: t('impact_high_hint') };
+    function updateImpactHint() {
+      impactHint.textContent = impactHints[impactSelect.value] || '';
+    }
+    updateImpactHint();
+    impactSelect.addEventListener('change', updateImpactHint);
+
     const templateSelect = document.getElementById('templateSelect');
     if (templateSelect) {
       templateSelect.addEventListener('change', () => {
@@ -2418,7 +2459,10 @@
         if (!tpl) return;
         document.getElementById('subject').value = tpl.subject;
         document.getElementById('description').value = tpl.description;
-        if (tpl.priority) document.getElementById('priority').value = tpl.priority;
+        if (tpl.priority) {
+          document.getElementById('priority').value = tpl.priority === 'urgent' ? 'high' : tpl.priority;
+          updateImpactHint();
+        }
         if (tpl.type) document.getElementById('type').value = tpl.type;
         const catRow = categories.find((c) => c.name === tpl.category);
         if (catRow) {
@@ -5662,7 +5706,7 @@
         <button type="button" id="searchExportExcelBtn" class="btn btn-ghost">${icon('download')} ${t('btn_export_excel')}</button>
         <span class="hint" id="searchResultCount"></span>
       </div>
-      <div id="searchResults" class="ticket-grid"></div>`;
+      <div id="searchResults" class="ticket-list"></div>`;
 
     const resultsEl = document.getElementById('searchResults');
     const searchResultCountEl = document.getElementById('searchResultCount');

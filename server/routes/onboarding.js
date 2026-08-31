@@ -246,7 +246,7 @@ async function createTicketForOnboardingItem(itemType, customization, request, r
     [
       `Onboarding ${request.employeeName}: ${itemType.label_it}`,
       buildItemTicketDescription(itemType, customization, request),
-      'medium',
+      'low',
       'task',
       'Onboarding',
       requesterId,
