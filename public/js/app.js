@@ -273,6 +273,7 @@
       asset_status_available: 'Disponibile', asset_status_in_use: 'In uso', asset_status_repair: 'In riparazione', asset_status_retired: 'Dismesso',
       role_customer: 'Cliente', role_agent: 'Agente', role_admin: 'Amministratore',
       filter_all_types: 'Tutti i tipi', filter_all_statuses: 'Tutti gli stati', filter_all_priorities: 'Tutte le priorità',
+      filter_chip_status: 'Stato', filter_chip_priority: 'Priorità', filter_chip_type: 'Tipo', filter_chip_remove_title: 'Rimuovi filtro',
       filter_all_assignees: 'Tutti gli assegnatari', filter_assigned_me: 'Assegnati a me', filter_unassigned: 'Non assegnati',
       search_placeholder_staff: 'Cerca per testo, numero ticket o richiedente...', search_placeholder_customer: 'Cerca per testo o numero ticket...',
       stat_open: 'Aperti', stat_in_progress: 'In lavorazione', stat_waiting_customer: 'In attesa', stat_resolved: 'Risolti', stat_urgent: 'Urgenti aperti',
@@ -556,6 +557,7 @@
       asset_status_available: 'Available', asset_status_in_use: 'In use', asset_status_repair: 'Under repair', asset_status_retired: 'Retired',
       role_customer: 'Customer', role_agent: 'Agent', role_admin: 'Administrator',
       filter_all_types: 'All types', filter_all_statuses: 'All statuses', filter_all_priorities: 'All priorities',
+      filter_chip_status: 'Status', filter_chip_priority: 'Priority', filter_chip_type: 'Type', filter_chip_remove_title: 'Remove filter',
       filter_all_assignees: 'All assignees', filter_assigned_me: 'Assigned to me', filter_unassigned: 'Unassigned',
       search_placeholder_staff: 'Search by text, ticket number or requester...', search_placeholder_customer: 'Search by text or ticket number...',
       stat_open: 'Open', stat_in_progress: 'In progress', stat_waiting_customer: 'Awaiting reply', stat_resolved: 'Resolved', stat_urgent: 'Open urgent',
@@ -1787,17 +1789,27 @@
   function donutChart(rows, total, opts = {}) {
     const activeRows = rows.filter((r) => r.value > 0).map((r) => ({ ...r, color: resolveCssColor(getCustomChartColor(opts.dim, r.key) || r.color) }));
     if (!total || !activeRows.length) return `<p class="hint">${t('no_data_available')}</p>`;
-    let cumulative = 0;
-    const stops = activeRows.map((r) => {
-      const startPct = (cumulative / total) * 100;
-      cumulative += r.value;
-      const endPct = (cumulative / total) * 100;
-      return `${r.color} ${startPct}% ${endPct}%`;
-    }).join(', ');
     const selectable = !!opts.onSelect;
+    const R = 15.9155;
+    const CIRC = 2 * Math.PI * R;
+    let cumulativeArc = 0;
+    const segments = activeRows.map((r) => {
+      const pct = (r.value / total) * 100;
+      const dash = (pct / 100) * CIRC;
+      const dashoffset = -cumulativeArc;
+      cumulativeArc += dash;
+      return { ...r, pct, dash, dashoffset };
+    });
     return `
       <div class="donut-wrap">
-        <div class="donut-chart" style="background:conic-gradient(${stops})" role="img" aria-label="${activeRows.map((r) => `${r.label}: ${r.value}`).join(', ')}">
+        <div class="donut-chart-svg-wrap">
+          <svg viewBox="0 0 42 42" class="donut-svg" role="img" aria-label="${activeRows.map((r) => `${r.label}: ${r.value}`).join(', ')}">
+            <circle class="donut-ring-bg" cx="21" cy="21" r="${R}"></circle>
+            ${segments.map((s) => `
+              <circle class="donut-segment ${selectable ? 'selectable' : ''}" data-key="${escapeHtml(s.key)}" ${selectable ? 'tabindex="0" role="button"' : ''}
+                cx="21" cy="21" r="${R}" stroke="${s.color}"
+                stroke-dasharray="${s.dash} ${CIRC - s.dash}" stroke-dashoffset="${s.dashoffset}"><title>${escapeHtml(s.label)}: ${s.value} (${Math.round(s.pct)}%)</title></circle>`).join('')}
+          </svg>
           <div class="donut-center"><span class="donut-total">${total}</span><span class="donut-total-label">${t('chart_total')}</span></div>
         </div>
         <div class="donut-legend">
@@ -1831,6 +1843,20 @@
             </div>`;
         }).join('')}
       </div>`;
+  }
+
+  function wireChartInteractions(container, onRowClick) {
+    container.querySelectorAll('.donut-legend-item.selectable, .donut-segment.selectable, .bar-row.selectable').forEach((el) => {
+      el.addEventListener('click', (e) => {
+        if (e.target.classList.contains('donut-color-input')) return;
+        onRowClick(el.dataset.key);
+      });
+      el.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        e.preventDefault();
+        onRowClick(el.dataset.key);
+      });
+    });
   }
 
   function groupStaffByGroup(users) {
@@ -1919,18 +1945,6 @@
       <div id="widgetsPanel" class="widgets-customize-panel" hidden></div>
       <div id="dashboardWidgets" class="dashboard-widgets"></div>` : ''}
       <div class="filters">
-        <select id="fType">
-          <option value="">${t('filter_all_types')}</option>
-          ${Object.entries(typeLabels()).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
-        </select>
-        <select id="fStatus">
-          <option value="">${t('filter_all_statuses')}</option>
-          ${Object.entries(statusLabels()).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
-        </select>
-        <select id="fPriority">
-          <option value="">${t('filter_all_priorities')}</option>
-          ${Object.entries(priorityLabels()).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
-        </select>
         ${isStaff() && !viewingAs ? `
         <select id="fAssigned">
           <option value="">${t('filter_all_assignees')}</option>
@@ -1939,6 +1953,7 @@
         </select>` : ''}
         <input id="fQuery" type="search" placeholder="${isStaff() ? t('search_placeholder_staff') : t('search_placeholder_customer')}" />
       </div>
+      <div id="activeFilterChips" class="active-filter-chips" hidden></div>
       ${isStaff() && !viewingAs ? `
       <div id="bulkBar" class="bulk-action-bar" hidden>
         <span id="bulkCount" class="hint"></span>
@@ -1996,11 +2011,33 @@
     const personalEl = document.getElementById('personalCounter');
     const chartsEl = document.getElementById('chartsRow');
     const scopedChartsEl = document.getElementById('scopedChartsRow');
-    const fType = document.getElementById('fType');
-    const fStatus = document.getElementById('fStatus');
-    const fPriority = document.getElementById('fPriority');
     const fAssigned = document.getElementById('fAssigned');
     const fQuery = document.getElementById('fQuery');
+    const activeFilterChipsEl = document.getElementById('activeFilterChips');
+    const activeFilters = { status: '', priority: '', type: '' };
+
+    function renderActiveFilterChips() {
+      const dims = [
+        { key: 'status', prefix: t('filter_chip_status'), labels: statusLabels() },
+        { key: 'priority', prefix: t('filter_chip_priority'), labels: priorityLabels() },
+        { key: 'type', prefix: t('filter_chip_type'), labels: typeLabels() },
+      ].filter((d) => activeFilters[d.key]);
+      activeFilterChipsEl.hidden = !dims.length;
+      activeFilterChipsEl.innerHTML = dims.map((d) => `
+        <span class="filter-chip">
+          ${d.prefix}: ${escapeHtml(d.labels[activeFilters[d.key]] || activeFilters[d.key])}
+          <button type="button" class="filter-chip-remove" data-dim="${d.key}" title="${t('filter_chip_remove_title')}">${icon('x')}</button>
+        </span>`).join('');
+      activeFilterChipsEl.querySelectorAll('.filter-chip-remove').forEach((btn) => {
+        btn.addEventListener('click', () => setFilter(btn.dataset.dim, ''));
+      });
+    }
+
+    function setFilter(dim, value) {
+      activeFilters[dim] = activeFilters[dim] === value ? '' : value;
+      renderActiveFilterChips();
+      load();
+    }
 
     if (fAssigned && state.dashboardPresetFilter) {
       fAssigned.value = state.dashboardPresetFilter;
@@ -2288,10 +2325,9 @@
 
       statsEl.querySelectorAll('.stat-card').forEach((card) => {
         card.addEventListener('click', () => {
-          if (card.dataset.status !== undefined) fStatus.value = card.dataset.status;
-          if (card.dataset.priority !== undefined) fPriority.value = card.dataset.priority;
-          if (card.dataset.type !== undefined) fType.value = card.dataset.type;
-          load();
+          if (card.dataset.status !== undefined) setFilter('status', card.dataset.status);
+          else if (card.dataset.priority !== undefined) setFilter('priority', card.dataset.priority);
+          else if (card.dataset.type !== undefined) setFilter('type', card.dataset.type);
         });
       });
     }
@@ -2376,7 +2412,7 @@
               ${Object.entries(chartDimensions()).map(([v, l]) => `<option value="${v}" ${v === currentChartDim ? 'selected' : ''}>${l}</option>`).join('')}
             </select>
           </div>
-          ${barChart(rows, tickets.length)}
+          ${barChart(rows, tickets.length, { onSelect: filterableDims.includes(currentChartDim) })}
         </div>
         ${donutDims.map((dim) => `
           <div class="card chart-card" data-dim="${dim}">
@@ -2391,18 +2427,19 @@
         renderCharts(tickets);
       });
 
+      if (filterableDims.includes(currentChartDim)) {
+        wireChartInteractions(chartsEl.querySelector('.chart-card-wide'), (key) => {
+          setFilter(currentChartDim, key);
+          listEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+      }
+
       chartsEl.querySelectorAll('.chart-card[data-dim]').forEach((card) => {
         const dim = card.dataset.dim;
-        card.querySelectorAll('.donut-legend-item.selectable').forEach((item) => {
-          item.addEventListener('click', (e) => {
-            if (e.target.classList.contains('donut-color-input')) return;
-            const key = item.dataset.key;
-            if (dim === 'status') fStatus.value = key;
-            else if (dim === 'priority') fPriority.value = key;
-            else if (dim === 'type') fType.value = key;
-            load();
-            listEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          });
+        if (!filterableDims.includes(dim)) return;
+        wireChartInteractions(card, (key) => {
+          setFilter(dim, key);
+          listEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
       });
       chartsEl.querySelectorAll('.chart-card[data-dim] .donut-color-input').forEach((input) => {
@@ -2465,15 +2502,10 @@
       });
       scopedChartsEl.querySelectorAll('.chart-card[data-dim]').forEach((card) => {
         const dim = card.dataset.dim;
-        card.querySelectorAll('.donut-legend-item.selectable').forEach((item) => {
-          item.addEventListener('click', (e) => {
-            if (e.target.classList.contains('donut-color-input')) return;
-            const key = item.dataset.key;
-            if (dim === 'status') fStatus.value = key;
-            else if (dim === 'type') fType.value = key;
-            load();
-            listEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          });
+        if (!filterableDims.includes(dim)) return;
+        wireChartInteractions(card, (key) => {
+          setFilter(dim, key);
+          listEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
       });
     }
@@ -2510,9 +2542,9 @@
     let debounceTimer;
     async function load() {
       const params = new URLSearchParams();
-      if (fType && fType.value) params.set('type', fType.value);
-      if (fStatus.value) params.set('status', fStatus.value);
-      if (fPriority.value) params.set('priority', fPriority.value);
+      if (activeFilters.type) params.set('type', activeFilters.type);
+      if (activeFilters.status) params.set('status', activeFilters.status);
+      if (activeFilters.priority) params.set('priority', activeFilters.priority);
       if (fAssigned && fAssigned.value) params.set('assigned', fAssigned.value);
       if (fQuery.value.trim()) params.set('q', fQuery.value.trim());
       if (viewingAs && viewingAs.role === 'customer') {
@@ -2564,7 +2596,7 @@
       });
     }
 
-    [fType, fStatus, fPriority, fAssigned].forEach((el) => el && el.addEventListener('change', load));
+    if (fAssigned) fAssigned.addEventListener('change', load);
     fQuery.addEventListener('input', () => {
       clearTimeout(debounceTimer);
       debounceTimer = setTimeout(load, 300);
@@ -6683,18 +6715,6 @@
     }
     populateMemberOptions();
 
-    function wireChartClick(container, onRowClick) {
-      container.querySelectorAll('.donut-legend-item.selectable').forEach((item) => {
-        item.addEventListener('click', (e) => {
-          if (e.target.classList.contains('donut-color-input')) return;
-          onRowClick(item.dataset.key);
-        });
-      });
-      container.querySelectorAll('.bar-row.selectable').forEach((row) => {
-        row.addEventListener('click', () => onRowClick(row.dataset.key));
-      });
-    }
-
     function renderChart(container, dim, rows, total, emptyHint, opts = {}) {
       if (!rows.length) { container.innerHTML = `<p class="hint">${emptyHint}</p>`; return; }
       const selectable = !!opts.onRowClick;
@@ -6703,7 +6723,7 @@
       } else {
         container.innerHTML = barChart(rows, total, { ...(opts.barOpts || {}), onSelect: selectable });
       }
-      if (selectable) wireChartClick(container, opts.onRowClick);
+      if (selectable) wireChartInteractions(container, opts.onRowClick);
     }
 
     function passesDateFilter(tk) {
