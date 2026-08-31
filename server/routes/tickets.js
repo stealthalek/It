@@ -269,6 +269,23 @@ async function listTicketTags(ticketId) {
   );
 }
 
+const DEVICE_REQUEST_TYPE_TAGS = {
+  problem: 'problema',
+  new_device: 'nuovo dispositivo',
+  replacement: 'sostituzione',
+  loan: 'prestito',
+  lost_stolen: 'smarrito o rubato',
+};
+
+async function attachTag(ticketId, tagName) {
+  let tag = await db.get('SELECT id FROM tags WHERE name = ?', [tagName]);
+  if (!tag) {
+    const info = await db.run('INSERT INTO tags (name) VALUES (?)', [tagName]);
+    tag = { id: Number(info.lastInsertRowid) };
+  }
+  await db.run('INSERT OR IGNORE INTO ticket_tags (ticket_id, tag_id) VALUES (?, ?)', [ticketId, tag.id]);
+}
+
 async function listActivity(ticketId, includeInternal) {
   const internalClause = includeInternal ? '' : 'AND c.is_internal = 0';
   const comments = (
@@ -383,7 +400,7 @@ router.get(
 router.post(
   '/',
   asyncHandler(async (req, res) => {
-    const { subject, description, priority, category, type, customFields, onBehalfOf } = req.body || {};
+    const { subject, description, priority, category, type, customFields, onBehalfOf, deviceRequestType } = req.body || {};
 
     if (!subject || !subject.trim()) {
       return res.status(400).json({ error: 'L\'oggetto è obbligatorio' });
@@ -416,6 +433,9 @@ router.post(
 
     const ticketId = Number(info.lastInsertRowid);
     await saveCustomFieldValues(ticketId, finalCategory, customFields);
+    if (deviceRequestType && DEVICE_REQUEST_TYPE_TAGS[deviceRequestType]) {
+      await attachTag(ticketId, DEVICE_REQUEST_TYPE_TAGS[deviceRequestType]);
+    }
     await logEvent(ticketId, req.user.id, beneficiary ? `Ticket aperto da ${req.user.name} per conto di ${beneficiary.name}` : 'Ticket creato');
     await runAutomationRules(ticketId, 'created', req.user.id);
 
