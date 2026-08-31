@@ -1575,6 +1575,8 @@ body:not(.role-customer):not(.role-agent):not(.role-admin) .nav-toggle { display
 .session-item p { margin: 0; }
 .session-item p + p { margin-top: 0.15rem; }
 
+.requester-row + .requester-row { margin-top: 0.85rem; padding-top: 0.85rem; border-top: 1px solid var(--border); }
+
 .toast {
   position: fixed;
   bottom: calc(1rem + env(safe-area-inset-bottom));
@@ -1803,6 +1805,34 @@ body:not(.role-customer):not(.role-agent):not(.role-admin) .nav-toggle { display
 }
 .org-node-settings > summary::-webkit-details-marker { display: none; }
 .org-node-settings-body { display: flex; flex-direction: column; gap: 0.4rem; padding-top: 0.4rem; border-top: 1px dashed var(--border); margin-top: 0.2rem; }
+.orgchart-members { margin-top: 0.4rem; }
+.orgchart-members > summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--primary);
+  padding: 0.25rem 0;
+}
+.orgchart-members > summary::-webkit-details-marker { display: none; }
+.orgchart-person-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding-top: 0.4rem;
+  border-top: 1px dashed var(--border);
+  margin-top: 0.2rem;
+}
+.orgchart-person {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+}
 .org-node-settings-body label {
   display: flex;
   align-items: center;
