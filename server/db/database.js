@@ -299,6 +299,7 @@ async function setupSchema() {
       'CREATE INDEX IF NOT EXISTS idx_ticket_links_linked_ticket_id ON ticket_links(linked_ticket_id)',
       'CREATE INDEX IF NOT EXISTS idx_onboarding_items_request_id ON onboarding_items(request_id)',
       'CREATE INDEX IF NOT EXISTS idx_onboarding_items_group_id ON onboarding_items(assigned_group_id)',
+      'CREATE INDEX IF NOT EXISTS idx_onboarding_items_ticket_id ON onboarding_items(ticket_id)',
       'CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON user_sessions(user_id)',
       'CREATE INDEX IF NOT EXISTS idx_onboarding_attachments_request_id ON onboarding_attachments(request_id)',
     ],

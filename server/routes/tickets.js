@@ -37,6 +37,8 @@ const TICKET_SELECT = `
     asset.tag AS asset_tag,
     onBehalf.name AS on_behalf_name,
     onBehalf.email AS on_behalf_email,
+    obReq.id AS onboarding_request_id,
+    obReq.employee_name AS onboarding_employee_name,
     (SELECT GROUP_CONCAT(tg.name, ',') FROM ticket_tags tt JOIN tags tg ON tg.id = tt.tag_id WHERE tt.ticket_id = t.id) AS tag_names
   FROM tickets t
   JOIN users creator ON creator.id = t.created_by
@@ -45,6 +47,8 @@ const TICKET_SELECT = `
   LEFT JOIN groups grpParent ON grpParent.id = grp.parent_id
   LEFT JOIN assets asset ON asset.id = t.asset_id
   LEFT JOIN users onBehalf ON onBehalf.id = t.on_behalf_of
+  LEFT JOIN onboarding_items obItem ON obItem.ticket_id = t.id
+  LEFT JOIN onboarding_requests obReq ON obReq.id = obItem.request_id
 `;
 
 function isStaff(user) {
