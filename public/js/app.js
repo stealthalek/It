@@ -144,6 +144,7 @@
     file: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>',
     star: '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>',
     grip: '<circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/>',
+    x: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
   };
 
   const CATEGORY_ICON_CHOICES = ['ticket', 'wifi', 'globe', 'printer', 'mail', 'monitor', 'server', 'phone', 'grid', 'lock', 'shield', 'users', 'laptop', 'tablet', 'package', 'bulb', 'flame', 'truck', 'megaphone'];
@@ -1164,6 +1165,8 @@
     state.viewAs = null;
     renderViewAsBanner();
     setSession(null, null);
+    setTicketTabs([]);
+    renderTicketTabStrip();
     location.hash = '#/login';
   });
 
@@ -1400,6 +1403,67 @@
   const PUBLIC_ROUTES = new Set(['login', 'register']);
   const OPEN_ROUTES = new Set(['login', 'register', 'settings']);
 
+  const TICKET_TABS_KEY = 'ticketing_open_tabs';
+  const TICKET_TABS_MAX = 10;
+
+  function getTicketTabs() {
+    try { return JSON.parse(localStorage.getItem(TICKET_TABS_KEY) || '[]'); } catch { return []; }
+  }
+
+  function setTicketTabs(tabs) {
+    try { localStorage.setItem(TICKET_TABS_KEY, JSON.stringify(tabs)); } catch {}
+  }
+
+  function addTicketTab(ticket) {
+    const tabs = getTicketTabs();
+    const existing = tabs.find((tb) => tb.id === ticket.id);
+    if (existing) {
+      existing.subject = ticket.subject;
+    } else {
+      tabs.push({ id: ticket.id, subject: ticket.subject });
+      if (tabs.length > TICKET_TABS_MAX) tabs.shift();
+    }
+    setTicketTabs(tabs);
+    renderTicketTabStrip();
+  }
+
+  function removeTicketTab(id) {
+    const tabs = getTicketTabs().filter((tb) => tb.id !== id);
+    setTicketTabs(tabs);
+    const hash = location.hash.replace(/^#\//, '');
+    const [page, param] = hash.split('/');
+    if (page === 'ticket' && Number(param) === id) {
+      location.hash = tabs.length ? `#/ticket/${tabs[tabs.length - 1].id}` : '#/dashboard';
+    } else {
+      renderTicketTabStrip();
+    }
+  }
+
+  function renderTicketTabStrip() {
+    const stripEl = document.getElementById('ticketTabStrip');
+    if (!stripEl) return;
+    if (!state.user) { stripEl.hidden = true; return; }
+    const tabs = getTicketTabs();
+    if (!tabs.length) { stripEl.hidden = true; stripEl.innerHTML = ''; return; }
+    const hash = location.hash.replace(/^#\//, '');
+    const [page, param] = hash.split('/');
+    const activeId = page === 'ticket' ? Number(param) : null;
+    stripEl.hidden = false;
+    stripEl.innerHTML = tabs.map((tb) => `
+      <a href="#/ticket/${tb.id}" class="ticket-tab ${tb.id === activeId ? 'active' : ''}" title="${escapeHtml(tb.subject)}">
+        <span class="ticket-tab-number">#${formatTicketNumber(tb.id)}</span>
+        <span class="ticket-tab-subject">${escapeHtml(tb.subject)}</span>
+        <span class="ticket-tab-close" data-close-tab="${tb.id}">${icon('x')}</span>
+      </a>`).join('');
+    stripEl.querySelectorAll('[data-close-tab]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        removeTicketTab(Number(btn.dataset.closeTab));
+      });
+    });
+  }
+
   async function route() {
     const hash = location.hash.replace(/^#\//, '') || 'dashboard';
     const [page, param] = hash.split('/');
@@ -1427,6 +1491,7 @@
       const isInsightsLink = a.dataset.nav === 'report' && (page === 'report' || page === 'audit');
       a.classList.toggle('active', a.dataset.nav === page || isInsightsLink);
     });
+    renderTicketTabStrip();
 
     if (page !== 'ticket') teardownTicketSocket();
     if (page !== 'dashboard') teardownDashboardAutoUpdate();
@@ -2952,6 +3017,7 @@
     }
 
     const { ticket, activity, customFieldValues, tags, links, watchers } = data;
+    addTicketTab(ticket);
     let ticketTags = tags || [];
     let ticketLinks = links || [];
     let isWatching = !!data.isWatching;
