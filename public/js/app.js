@@ -402,6 +402,11 @@
       org_drop_root_hint: 'Trascina qui un gruppo per renderlo di primo livello', toast_group_reparented: 'Gruppo riorganizzato',
       assign_to_me_btn: 'Assegna a me', toast_ticket_assigned_to_you: 'Ticket assegnato a te',
       group_by_team_label: 'Raggruppa per team',
+      widgets_section_title: 'Cruscotto di gestione', widgets_customize_btn: 'Personalizza',
+      widgets_all_hidden_hint: 'Nessun widget visibile. Usa "Personalizza" per riattivarli.',
+      widget_unassigned_by_group_title: 'Non assegnati per gruppo', widget_unassigned_by_group_empty: 'Nessun ticket non assegnato al momento.',
+      widget_sla_watch_title: 'Ticket a rischio SLA', widget_sla_watch_empty: 'Nessun ticket a rischio SLA al momento.',
+      widget_sla_overdue_label: 'SLA superata', widget_sla_elapsed_label: 'del tempo SLA trascorso',
       toast_category_deleted: 'Categoria eliminata', toast_category_added: 'Categoria aggiunta', delete_category_title: 'Elimina categoria',
       no_categories_hint: 'Nessuna categoria.', no_groups_hint: 'Nessun gruppo.', account_created_for: 'Account creato per',
       temp_password_hint: 'Password temporanea (comunicala in modo sicuro, non sarà più visibile):', toast_staff_created: 'Account staff creato',
@@ -659,6 +664,11 @@
       org_drop_root_hint: 'Drag a group here to make it top-level', toast_group_reparented: 'Group reorganized',
       assign_to_me_btn: 'Assign to me', toast_ticket_assigned_to_you: 'Ticket assigned to you',
       group_by_team_label: 'Group by team',
+      widgets_section_title: 'Management dashboard', widgets_customize_btn: 'Customize',
+      widgets_all_hidden_hint: 'No widgets visible. Use "Customize" to turn them back on.',
+      widget_unassigned_by_group_title: 'Unassigned by group', widget_unassigned_by_group_empty: 'No unassigned tickets right now.',
+      widget_sla_watch_title: 'SLA at-risk tickets', widget_sla_watch_empty: 'No tickets at SLA risk right now.',
+      widget_sla_overdue_label: 'SLA breached', widget_sla_elapsed_label: 'of SLA time elapsed',
       toast_category_deleted: 'Category deleted', toast_category_added: 'Category added', delete_category_title: 'Delete category',
       no_categories_hint: 'No categories.', no_groups_hint: 'No groups.', account_created_for: 'Account created for',
       temp_password_hint: 'Temporary password (share it securely, it won\'t be shown again):', toast_staff_created: 'Staff account created',
@@ -1775,6 +1785,13 @@
       <div id="statsRow" class="stat-row"></div>
       <div id="chartsRow" class="charts-row"></div>
       <div id="scopedChartsRow" class="charts-row"></div>
+      ${isStaff() && !viewingAs ? `
+      <div class="widgets-section-head">
+        <h2 class="section-title">${t('widgets_section_title')}</h2>
+        <button type="button" id="widgetsCustomizeBtn" class="btn btn-ghost btn-sm">${icon('grid', 'badge-icon')} ${t('widgets_customize_btn')}</button>
+      </div>
+      <div id="widgetsPanel" class="widgets-customize-panel" hidden></div>
+      <div id="dashboardWidgets" class="dashboard-widgets"></div>` : ''}
       <div class="filters">
         <select id="fType">
           <option value="">${t('filter_all_types')}</option>
@@ -1942,6 +1959,151 @@
           showToast(err.message, 'error');
         }
       });
+    }
+
+    const dashboardWidgetsEl = document.getElementById('dashboardWidgets');
+    const widgetsPanel = document.getElementById('widgetsPanel');
+    const widgetsCustomizeBtn = document.getElementById('widgetsCustomizeBtn');
+    const DASHBOARD_WIDGETS = [
+      { id: 'unassignedByGroup', title: t('widget_unassigned_by_group_title') },
+      { id: 'slaWatch', title: t('widget_sla_watch_title') },
+    ];
+    let widgetsData = null;
+
+    function getHiddenWidgets() {
+      try { return new Set(JSON.parse(localStorage.getItem('ticketing_dashboard_widget_hidden') || '[]')); } catch { return new Set(); }
+    }
+    function setHiddenWidgets(set) {
+      try { localStorage.setItem('ticketing_dashboard_widget_hidden', JSON.stringify([...set])); } catch {}
+    }
+
+    function renderUnassignedByGroupWidget(tickets) {
+      const body = document.getElementById('widget-unassignedByGroup');
+      if (!body) return;
+      const unassigned = tickets.filter((tk) => !tk.assignee_name && tk.status !== 'resolved' && tk.status !== 'closed');
+      if (!unassigned.length) {
+        body.innerHTML = `<p class="hint">${t('widget_unassigned_by_group_empty')}</p>`;
+        return;
+      }
+      const counts = new Map();
+      unassigned.forEach((tk) => {
+        const key = groupLabel(tk) || t('no_group_label');
+        counts.set(key, (counts.get(key) || 0) + 1);
+      });
+      const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+      body.innerHTML = `<div class="widget-tile-grid">${sorted.map(([name, count]) => `
+        <div class="widget-tile">
+          <div class="widget-tile-value">${count}</div>
+          <div class="widget-tile-label">${escapeHtml(name)}</div>
+        </div>`).join('')}</div>`;
+    }
+
+    function renderSlaWatchWidget(tickets) {
+      const body = document.getElementById('widget-slaWatch');
+      if (!body) return;
+      const atRisk = tickets
+        .filter((tk) => (tk.sla_status === 'at_risk' || tk.sla_status === 'breached') && tk.status !== 'resolved' && tk.status !== 'closed')
+        .sort((a, b) => {
+          if (a.sla_status !== b.sla_status) return a.sla_status === 'breached' ? -1 : 1;
+          return (a.sla_remaining_ms ?? 0) - (b.sla_remaining_ms ?? 0);
+        })
+        .slice(0, 8);
+      if (!atRisk.length) {
+        body.innerHTML = `<p class="hint">${t('widget_sla_watch_empty')}</p>`;
+        return;
+      }
+      body.innerHTML = `<div class="sla-watch-list">${atRisk.map((tk) => {
+        const totalMs = (tk.sla_resolve_hours || 0) * 3600 * 1000;
+        const overdue = tk.sla_status === 'breached';
+        const elapsedPct = totalMs ? Math.max(0, Math.round((1 - (tk.sla_remaining_ms || 0) / totalMs) * 100)) : null;
+        return `
+        <a class="sla-watch-row" href="#/ticket/${tk.id}">
+          <div class="sla-watch-row-top">
+            <span class="sla-watch-number">#${formatTicketNumber(tk.id)}</span>
+            <span class="sla-watch-subject">${escapeHtml(tk.subject)}</span>
+            <span class="badge badge-sla-${tk.sla_status}">${slaLabels()[tk.sla_status]}</span>
+          </div>
+          ${elapsedPct !== null ? `
+          <div class="sla-watch-bar">
+            <div class="sla-watch-bar-fill ${overdue ? 'sla-watch-bar-over' : ''}" style="width:${Math.min(100, elapsedPct)}%"></div>
+          </div>
+          <div class="sla-watch-meta">
+            ${tk.assignee_name ? escapeHtml(tk.assignee_name) : t('list_unassigned')} · ${overdue ? t('widget_sla_overdue_label') : `${elapsedPct}% ${t('widget_sla_elapsed_label')}`}
+          </div>` : ''}
+        </a>`;
+      }).join('')}</div>`;
+    }
+
+    function refreshVisibleWidgets() {
+      if (widgetsData) {
+        renderUnassignedByGroupWidget(widgetsData);
+        renderSlaWatchWidget(widgetsData);
+      }
+    }
+
+    async function loadWidgetsData() {
+      if (!dashboardWidgetsEl) return;
+      try {
+        const { tickets: allTickets } = await api('/tickets');
+        widgetsData = allTickets;
+        refreshVisibleWidgets();
+      } catch (err) {
+        DASHBOARD_WIDGETS.forEach((w) => {
+          const body = document.getElementById(`widget-${w.id}`);
+          if (body) body.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
+        });
+      }
+    }
+
+    function renderDashboardWidgetsShell() {
+      if (!dashboardWidgetsEl) return;
+      const hidden = getHiddenWidgets();
+      const visible = DASHBOARD_WIDGETS.filter((w) => !hidden.has(w.id));
+      if (!visible.length) {
+        dashboardWidgetsEl.innerHTML = `<p class="hint">${t('widgets_all_hidden_hint')}</p>`;
+        return;
+      }
+      dashboardWidgetsEl.innerHTML = visible.map((w) => `
+        <div class="card widget-card" data-block-id="${w.id}">
+          <div class="chart-card-head">
+            <h3 class="section-title" style="margin:0">${escapeHtml(w.title)}</h3>
+          </div>
+          <div id="widget-${w.id}" class="widget-body"><div class="spinner-row">${t('loading')}</div></div>
+        </div>`).join('');
+      applyBlockOrder('dashboard_widget_order', '#dashboardWidgets .widget-card');
+      wireBlockDragging('dashboard_widget_order', '#dashboardWidgets .widget-card', '.chart-card-head', () => applyBlockOrder('dashboard_widget_order', '#dashboardWidgets .widget-card'));
+    }
+
+    function renderWidgetsPanel() {
+      if (!widgetsPanel) return;
+      const hidden = getHiddenWidgets();
+      widgetsPanel.innerHTML = DASHBOARD_WIDGETS.map((w) => `
+        <label class="widget-toggle">
+          <input type="checkbox" data-widget-id="${w.id}" ${hidden.has(w.id) ? '' : 'checked'} />
+          ${escapeHtml(w.title)}
+        </label>`).join('');
+      widgetsPanel.querySelectorAll('input[type=checkbox]').forEach((cb) => {
+        cb.addEventListener('change', () => {
+          const hiddenSet = getHiddenWidgets();
+          if (cb.checked) hiddenSet.delete(cb.dataset.widgetId);
+          else hiddenSet.add(cb.dataset.widgetId);
+          setHiddenWidgets(hiddenSet);
+          renderDashboardWidgetsShell();
+          refreshVisibleWidgets();
+        });
+      });
+    }
+
+    if (widgetsCustomizeBtn) {
+      widgetsCustomizeBtn.addEventListener('click', () => {
+        widgetsPanel.hidden = !widgetsPanel.hidden;
+        if (!widgetsPanel.hidden) renderWidgetsPanel();
+      });
+    }
+
+    if (dashboardWidgetsEl) {
+      renderDashboardWidgetsShell();
+      loadWidgetsData();
     }
 
     function renderStats(tickets) {
@@ -3406,44 +3568,44 @@
       </div>`;
   }
 
-  function adminBlockOrderKey(section) {
-    return `ticketing_admin_block_order_${section}`;
+  function blockOrderKey(scope) {
+    return `ticketing_${scope}`;
   }
 
-  function getAdminBlockOrder(section) {
+  function getBlockOrder(scope) {
     try {
-      const raw = localStorage.getItem(adminBlockOrderKey(section));
+      const raw = localStorage.getItem(blockOrderKey(scope));
       return raw ? JSON.parse(raw) : [];
     } catch {
       return [];
     }
   }
 
-  function setAdminBlockOrder(section, order) {
+  function setBlockOrder(scope, order) {
     try {
-      localStorage.setItem(adminBlockOrderKey(section), JSON.stringify(order));
+      localStorage.setItem(blockOrderKey(scope), JSON.stringify(order));
     } catch {}
   }
 
-  function applyAdminBlockOrder(section) {
-    const order = getAdminBlockOrder(section);
-    document.querySelectorAll(`.admin-grid .card[data-admin-panel="${section}"]`).forEach((card) => {
+  function applyBlockOrder(scope, selector) {
+    const order = getBlockOrder(scope);
+    document.querySelectorAll(selector).forEach((card) => {
       const idx = order.indexOf(card.dataset.blockId);
       card.style.order = idx === -1 ? 999 : idx;
     });
   }
 
-  function wireAdminBlockDragging(section) {
-    const cards = Array.from(document.querySelectorAll(`.admin-grid .card[data-admin-panel="${section}"]`));
+  function wireBlockDragging(scope, selector, handleSelector, onReorder) {
+    const cards = Array.from(document.querySelectorAll(selector));
     if (cards.length < 2) return;
     cards.forEach((card) => {
-      const h3 = card.querySelector('.section-title');
-      if (h3 && !h3.querySelector('.admin-block-handle')) {
+      const host = card.querySelector(handleSelector);
+      if (host && !host.querySelector('.admin-block-handle')) {
         const handle = document.createElement('span');
         handle.className = 'admin-block-handle';
         handle.title = t('admin_block_drag_hint');
         handle.innerHTML = icon('grip');
-        h3.insertBefore(handle, h3.firstChild);
+        host.insertBefore(handle, host.firstChild);
       }
     });
     cards.forEach((card) => {
@@ -3472,8 +3634,8 @@
         if (fromIdx === -1 || toIdx === -1) return;
         currentOrder.splice(fromIdx, 1);
         currentOrder.splice(toIdx, 0, draggedId);
-        setAdminBlockOrder(section, currentOrder);
-        renderAdmin();
+        setBlockOrder(scope, currentOrder);
+        onReorder();
       });
     });
   }
@@ -3739,8 +3901,10 @@
       });
 
       if (activeSection !== 'overview') {
-        applyAdminBlockOrder(activeSection);
-        wireAdminBlockDragging(activeSection);
+        const adminSelector = `.admin-grid .card[data-admin-panel="${activeSection}"]`;
+        const adminScope = `admin_block_order_${activeSection}`;
+        applyBlockOrder(adminScope, adminSelector);
+        wireBlockDragging(adminScope, adminSelector, '.section-title', renderAdmin);
       }
 
       async function loadAdminOverviewCounts() {
