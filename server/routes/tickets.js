@@ -815,13 +815,14 @@ router.patch(
             [onboardingItem.request_id]
           );
           const assetInfo = await db.run(
-            `INSERT INTO assets (name, asset_type, tag, assignment_type, assigned_to, status)
-             VALUES (?, ?, NULL, 'permanente', ?, ?)`,
+            `INSERT INTO assets (name, asset_type, tag, assignment_type, assigned_to, status, company_id)
+             VALUES (?, ?, NULL, 'permanente', ?, ?, ?)`,
             [
               `${onboardingItem.label_it} - ${onboardingRequest.employee_name}`,
               onboardingItem.asset_type || 'altro',
               onboardingRequest.employee_user_id || null,
               onboardingRequest.employee_user_id ? 'in_uso' : 'disponibile',
+              req.user.company_id || null,
             ]
           );
           generatedAssetId = Number(assetInfo.lastInsertRowid);
