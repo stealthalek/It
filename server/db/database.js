@@ -669,6 +669,12 @@ async function migrate() {
   if (!userCols5.some((c) => c.name === 'role_id')) {
     await run('ALTER TABLE users ADD COLUMN role_id INTEGER REFERENCES roles(id) ON DELETE SET NULL');
   }
+  if (!userCols5.some((c) => c.name === 'failed_login_count')) {
+    await run('ALTER TABLE users ADD COLUMN failed_login_count INTEGER NOT NULL DEFAULT 0');
+  }
+  if (!userCols5.some((c) => c.name === 'locked_until')) {
+    await run('ALTER TABLE users ADD COLUMN locked_until TEXT');
+  }
 
   const roleCount = await get('SELECT COUNT(*) AS n FROM roles');
   if (roleCount.n === 0) {
@@ -786,6 +792,10 @@ async function seedExpandedCategories() {
       { name: 'VPN', icon: 'shield', group: 'Network' },
       { name: 'Cablaggio di rete', icon: 'server', group: 'Network' },
       { name: 'Telefonia aziendale', icon: 'phone', group: 'Network' },
+      { name: 'Router', icon: 'wifi', group: 'Network' },
+      { name: 'Access point wireless', icon: 'wifi', group: 'Network' },
+      { name: 'Storage (NAS/SAN)', icon: 'server', group: 'Network' },
+      { name: 'Switch di storage', icon: 'server', group: 'Network' },
     ] },
     { name: 'Account e accessi', icon: 'lock', children: [
       { name: 'Reset password', icon: 'lock', group: 'Service Desk' },
@@ -813,6 +823,23 @@ async function seedExpandedCategories() {
       { name: 'Ordini e materiale di consumo', icon: 'package', group: 'Acquisti e Fornitori' },
       { name: 'Contratti e fatturazione', icon: 'mail', group: 'Acquisti e Fornitori' },
       { name: 'Spedizioni e logistica', icon: 'truck', group: 'Acquisti e Fornitori' },
+    ] },
+    { name: 'Applicativi e Servizi Aziendali', icon: 'grid', children: [
+      { name: 'CRM', icon: 'users', group: 'Service Desk' },
+      { name: 'ERP', icon: 'server', group: 'Service Desk' },
+      { name: 'Business Intelligence', icon: 'activity', group: 'Service Desk' },
+      { name: 'Fatturazione e abbonamenti', icon: 'mail', group: 'Service Desk' },
+      { name: 'Produttività (Outlook, Teams, Excel, OneDrive, SharePoint)', icon: 'mail', group: 'Service Desk' },
+      { name: 'Assistenza remota', icon: 'monitor', group: 'Service Desk' },
+      { name: 'Progettazione e sviluppo', icon: 'laptop', group: 'Service Desk' },
+      { name: 'Riproduzione media', icon: 'monitor', group: 'Service Desk' },
+      { name: 'Sicurezza informatica (antivirus, SSO, WAF)', icon: 'shield', group: 'Security' },
+      { name: 'Marketing digitale', icon: 'megaphone', group: 'Marketing e Comunicazione' },
+      { name: 'Traduzioni', icon: 'globe', group: 'Service Desk' },
+      { name: 'Fiscale e compliance', icon: 'check', group: 'Service Desk' },
+      { name: 'Logistica e spedizioni', icon: 'truck', group: 'Acquisti e Fornitori' },
+      { name: 'Prevenzione frodi', icon: 'shield', group: 'Security' },
+      { name: 'Gestione documentale', icon: 'file', group: 'Service Desk' },
     ] },
     { name: 'Altro', icon: 'ticket', children: [] },
   ];

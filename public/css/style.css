@@ -1135,6 +1135,9 @@ body:not(.role-customer):not(.role-agent):not(.role-admin) .nav-toggle { display
 }
 .widget-card .chart-card-head .section-title { color: var(--primary-dark); }
 .widget-body { padding: 1rem 1.1rem 1.1rem; }
+.widget-collapse-toggle { transition: transform 0.15s ease; }
+.widget-card.collapsed .widget-collapse-toggle { transform: rotate(-90deg); }
+.widget-card.collapsed .widget-body { display: none; }
 
 .widget-tile-grid {
   display: grid;
@@ -1252,7 +1255,12 @@ body:not(.role-customer):not(.role-agent):not(.role-admin) .nav-toggle { display
   grid-template-columns: minmax(6.5rem, 9rem) 1fr auto;
   align-items: center;
   gap: 0.65rem;
+  border-radius: var(--radius-sm);
+  padding: 0.15rem 0.35rem;
+  margin: -0.15rem -0.35rem;
 }
+.bar-row.selectable { cursor: pointer; }
+.bar-row.selectable:hover { background: var(--surface-alt); }
 .bar-label {
   font-size: 0.83rem;
   color: var(--muted);
