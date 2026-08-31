@@ -7,6 +7,8 @@ const db = require('../db/database');
 const { authenticate, JWT_SECRET } = require('../middleware/auth');
 const asyncHandler = require('../middleware/asyncHandler');
 const { getSsoConfig, verifyGoogleCredential, verifyMicrosoftToken } = require('../sso');
+const { generateSecret, verifyTotp, buildOtpauthUri } = require('../lib/totp');
+const { createSession, listSessions, revokeSession, revokeOtherSessions } = require('../lib/sessions');
 
 const router = express.Router();
 
@@ -32,8 +34,17 @@ function makeAuthLimiter(max = 20) {
   });
 }
 
-function issueToken(user) {
-  return jwt.sign({ sub: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
+function issueToken(user, sid) {
+  return jwt.sign({ sub: user.id, role: user.role, sid }, JWT_SECRET, { expiresIn: '7d' });
+}
+
+function issueChallengeToken(user) {
+  return jwt.sign({ sub: user.id, purpose: '2fa_pending' }, JWT_SECRET, { expiresIn: '5m' });
+}
+
+async function issueSessionToken(user, req) {
+  const sid = await createSession(user.id, req);
+  return issueToken(user, sid);
 }
 
 async function publicUser(user) {
@@ -41,6 +52,7 @@ async function publicUser(user) {
   return {
     id: user.id, name: user.name, email: user.email, role: user.role,
     is_super_admin: !!user.is_super_admin, is_manager: rep.n > 0,
+    totp_enabled: !!user.totp_enabled,
   };
 }
 
@@ -90,7 +102,7 @@ router.post(
     ]);
 
     const user = await db.get('SELECT id, name, email, role FROM users WHERE id = ?', [Number(info.lastInsertRowid)]);
-    const token = issueToken(user);
+    const token = await issueSessionToken(user, req);
     res.status(201).json({ token, user: await publicUser(user) });
   })
 );
@@ -109,7 +121,40 @@ router.post(
       return res.status(401).json({ error: 'Credenziali non valide' });
     }
 
-    const token = issueToken(user);
+    if (user.totp_enabled) {
+      return res.json({ requires_2fa: true, challenge_token: issueChallengeToken(user) });
+    }
+
+    const token = await issueSessionToken(user, req);
+    res.json({ token, user: await publicUser(user) });
+  })
+);
+
+router.post(
+  '/2fa/login',
+  makeAuthLimiter(8),
+  asyncHandler(async (req, res) => {
+    const { challenge_token: challengeToken, code } = req.body || {};
+    if (!challengeToken || !code) {
+      return res.status(400).json({ error: 'Codice mancante' });
+    }
+
+    let payload;
+    try {
+      payload = jwt.verify(challengeToken, JWT_SECRET);
+    } catch (err) {
+      return res.status(401).json({ error: 'Sessione di accesso scaduta, riprova' });
+    }
+    if (payload.purpose !== '2fa_pending') {
+      return res.status(401).json({ error: 'Sessione di accesso non valida' });
+    }
+
+    const user = await db.get('SELECT * FROM users WHERE id = ?', [payload.sub]);
+    if (!user || !user.totp_enabled || !verifyTotp(user.totp_secret, code)) {
+      return res.status(401).json({ error: 'Codice non valido' });
+    }
+
+    const token = await issueSessionToken(user, req);
     res.json({ token, user: await publicUser(user) });
   })
 );
@@ -129,7 +174,7 @@ router.post(
     try {
       const { email, name } = await verifyGoogleCredential(credential);
       const user = await findOrCreateSsoUser(email, name);
-      const token = issueToken(user);
+      const token = await issueSessionToken(user, req);
       res.json({ token, user: await publicUser(user) });
     } catch (err) {
       res.status(401).json({ error: 'Accesso con Google non riuscito' });
@@ -148,7 +193,7 @@ router.post(
     try {
       const { email, name } = await verifyMicrosoftToken(idToken);
       const user = await findOrCreateSsoUser(email, name);
-      const token = issueToken(user);
+      const token = await issueSessionToken(user, req);
       res.json({ token, user: await publicUser(user) });
     } catch (err) {
       res.status(401).json({ error: 'Accesso con Microsoft non riuscito' });
@@ -211,6 +256,86 @@ router.post(
     await db.run('UPDATE users SET email = ? WHERE id = ?', [newEmail.toLowerCase(), user.id]);
     const updated = await db.get('SELECT id, name, email, role, is_super_admin FROM users WHERE id = ?', [user.id]);
     res.json({ user: updated });
+  })
+);
+
+router.post(
+  '/2fa/setup',
+  authenticate,
+  makeAuthLimiter(),
+  asyncHandler(async (req, res) => {
+    const secret = generateSecret();
+    await db.run('UPDATE users SET totp_secret = ?, totp_enabled = 0 WHERE id = ?', [secret, req.user.id]);
+    res.json({ secret, otpauth_uri: buildOtpauthUri(secret, req.user.email, 'Ticketing IT') });
+  })
+);
+
+router.post(
+  '/2fa/verify',
+  authenticate,
+  makeAuthLimiter(),
+  asyncHandler(async (req, res) => {
+    const { code } = req.body || {};
+    const user = await db.get('SELECT totp_secret FROM users WHERE id = ?', [req.user.id]);
+    if (!user || !user.totp_secret || !verifyTotp(user.totp_secret, code)) {
+      return res.status(400).json({ error: 'Codice non valido' });
+    }
+    await db.run('UPDATE users SET totp_enabled = 1 WHERE id = ?', [req.user.id]);
+    res.json({ ok: true });
+  })
+);
+
+router.post(
+  '/2fa/disable',
+  authenticate,
+  makeAuthLimiter(),
+  asyncHandler(async (req, res) => {
+    const { currentPassword, code } = req.body || {};
+    if (!currentPassword || !code) {
+      return res.status(400).json({ error: 'Password e codice sono obbligatori' });
+    }
+    const user = await db.get('SELECT * FROM users WHERE id = ?', [req.user.id]);
+    if (!bcrypt.compareSync(currentPassword, user.password)) {
+      return res.status(401).json({ error: 'Password attuale non corretta' });
+    }
+    if (!user.totp_enabled || !verifyTotp(user.totp_secret, code)) {
+      return res.status(400).json({ error: 'Codice non valido' });
+    }
+    await db.run('UPDATE users SET totp_enabled = 0, totp_secret = NULL WHERE id = ?', [req.user.id]);
+    res.json({ ok: true });
+  })
+);
+
+router.get(
+  '/sessions',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const sessions = await listSessions(req.user.id);
+    res.json({ sessions: sessions.map((s) => ({ ...s, current: s.id === req.sessionId })) });
+  })
+);
+
+router.delete(
+  '/sessions/:id',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const ok = await revokeSession(req.user.id, req.params.id);
+    if (!ok) {
+      return res.status(404).json({ error: 'Sessione non trovata' });
+    }
+    res.json({ ok: true });
+  })
+);
+
+router.post(
+  '/sessions/revoke-others',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    if (!req.sessionId) {
+      return res.status(400).json({ error: 'Nessuna sessione corrente da preservare' });
+    }
+    await revokeOtherSessions(req.user.id, req.sessionId);
+    res.json({ ok: true });
   })
 );
 
