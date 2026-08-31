@@ -7,7 +7,8 @@
   "scripts": {
     "start": "node server/index.js",
     "dev": "node --watch server/index.js",
-    "build:frontend": "rm -rf dist && mkdir -p dist && cp -r public/. dist/ && npx --yes terser@5 public/js/app.js --compress --mangle --output dist/js/app.js && npx --yes clean-css-cli@5 -o dist/css/style.css public/css/style.css && node scripts/stamp-service-worker.js"
+    "build:frontend": "rm -rf dist && mkdir -p dist && cp -r public/. dist/ && npx --yes terser@5 public/js/app.js --compress --mangle --output dist/js/app.js && npx --yes clean-css-cli@5 -o dist/css/style.css public/css/style.css && node scripts/stamp-service-worker.js",
+    "backup:db": "node server/scripts/backup-db.js"
   },
   "engines": {
     "node": ">=18"

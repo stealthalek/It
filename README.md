@@ -113,6 +113,18 @@ L'app usa [libSQL](https://turso.tech), compatibile con SQLite: senza configuraz
 
 Se le due variabili non sono impostate, il backend continua a funzionare con un file SQLite locale (utile per sviluppo/Docker), semplicemente non persistente tra un deploy Render e l'altro.
 
+### 2ter. Backup del database (gratuito)
+
+Turso include già, gratuitamente, il **point-in-time recovery**: puoi ripristinare il database a qualsiasi momento delle ultime 24 ore direttamente dalla dashboard Turso o con `turso db shell <nome-db> .restore <timestamp>`, senza bisogno di configurare nulla.
+
+Per una copertura più ampia (oltre le 24 ore, o come backup indipendente da Turso), il repository include un backup automatico giornaliero via GitHub Actions (`.github/workflows/backup-db.yml`, gratuito su GitHub):
+
+1. Nel repository GitHub, apri **Settings → Secrets and variables → Actions** e aggiungi come *repository secrets* `TURSO_DATABASE_URL` e `TURSO_AUTH_TOKEN` (gli stessi valori usati su Render).
+2. Il workflow gira ogni notte (o manualmente da **Actions → Backup database → Run workflow**), esporta tutte le tabelle in un file JSON e lo carica come *artifact* dell'esecuzione, conservato per 30 giorni.
+3. Per ripristinare: scarica l'artifact dall'esecuzione desiderata (**Actions → Backup database → run → Artifacts**), poi importa i dati con uno script che legga il JSON e reinserisca le righe tabella per tabella (lo stesso formato prodotto da `npm run backup:db`).
+
+Per un backup manuale locale in qualsiasi momento: `TURSO_DATABASE_URL=... TURSO_AUTH_TOKEN=... npm run backup:db` (senza le due variabili, esporta il file SQLite locale).
+
 ### 3. Collega il frontend al backend
 
 1. Apri il sito pubblicato (Cloudflare o GitHub Pages), clicca sull'icona ingranaggio in alto (Impostazioni connessione).
