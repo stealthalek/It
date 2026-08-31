@@ -24,7 +24,7 @@ function passwordError(password) {
   return null;
 }
 
-function makeAuthLimiter(max = 20) {
+function makeAuthLimiter(max = 60) {
   return rateLimit({
     windowMs: 15 * 60 * 1000,
     max,
@@ -109,7 +109,7 @@ router.post(
 
 router.post(
   '/login',
-  makeAuthLimiter(8),
+  makeAuthLimiter(30),
   asyncHandler(async (req, res) => {
     const { email, password } = req.body || {};
     if (!email || !password) {
@@ -132,7 +132,7 @@ router.post(
 
 router.post(
   '/2fa/login',
-  makeAuthLimiter(8),
+  makeAuthLimiter(30),
   asyncHandler(async (req, res) => {
     const { challenge_token: challengeToken, code } = req.body || {};
     if (!challengeToken || !code) {

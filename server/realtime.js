@@ -51,16 +51,20 @@ function initRealtime(httpServer) {
     socket.join(`user:${socket.user.id}`);
 
     socket.on('ticket:join', async (ticketId) => {
-      const id = Number(ticketId);
-      if (!id || !(await canAccessTicket(socket.user, id))) return;
-      leaveCurrentRoom(socket);
-      const room = `ticket:${id}`;
-      socket.join(room);
-      socket.data.ticketRoom = room;
-      if (isStaffRole(socket.user.role)) {
-        socket.to(room).emit('presence:staff-joined', { name: socket.user.name });
-      } else {
-        socket.to(room).emit('presence:customer-joined', { name: socket.user.name });
+      try {
+        const id = Number(ticketId);
+        if (!id || !(await canAccessTicket(socket.user, id))) return;
+        leaveCurrentRoom(socket);
+        const room = `ticket:${id}`;
+        socket.join(room);
+        socket.data.ticketRoom = room;
+        if (isStaffRole(socket.user.role)) {
+          socket.to(room).emit('presence:staff-joined', { name: socket.user.name });
+        } else {
+          socket.to(room).emit('presence:customer-joined', { name: socket.user.name });
+        }
+      } catch (err) {
+        console.error('ticket:join fallito:', err.message);
       }
     });
 

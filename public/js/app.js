@@ -271,7 +271,7 @@
       auto_update: 'Aggiornamento automatico', auto_update_on: 'Aggiornamento automatico attivo', impersonate: 'Immedesimati',
       btn_save: 'Salva', btn_cancel: 'Annulla', btn_delete: 'Elimina', btn_add: 'Aggiungi', btn_search: 'Cerca', btn_download: 'Scarica',
       attachments_title: 'Allegati', btn_add_attachment: 'Aggiungi allegato', no_attachments_hint: 'Nessun allegato.',
-      attachment_too_large: 'File troppo grande (max 5 MB)', toast_attachment_added: 'Allegato aggiunto', toast_attachment_deleted: 'Allegato eliminato',
+      attachment_too_large: 'File troppo grande (max 20 MB)', toast_attachment_added: 'Allegato aggiunto', toast_attachment_deleted: 'Allegato eliminato',
       rating_title: 'Valutazione', rated_on_label: 'Valutato il', btn_edit_rating: 'Modifica valutazione',
       rating_comment_placeholder: 'Un commento facoltativo sul servizio ricevuto...', btn_submit_rating: 'Invia valutazione',
       rating_required_hint: 'Seleziona una valutazione da 1 a 5 stelle', toast_rating_submitted: 'Valutazione inviata, grazie!',
@@ -521,7 +521,7 @@
       auto_update: 'Auto update', auto_update_on: 'Auto update active', impersonate: 'View as',
       btn_save: 'Save', btn_cancel: 'Cancel', btn_delete: 'Delete', btn_add: 'Add', btn_search: 'Search', btn_download: 'Download',
       attachments_title: 'Attachments', btn_add_attachment: 'Add attachment', no_attachments_hint: 'No attachments.',
-      attachment_too_large: 'File too large (max 5 MB)', toast_attachment_added: 'Attachment added', toast_attachment_deleted: 'Attachment deleted',
+      attachment_too_large: 'File too large (max 20 MB)', toast_attachment_added: 'Attachment added', toast_attachment_deleted: 'Attachment deleted',
       rating_title: 'Rating', rated_on_label: 'Rated on', btn_edit_rating: 'Edit rating',
       rating_comment_placeholder: 'An optional comment about the service received...', btn_submit_rating: 'Submit rating',
       rating_required_hint: 'Select a rating from 1 to 5 stars', toast_rating_submitted: 'Rating submitted, thank you!',
@@ -2954,7 +2954,7 @@
         if (!file) return;
         const errEl = document.getElementById('attachmentError');
         errEl.textContent = '';
-        if (file.size > 5 * 1024 * 1024) {
+        if (file.size > 20 * 1024 * 1024) {
           errEl.textContent = t('attachment_too_large');
           attachmentInput.value = '';
           return;
@@ -5434,7 +5434,7 @@
       attachmentInput2.addEventListener('change', () => {
         const file = attachmentInput2.files[0];
         if (!file) return;
-        if (file.size > 5 * 1024 * 1024) {
+        if (file.size > 20 * 1024 * 1024) {
           showToast(t('attachment_too_large'), 'error');
           attachmentInput2.value = '';
           return;

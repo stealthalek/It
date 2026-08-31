@@ -89,7 +89,7 @@ router.get(
         (row.ticket_id && formatTicketNumber(row.ticket_id).toLowerCase().includes(needle)));
     }
 
-    res.json({ entries: entries.slice(0, 2000), total: entries.length });
+    res.json({ entries: entries.slice(0, 20000), total: entries.length });
   })
 );
 
