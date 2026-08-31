@@ -5981,12 +5981,25 @@
   async function renderOrgChartPublic() {
     let groups = [];
     let users = [];
+    let tickets = [];
     try {
-      [groups, users] = await Promise.all([
-        api('/groups').then((r) => r.groups),
-        api('/users').then((r) => r.users),
-      ]);
+      const promises = [api('/groups').then((r) => r.groups), api('/users').then((r) => r.users)];
+      if (isStaff()) promises.push(api('/tickets').then((r) => r.tickets).catch(() => []));
+      const results = await Promise.all(promises);
+      groups = results[0];
+      users = results[1];
+      tickets = results[2] || [];
     } catch {}
+
+    const canSeeAllStats = !!(state.user && state.user.is_super_admin);
+    const canSeeGroupStats = (groupId) => canSeeAllStats || (state.user && state.user.group_id === groupId);
+    const openByGroup = new Map();
+    const openByAssignee = new Map();
+    tickets.forEach((tk) => {
+      if (tk.status === 'resolved' || tk.status === 'closed') return;
+      if (tk.group_id) openByGroup.set(tk.group_id, (openByGroup.get(tk.group_id) || 0) + 1);
+      if (tk.assigned_to) openByAssignee.set(tk.assigned_to, (openByAssignee.get(tk.assigned_to) || 0) + 1);
+    });
 
     const membersByGroup = new Map();
     users.forEach((u) => {
@@ -5999,16 +6012,21 @@
     const tree = buildGroupTree(groups);
 
     function personRow(u) {
+      const showLoad = isStaff() && (u.role === 'agent' || u.role === 'admin') && canSeeGroupStats(u.group_id);
+      const openCount = openByAssignee.get(u.id) || 0;
       return `
         <div class="orgchart-person">
           <span>${escapeHtml(u.name)}</span>
           <span class="role-tag">${roleLabels()[u.role] || u.role}</span>
           ${u.manager_name ? `<span class="hint">${t('manager_label')}: ${escapeHtml(u.manager_name)}</span>` : ''}
+          ${showLoad ? `<span class="org-node-badge ${openCount > 0 ? '' : 'org-node-badge-ok'}">${icon('activity', 'badge-icon')}${openCount} ${t('org_open_tickets')}</span>` : ''}
         </div>`;
     }
 
     function nodeHtml(node) {
       const members = membersByGroup.get(node.id) || [];
+      const showGroupStats = canSeeGroupStats(node.id);
+      const openCount = openByGroup.get(node.id) || 0;
       return `
         <div class="org-branch">
           <div class="org-node">
@@ -6021,6 +6039,7 @@
             </div>
             <div class="org-node-stats">
               <span class="org-node-badge">${icon('users', 'badge-icon')}${node.member_count || 0} ${t('org_member_count')}</span>
+              ${showGroupStats ? `<span class="org-node-badge ${openCount > 0 ? '' : 'org-node-badge-ok'}">${icon('activity', 'badge-icon')}${openCount} ${t('org_open_tickets')}</span>` : ''}
             </div>
             ${members.length ? `
               <details class="orgchart-members">
