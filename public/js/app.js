@@ -84,6 +84,29 @@
   function slaLabels() {
     return { on_track: t('sla_on_track'), at_risk: t('sla_at_risk'), breached: t('sla_breached') };
   }
+  const DEVICE_REQUEST_TYPES = {
+    problem: { type: 'incident' },
+    new_device: { type: 'task' },
+    replacement: { type: 'task' },
+    loan: { type: 'task' },
+    lost_stolen: { type: 'incident', priority: 'high' },
+  };
+  function deviceRequestTypeLabels() {
+    return {
+      problem: t('device_request_type_problem'),
+      new_device: t('device_request_type_new_device'),
+      replacement: t('device_request_type_replacement'),
+      loan: t('device_request_type_loan'),
+      lost_stolen: t('device_request_type_lost_stolen'),
+    };
+  }
+  function categoryIsDeviceRelated(categories, categoryName) {
+    const cat = categories.find((c) => c.name === categoryName);
+    if (!cat) return false;
+    if (!cat.parent_id) return cat.name === 'Hardware';
+    const parent = categories.find((c) => c.id === cat.parent_id);
+    return !!parent && parent.name === 'Hardware';
+  }
   function formatTicketNumber(id) {
     return `TCK-${String(id).padStart(6, '0')}`;
   }
@@ -451,6 +474,8 @@
       pw_req_length: 'Almeno 8 caratteri', pw_req_letter_number: 'Almeno una lettera e un numero',
       new_ticket_title: 'Nuovo ticket', new_ticket_hint: 'Raccontaci il problema: bastano pochi campi, il resto lo segue il nostro team.',
       field_request_type: 'Tipo di richiesta', type_incident_suffix: '— qualcosa non funziona', type_task_suffix: '— richiesta pianificabile',
+      field_device_request_type: 'Motivo della richiesta', device_request_type_hint: 'Indica il motivo: verrà usato per instradare correttamente la richiesta.',
+      device_request_type_problem: 'Ho un problema', device_request_type_new_device: 'Nuovo dispositivo', device_request_type_replacement: 'Sostituzione', device_request_type_loan: 'Prestito temporaneo', device_request_type_lost_stolen: 'Smarrito o rubato',
       field_template: 'Parti da un modello', template_blank_option: 'Nessun modello (parti da zero)',
       field_on_behalf_of: 'Apri per conto di', on_behalf_of_none: 'Per me stesso', on_behalf_of_label: 'per conto di',
       field_category: 'Categoria', field_subject_placeholder: 'Un breve titolo per il problema', field_urgency: 'Quanto è urgente?',
@@ -739,6 +764,8 @@
       pw_req_length: 'At least 8 characters', pw_req_letter_number: 'At least one letter and one number',
       new_ticket_title: 'New ticket', new_ticket_hint: 'Tell us about the problem: just a few fields, our team takes care of the rest.',
       field_request_type: 'Request type', type_incident_suffix: '— something isn\'t working', type_task_suffix: '— schedulable request',
+      field_device_request_type: 'Reason for request', device_request_type_hint: 'Tell us why: this is used to route the request correctly.',
+      device_request_type_problem: 'I have a problem', device_request_type_new_device: 'New device', device_request_type_replacement: 'Replacement', device_request_type_loan: 'Temporary loan', device_request_type_lost_stolen: 'Lost or stolen',
       field_template: 'Start from a template', template_blank_option: 'No template (start from scratch)',
       field_on_behalf_of: 'Open on behalf of', on_behalf_of_none: 'For myself', on_behalf_of_label: 'on behalf of',
       field_category: 'Category', field_subject_placeholder: 'A short title for the issue', field_urgency: 'How urgent is it?',
@@ -2963,6 +2990,13 @@
             <p class="hint" id="categorySelectedHint"></p>
             <div id="categoryTree" class="category-tree"></div>
           </div>
+          <div class="field" id="deviceRequestTypeField" hidden>
+            <label for="deviceRequestType">${t('field_device_request_type')}</label>
+            <select id="deviceRequestType">
+              ${Object.entries(deviceRequestTypeLabels()).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
+            </select>
+            <p class="hint">${t('device_request_type_hint')}</p>
+          </div>
           <div id="customFieldsContainer"></div>
           ${otherUsers.length ? `
           <div class="field">
@@ -3033,16 +3067,33 @@
       const applicable = customFields.filter((f) => !f.category_id || f.category_name === selectedCategory);
       if (!applicable.length) {
         customFieldsContainer.innerHTML = '';
-        return;
+      } else {
+        customFieldsContainer.innerHTML = applicable.map((field) => `
+          <div class="field">
+            ${field.field_type === 'checkbox' ? renderCustomFieldInput(field) : `
+              <label for="cf-${field.id}">${escapeHtml(field.name)}${field.required ? ' *' : ''}</label>
+              ${renderCustomFieldInput(field)}
+            `}
+          </div>`).join('');
       }
-      customFieldsContainer.innerHTML = applicable.map((field) => `
-        <div class="field">
-          ${field.field_type === 'checkbox' ? renderCustomFieldInput(field) : `
-            <label for="cf-${field.id}">${escapeHtml(field.name)}${field.required ? ' *' : ''}</label>
-            ${renderCustomFieldInput(field)}
-          `}
-        </div>`).join('');
+      updateDeviceRequestTypeField();
     }
+
+    const deviceRequestTypeField = document.getElementById('deviceRequestTypeField');
+    const deviceRequestTypeSelect = document.getElementById('deviceRequestType');
+    function updateDeviceRequestTypeField() {
+      const isDevice = categoryIsDeviceRelated(categories, selectedCategory);
+      deviceRequestTypeField.hidden = !isDevice;
+      if (isDevice) applyDeviceRequestType();
+    }
+    function applyDeviceRequestType() {
+      const rule = DEVICE_REQUEST_TYPES[deviceRequestTypeSelect.value];
+      if (!rule) return;
+      document.getElementById('type').value = rule.type;
+      if (rule.priority) document.getElementById('priority').value = rule.priority;
+      updateImpactHint();
+    }
+    deviceRequestTypeSelect.addEventListener('change', applyDeviceRequestType);
 
     function collectCustomFieldValues() {
       const applicable = customFields.filter((f) => !f.category_id || f.category_name === selectedCategory);
@@ -3108,17 +3159,18 @@
       });
     }
 
-    updateCategorySelectedHint();
-    renderCategoryTree('');
-    renderCustomFieldsSection();
-    categorySearchInput.addEventListener('input', () => renderCategoryTree(categorySearchInput.value));
-
     const impactSelect = document.getElementById('priority');
     const impactHint = document.getElementById('impactHint');
     const impactHints = { low: t('impact_low_hint'), medium: t('impact_medium_hint'), high: t('impact_high_hint') };
     function updateImpactHint() {
       impactHint.textContent = impactHints[impactSelect.value] || '';
     }
+
+    updateCategorySelectedHint();
+    renderCategoryTree('');
+    renderCustomFieldsSection();
+    categorySearchInput.addEventListener('input', () => renderCategoryTree(categorySearchInput.value));
+
     updateImpactHint();
     impactSelect.addEventListener('change', updateImpactHint);
 
@@ -3157,6 +3209,7 @@
         description: document.getElementById('description').value.trim(),
         customFields: collectCustomFieldValues(),
         onBehalfOf: onBehalfOfEl && onBehalfOfEl.value ? Number(onBehalfOfEl.value) : undefined,
+        deviceRequestType: deviceRequestTypeField.hidden ? undefined : deviceRequestTypeSelect.value,
       };
       try {
         const { ticket } = await api('/tickets', { method: 'POST', body });
