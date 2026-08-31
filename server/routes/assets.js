@@ -26,6 +26,10 @@ router.get(
     const { status, q, assignedTo } = req.query;
     const clauses = [];
     const params = [];
+    if (!req.user.is_super_admin) {
+      clauses.push('(a.company_id IS NULL OR a.company_id = ?)');
+      params.push(req.user.company_id);
+    }
     if (status && STATUSES.includes(status)) {
       clauses.push('a.status = ?');
       params.push(status);
@@ -54,9 +58,16 @@ router.post(
     const finalType = TYPES.includes(assetType) ? assetType : 'altro';
     const finalAssignmentType = ASSIGNMENT_TYPES.includes(assignmentType) ? assignmentType : 'permanente';
 
+    if (assignedTo) {
+      const target = await db.get('SELECT id, company_id FROM users WHERE id = ?', [assignedTo]);
+      if (!target || (!req.user.is_super_admin && target.company_id && target.company_id !== req.user.company_id)) {
+        return res.status(400).json({ error: 'Utente assegnatario non valido' });
+      }
+    }
+
     const info = await db.run(
-      `INSERT INTO assets (name, asset_type, tag, assignment_type, assigned_to, due_date, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO assets (name, asset_type, tag, assignment_type, assigned_to, due_date, status, company_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         name.trim(),
         finalType,
@@ -65,6 +76,7 @@ router.post(
         assignedTo || null,
         finalAssignmentType === 'prestito' && dueDate ? dueDate : null,
         assignedTo ? 'in_uso' : 'disponibile',
+        req.user.company_id || null,
       ]
     );
     const asset = await db.get(`${ASSET_SELECT} WHERE a.id = ?`, [Number(info.lastInsertRowid)]);
@@ -95,7 +107,9 @@ router.patch(
     }
 
     const placeholders = ids.map(() => '?').join(',');
-    const rows = await db.all(`SELECT id, tag FROM assets WHERE id IN (${placeholders})`, ids);
+    const scopeClause = req.user.is_super_admin ? '' : ' AND (company_id IS NULL OR company_id = ?)';
+    const scopeParams = req.user.is_super_admin ? [] : [req.user.company_id];
+    const rows = await db.all(`SELECT id, tag FROM assets WHERE id IN (${placeholders})${scopeClause}`, [...ids, ...scopeParams]);
 
     await Promise.all(rows.map((row) => {
       const updates = [];
@@ -119,7 +133,8 @@ router.patch(
       return db.run(`UPDATE assets SET ${updates.join(', ')} WHERE id = ?`, params);
     }));
 
-    const updated = await db.all(`${ASSET_SELECT} WHERE a.id IN (${placeholders})`, ids);
+    const rowPlaceholders = rows.map(() => '?').join(',') || 'NULL';
+    const updated = rows.length ? await db.all(`${ASSET_SELECT} WHERE a.id IN (${rowPlaceholders})`, rows.map((r) => r.id)) : [];
     logAudit(req.user.id, 'asset', null, `Modifica di massa su ${rows.length} asset`).catch(() => {});
     res.json({ assets: updated });
   })
@@ -129,7 +144,7 @@ router.patch(
   '/:id',
   asyncHandler(async (req, res) => {
     const asset = await db.get('SELECT * FROM assets WHERE id = ?', [req.params.id]);
-    if (!asset) {
+    if (!asset || (!req.user.is_super_admin && asset.company_id && asset.company_id !== req.user.company_id)) {
       return res.status(404).json({ error: 'Asset non trovato' });
     }
 
@@ -152,6 +167,12 @@ router.patch(
       params.push(assignmentType);
     }
     if (assignedTo !== undefined) {
+      if (assignedTo) {
+        const target = await db.get('SELECT id, company_id FROM users WHERE id = ?', [assignedTo]);
+        if (!target || (!req.user.is_super_admin && target.company_id && target.company_id !== req.user.company_id)) {
+          return res.status(400).json({ error: 'Utente assegnatario non valido' });
+        }
+      }
       updates.push('assigned_to = ?');
       params.push(assignedTo || null);
       if (!assignedTo) {
@@ -185,7 +206,10 @@ router.delete(
   '/:id',
   requirePermission('assets_delete'),
   asyncHandler(async (req, res) => {
-    const asset = await db.get('SELECT name FROM assets WHERE id = ?', [req.params.id]);
+    const asset = await db.get('SELECT name, company_id FROM assets WHERE id = ?', [req.params.id]);
+    if (!asset || (!req.user.is_super_admin && asset.company_id && asset.company_id !== req.user.company_id)) {
+      return res.status(404).json({ error: 'Asset non trovato' });
+    }
     const result = await db.run('DELETE FROM assets WHERE id = ?', [req.params.id]);
     if (Number(result.rowsAffected) === 0) {
       return res.status(404).json({ error: 'Asset non trovato' });

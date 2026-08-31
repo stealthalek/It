@@ -408,13 +408,14 @@ router.post(
       let generatedAssetId = null;
       if (item.kind === 'asset' && !item.asset_id) {
         const assetInfo = await db.run(
-          `INSERT INTO assets (name, asset_type, tag, assignment_type, assigned_to, status)
-           VALUES (?, ?, NULL, 'permanente', ?, ?)`,
+          `INSERT INTO assets (name, asset_type, tag, assignment_type, assigned_to, status, company_id)
+           VALUES (?, ?, NULL, 'permanente', ?, ?, ?)`,
           [
             `${item.label_it} - ${request.employee_name}`,
             item.asset_type || 'altro',
             request.employee_user_id || null,
             request.employee_user_id ? 'in_uso' : 'disponibile',
+            req.user.company_id || null,
           ]
         );
         generatedAssetId = Number(assetInfo.lastInsertRowid);
@@ -611,13 +612,14 @@ router.patch(
     if (status === 'done' && item.kind === 'asset' && !item.asset_id) {
       const request = await db.get('SELECT employee_name, employee_user_id FROM onboarding_requests WHERE id = ?', [item.request_id]);
       const assetInfo = await db.run(
-        `INSERT INTO assets (name, asset_type, tag, assignment_type, assigned_to, status)
-         VALUES (?, ?, NULL, 'permanente', ?, ?)`,
+        `INSERT INTO assets (name, asset_type, tag, assignment_type, assigned_to, status, company_id)
+         VALUES (?, ?, NULL, 'permanente', ?, ?, ?)`,
         [
           `${item.label_it} - ${request.employee_name}`,
           item.asset_type || 'altro',
           request.employee_user_id || null,
           request.employee_user_id ? 'in_uso' : 'disponibile',
+          req.user.company_id || null,
         ]
       );
       generatedAssetId = Number(assetInfo.lastInsertRowid);
