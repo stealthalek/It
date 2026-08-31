@@ -1208,12 +1208,37 @@ body:not(.role-customer):not(.role-agent):not(.role-admin) .nav-toggle { display
 
 .ticket-list-header, .ticket-row {
   display: grid;
-  grid-template-columns: 22px 76px minmax(140px, 2fr) 104px 104px 104px 78px 126px 74px 40px;
+  grid-template-columns: var(--tl-grid, 22px 76px minmax(140px, 2fr) 104px 104px 104px 78px 126px 74px 40px);
   align-items: center;
   gap: 0.6rem;
   padding: 0.65rem 0.85rem;
   min-width: fit-content;
 }
+
+.ticket-list-header > span { position: relative; }
+.col-resize-handle {
+  position: absolute;
+  top: -0.5rem;
+  bottom: -0.5rem;
+  right: -0.6rem;
+  width: 14px;
+  cursor: col-resize;
+  touch-action: none;
+  z-index: 2;
+}
+.col-resize-handle::after {
+  content: '';
+  position: absolute;
+  top: 0.4rem;
+  bottom: 0.4rem;
+  left: 50%;
+  width: 2px;
+  transform: translateX(-50%);
+  background: transparent;
+  border-radius: 999px;
+}
+.col-resize-handle:hover::after, .col-resize-handle.col-resizing::after { background: var(--primary); }
+body.col-resizing-active { cursor: col-resize !important; user-select: none; }
 
 .ticket-list-header {
   font-size: 0.72rem;
@@ -1298,6 +1323,7 @@ body:not(.role-customer):not(.role-agent):not(.role-admin) .nav-toggle { display
   .ticket-row.selectable-row { padding-left: 2.4rem; }
 }
 
+.bulk-action-bar[hidden] { display: none; }
 .bulk-action-bar {
   display: flex;
   align-items: center;
