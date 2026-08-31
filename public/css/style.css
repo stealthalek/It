@@ -414,6 +414,11 @@ body.role-agent .main-nav a.onboarding-nav, body.role-admin .main-nav a.onboardi
 body.role-admin .main-nav a.admin-only { display: flex; }
 .main-nav a.super-admin-only { display: none; }
 body.super-admin .main-nav a.super-admin-only { display: flex; }
+.main-nav a.insights-nav { display: none; }
+body.role-admin .main-nav a.insights-nav,
+body.super-admin .main-nav a.insights-nav,
+body.perm-reports_view .main-nav a.insights-nav,
+body.perm-audit_view .main-nav a.insights-nav { display: flex; }
 
 body:not(.role-customer):not(.role-agent):not(.role-admin) .sidebar,
 body:not(.role-customer):not(.role-agent):not(.role-admin) .nav-toggle { display: none; }
