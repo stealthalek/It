@@ -1865,6 +1865,7 @@ body.col-resizing-active { cursor: col-resize !important; user-select: none; }
 }
 .presence-banner .icon { flex-shrink: 0; }
 .presence-banner[hidden] { display: none; }
+.ticket-cancelled-banner { background: var(--danger-soft); color: var(--danger-text); }
 
 .side-field { margin-bottom: 1rem; }
 .side-field label {

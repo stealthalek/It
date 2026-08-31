@@ -592,6 +592,12 @@ async function migrate() {
   if (!ticketCols3.some((c) => c.name === 'on_behalf_of')) {
     await run('ALTER TABLE tickets ADD COLUMN on_behalf_of INTEGER REFERENCES users(id) ON DELETE SET NULL');
   }
+  if (!ticketCols3.some((c) => c.name === 'cancelled_at')) {
+    await run('ALTER TABLE tickets ADD COLUMN cancelled_at TEXT');
+  }
+  if (!ticketCols3.some((c) => c.name === 'cancelled_reason')) {
+    await run('ALTER TABLE tickets ADD COLUMN cancelled_reason TEXT');
+  }
 
   const groupCols3 = await all('PRAGMA table_info(groups)');
   if (!groupCols3.some((c) => c.name === 'manager_id')) {
