@@ -23,7 +23,9 @@ function parsePermissions(input) {
 router.get(
   '/',
   asyncHandler(async (req, res) => {
-    const rows = await db.all(`${ROLE_SELECT} ORDER BY label_it ASC`);
+    const where = req.user.is_super_admin ? '' : 'WHERE company_id IS NULL OR company_id = ?';
+    const params = req.user.is_super_admin ? [] : [req.user.company_id];
+    const rows = await db.all(`${ROLE_SELECT} ${where} ORDER BY label_it ASC`, params);
     res.json({ roles: rows.map(serializeRole), permissions: ALL_PERMISSIONS });
   })
 );
@@ -42,8 +44,8 @@ router.post(
       return res.status(409).json({ error: 'Chiave già esistente' });
     }
     const info = await db.run(
-      'INSERT INTO roles (key, label_it, label_en, color, read_only, permissions) VALUES (?, ?, ?, ?, ?, ?)',
-      [cleanKey, labelIt.trim(), labelEn.trim(), color && /^#[0-9a-fA-F]{6}$/.test(color) ? color : '#8f2436', readOnly ? 1 : 0, JSON.stringify(parsePermissions(permissions))]
+      'INSERT INTO roles (key, label_it, label_en, color, read_only, permissions, company_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [cleanKey, labelIt.trim(), labelEn.trim(), color && /^#[0-9a-fA-F]{6}$/.test(color) ? color : '#8f2436', readOnly ? 1 : 0, JSON.stringify(parsePermissions(permissions)), req.user.company_id || null]
     );
     const role = await db.get(`${ROLE_SELECT} WHERE id = ?`, [Number(info.lastInsertRowid)]);
     logAudit(req.user.id, 'role', role.id, `Creato ruolo "${role.label_it}"`).catch(() => {});
@@ -56,7 +58,9 @@ router.patch(
   requireRole('admin'),
   asyncHandler(async (req, res) => {
     const existing = await db.get('SELECT * FROM roles WHERE id = ?', [req.params.id]);
-    if (!existing) return res.status(404).json({ error: 'Ruolo non trovato' });
+    if (!existing || (!req.user.is_super_admin && existing.company_id && existing.company_id !== req.user.company_id)) {
+      return res.status(404).json({ error: 'Ruolo non trovato' });
+    }
 
     const { labelIt, labelEn, color, readOnly, permissions } = req.body || {};
     const updates = [];
@@ -98,7 +102,9 @@ router.delete(
   requireRole('admin'),
   asyncHandler(async (req, res) => {
     const existing = await db.get('SELECT * FROM roles WHERE id = ?', [req.params.id]);
-    if (!existing) return res.status(404).json({ error: 'Ruolo non trovato' });
+    if (!existing || (!req.user.is_super_admin && existing.company_id && existing.company_id !== req.user.company_id)) {
+      return res.status(404).json({ error: 'Ruolo non trovato' });
+    }
     await db.run('DELETE FROM roles WHERE id = ?', [req.params.id]);
     logAudit(req.user.id, 'role', Number(req.params.id), `Ruolo "${existing.label_it}" eliminato`).catch(() => {});
     res.status(204).end();

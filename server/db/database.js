@@ -799,6 +799,12 @@ async function migrate() {
     await run('ALTER TABLE assets ADD COLUMN company_id INTEGER REFERENCES companies(id) ON DELETE SET NULL');
   }
   await run('CREATE INDEX IF NOT EXISTS idx_assets_company_id ON assets(company_id)');
+
+  const roleCols = await all('PRAGMA table_info(roles)');
+  if (roleCols.length && !roleCols.some((c) => c.name === 'company_id')) {
+    await run('ALTER TABLE roles ADD COLUMN company_id INTEGER REFERENCES companies(id) ON DELETE SET NULL');
+  }
+  await run('CREATE INDEX IF NOT EXISTS idx_roles_company_id ON roles(company_id)');
 }
 
 async function seedDefaultCompany() {
