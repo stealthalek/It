@@ -232,7 +232,7 @@
 
   const TRANSLATIONS = {
     it: {
-      nav_dashboard: 'Ticket', nav_new: 'Nuovo ticket', nav_search: 'Ricerca', nav_backlog: 'Backlog',
+      nav_dashboard: 'Ticket', nav_new: 'Nuovo ticket', nav_search: 'Ricerca',
       nav_assets: 'Asset', nav_onboarding: 'Onboarding', nav_report: 'Report', nav_audit: 'Audit', nav_admin: 'Amministrazione', nav_profile: 'Profilo', logout: 'Esci',
       login_title: 'Accedi', login_hint: 'Entra nella piattaforma di ticketing.', login_email: 'Email', login_password: 'Password',
       login_submit: 'Accedi', login_no_account: 'Non hai un account?', login_register_link: 'Registrati',
@@ -302,7 +302,6 @@
       presence_customer: 'Il richiedente sta visualizzando questo ticket in questo momento',
       group_label_prefix: 'Gruppo', viewing_as_title: 'Vista di', viewing_as_hint: 'Stai visualizzando i ticket di questa persona in sola lettura.',
       viewas_banner_text: 'Stai vedendo la piattaforma come', viewas_readonly_suffix: 'sola lettura', viewas_exit: 'Esci dalla modalità',
-      backlog_hint: 'Ticket non assegnati, in ordine di urgenza SLA.',
       bulk_assign_placeholder: 'Assegna a...', bulk_status_placeholder: 'Cambia stato...', bulk_clear_selection: 'Deseleziona',
       bulk_selected_count: 'Selezionati:', toast_bulk_assigned: 'Ticket assegnati', toast_bulk_status_updated: 'Stato aggiornato sui ticket selezionati',
       bulk_assignment_placeholder: 'Cambia assegnazione...', bulk_tag_prefix_placeholder: 'es. ITA-', bulk_apply_prefix: 'Applica prefisso',
@@ -325,6 +324,7 @@
       search_placeholder_full: 'Numero ticket, parola chiave, richiedente...', all_groups_option: 'Tutti i gruppi', all_tags_option: 'Tutte le etichette',
       filter_assigned_to_label: 'Assegnati a', filter_created_by_label: 'Aperti da', assets_assigned_title: 'Asset assegnati', no_assets_assigned: 'Nessun asset assegnato.',
       assets_search_placeholder: 'Cerca per nome o tag...',
+      nav_insights: 'Report e Audit', insights_hint: 'Analisi delle prestazioni e traccia completa delle attività, in un unico posto.',
       report_hint: 'Volumi, tempi di risoluzione e rispetto SLA per gruppo e per agente.',
       chart_volume_by_group: 'Volume ticket per gruppo', chart_avg_resolution: 'Tempo medio di risoluzione (ore) per gruppo',
       chart_sla_compliance: 'SLA rispettata per gruppo (%)', chart_load_by_agent: 'Carico ticket per agente',
@@ -510,7 +510,7 @@
       admin_block_drag_hint: 'Trascina per riordinare',
     },
     en: {
-      nav_dashboard: 'Tickets', nav_new: 'New ticket', nav_search: 'Search', nav_backlog: 'Backlog',
+      nav_dashboard: 'Tickets', nav_new: 'New ticket', nav_search: 'Search',
       nav_assets: 'Assets', nav_onboarding: 'Onboarding', nav_report: 'Report', nav_audit: 'Audit', nav_admin: 'Administration', nav_profile: 'Profile', logout: 'Log out',
       login_title: 'Sign in', login_hint: 'Enter the ticketing platform.', login_email: 'Email', login_password: 'Password',
       login_submit: 'Sign in', login_no_account: "Don't have an account?", login_register_link: 'Register',
@@ -580,7 +580,6 @@
       presence_customer: 'The requester is currently viewing this ticket',
       group_label_prefix: 'Group', viewing_as_title: 'View of', viewing_as_hint: "You're viewing this person's tickets in read-only mode.",
       viewas_banner_text: "You're viewing the platform as", viewas_readonly_suffix: 'read-only', viewas_exit: 'Exit this mode',
-      backlog_hint: 'Unassigned tickets, ordered by SLA urgency.',
       bulk_assign_placeholder: 'Assign to...', bulk_status_placeholder: 'Change status...', bulk_clear_selection: 'Clear selection',
       bulk_selected_count: 'Selected:', toast_bulk_assigned: 'Tickets assigned', toast_bulk_status_updated: 'Status updated on selected tickets',
       bulk_assignment_placeholder: 'Change assignment...', bulk_tag_prefix_placeholder: 'e.g. ITA-', bulk_apply_prefix: 'Apply prefix',
@@ -603,6 +602,7 @@
       search_placeholder_full: 'Ticket number, keyword, requester...', all_groups_option: 'All groups', all_tags_option: 'All tags',
       filter_assigned_to_label: 'Assigned to', filter_created_by_label: 'Opened by', assets_assigned_title: 'Assigned assets', no_assets_assigned: 'No assets assigned.',
       assets_search_placeholder: 'Search by name or tag...',
+      nav_insights: 'Report & Audit', insights_hint: 'Performance analytics and a complete activity trail, in one place.',
       report_hint: 'Volumes, resolution times and SLA compliance by group and agent.',
       chart_volume_by_group: 'Ticket volume by group', chart_avg_resolution: 'Average resolution time (hours) by group',
       chart_sla_compliance: 'SLA compliance by group (%)', chart_load_by_agent: 'Ticket load by agent',
@@ -804,12 +804,12 @@
   }
 
   const NAV_KEY_BY_ROUTE = {
-    dashboard: 'nav_dashboard', new: 'nav_new', search: 'nav_search', backlog: 'nav_backlog',
-    assets: 'nav_assets', onboarding: 'nav_onboarding', orgchart: 'nav_orgchart', report: 'nav_report', audit: 'nav_audit', admin: 'nav_admin', profile: 'nav_profile',
+    dashboard: 'nav_dashboard', new: 'nav_new', search: 'nav_search',
+    assets: 'nav_assets', onboarding: 'nav_onboarding', orgchart: 'nav_orgchart', report: 'nav_insights', admin: 'nav_admin', profile: 'nav_profile',
   };
   const NAV_ICON_BY_ROUTE = {
-    dashboard: 'ticket', new: 'plus', search: 'inbox', backlog: 'check',
-    assets: 'monitor', onboarding: 'userCircle', orgchart: 'globe', report: 'activity', audit: 'eye', admin: 'shield', profile: 'userCircle',
+    dashboard: 'ticket', new: 'plus', search: 'inbox',
+    assets: 'monitor', onboarding: 'userCircle', orgchart: 'globe', report: 'activity', admin: 'shield', profile: 'userCircle',
   };
 
   function applyChromeTranslations() {
@@ -900,10 +900,14 @@
 
   function updateChrome() {
     document.body.classList.remove('role-customer', 'role-agent', 'role-admin', 'super-admin', 'is-manager');
+    document.body.className = document.body.className.replace(/\bperm-\S+/g, '').trim();
     if (state.user) {
       document.body.classList.add(`role-${state.user.role}`);
       if (state.user.is_super_admin) document.body.classList.add('super-admin');
       if (state.user.is_manager) document.body.classList.add('is-manager');
+      if (Array.isArray(state.user.permissions)) {
+        state.user.permissions.forEach((p) => document.body.classList.add(`perm-${p}`));
+      }
       userBadge.innerHTML = `${icon('userCircle')} <span>${escapeHtml(state.user.name)} · ${roleLabels()[state.user.role] || state.user.role}</span>`;
       userBadge.style.display = '';
       logoutBtn.style.display = '';
@@ -1420,7 +1424,8 @@
     }
 
     document.querySelectorAll('.main-nav a').forEach((a) => {
-      a.classList.toggle('active', a.dataset.nav === page);
+      const isInsightsLink = a.dataset.nav === 'report' && (page === 'report' || page === 'audit');
+      a.classList.toggle('active', a.dataset.nav === page || isInsightsLink);
     });
 
     if (page !== 'ticket') teardownTicketSocket();
@@ -1441,13 +1446,16 @@
         case 'users': return renderUserDetail(param);
         case 'profile': return renderProfile();
         case 'settings': return renderSettings();
-        case 'backlog': return renderBacklog();
+        case 'backlog':
+          state.dashboardPresetFilter = 'unassigned';
+          location.hash = '#/dashboard';
+          return;
         case 'assets': return renderAssets();
         case 'onboarding': return renderOnboarding(param);
         case 'orgchart': return renderOrgChartPublic();
         case 'search': return renderSearch();
-        case 'report': return renderReport();
-        case 'audit': return renderAudit();
+        case 'report': return renderInsights('report');
+        case 'audit': return renderInsights('audit');
         default: return renderNotFound();
       }
     } catch (err) {
@@ -1907,6 +1915,11 @@
     const fPriority = document.getElementById('fPriority');
     const fAssigned = document.getElementById('fAssigned');
     const fQuery = document.getElementById('fQuery');
+
+    if (fAssigned && state.dashboardPresetFilter) {
+      fAssigned.value = state.dashboardPresetFilter;
+      delete state.dashboardPresetFilter;
+    }
 
     if (fAssigned) {
       api('/users').then(({ users }) => {
@@ -2378,6 +2391,15 @@
         const tickets = (viewingAs && viewingAs.role !== 'customer' && !viewingAs.is_super_admin)
           ? fetched.filter((tk) => !tk.group_id || tk.group_id === viewingAs.group_id)
           : fetched;
+        if (fAssigned && fAssigned.value === 'unassigned') {
+          const slaOrder = { breached: 0, at_risk: 1, on_track: 2 };
+          tickets.sort((a, b) => {
+            const sa = slaOrder[a.sla_status] ?? 3;
+            const sb = slaOrder[b.sla_status] ?? 3;
+            if (sa !== sb) return sa - sb;
+            return a.created_at < b.created_at ? -1 : a.created_at > b.created_at ? 1 : 0;
+          });
+        }
         lastTickets = tickets;
         renderStats(tickets);
         renderPersonalCounter(tickets);
@@ -5420,117 +5442,6 @@
     }
   }
 
-  async function renderBacklog() {
-    appEl.innerHTML = `
-      <div class="view-header">
-        <div>
-          <h1>${icon('inbox')} Backlog</h1>
-          <p class="hint">${t('backlog_hint')}</p>
-        </div>
-      </div>
-      <div id="bulkBar" class="bulk-action-bar" hidden>
-        <span id="bulkCount" class="hint"></span>
-        <select id="bulkAssignSel"><option value="">${t('bulk_assign_placeholder')}</option></select>
-        <select id="bulkStatusSel">
-          <option value="">${t('bulk_status_placeholder')}</option>
-          ${Object.entries(statusLabels()).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
-        </select>
-        <button type="button" id="bulkClearBtn" class="btn btn-ghost btn-sm">${t('bulk_clear_selection')}</button>
-      </div>
-      <div id="ticketList" class="skeleton-grid">
-        ${Array(4).fill('<div class="skeleton-card"></div>').join('')}
-      </div>`;
-
-    const listEl = document.getElementById('ticketList');
-    const bulkBar = document.getElementById('bulkBar');
-    const bulkCount = document.getElementById('bulkCount');
-    const bulkAssignSel = document.getElementById('bulkAssignSel');
-    const bulkStatusSel = document.getElementById('bulkStatusSel');
-    const bulkClearBtn = document.getElementById('bulkClearBtn');
-    const selected = new Set();
-
-    try {
-      const { users } = await api('/users');
-      const staffUsers = users.filter((u) => u.role === 'agent' || u.role === 'admin');
-      bulkAssignSel.innerHTML = `<option value="">${t('bulk_assign_placeholder')}</option>` +
-        staffUsers.map((u) => `<option value="${u.id}">${escapeHtml(u.name)}</option>`).join('');
-    } catch {}
-
-    function updateBulkBar() {
-      bulkBar.hidden = selected.size === 0;
-      bulkCount.textContent = `${t('bulk_selected_count')} ${selected.size}`;
-    }
-
-    function wireSelectionCheckboxes() {
-      listEl.querySelectorAll('.ticketSelectBox').forEach((box) => {
-        box.checked = selected.has(Number(box.dataset.id));
-        box.addEventListener('change', () => {
-          const id = Number(box.dataset.id);
-          if (box.checked) selected.add(id); else selected.delete(id);
-          updateBulkBar();
-        });
-      });
-    }
-
-    async function loadBacklog() {
-      try {
-        const { tickets } = await api('/tickets?assigned=unassigned');
-        const open = tickets.filter((t) => t.status === 'open' || t.status === 'in_progress');
-        const order = { breached: 0, at_risk: 1, on_track: 2 };
-        open.sort((a, b) => {
-          const sa = order[a.sla_status] ?? 3;
-          const sb = order[b.sla_status] ?? 3;
-          if (sa !== sb) return sa - sb;
-          return a.created_at < b.created_at ? -1 : a.created_at > b.created_at ? 1 : 0;
-        });
-        const openIds = new Set(open.map((t) => t.id));
-        [...selected].forEach((id) => { if (!openIds.has(id)) selected.delete(id); });
-        renderTicketList(listEl, open, { selectable: isStaff() });
-        wireSelectionCheckboxes();
-        updateBulkBar();
-      } catch (err) {
-        listEl.className = '';
-        listEl.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
-      }
-    }
-
-    bulkClearBtn.addEventListener('click', () => {
-      selected.clear();
-      wireSelectionCheckboxes();
-      updateBulkBar();
-    });
-
-    bulkAssignSel.addEventListener('change', async () => {
-      if (!bulkAssignSel.value || !selected.size) return;
-      const assignedTo = Number(bulkAssignSel.value);
-      try {
-        await Promise.all([...selected].map((id) => api(`/tickets/${id}`, { method: 'PATCH', body: { assigned_to: assignedTo } })));
-        showToast(t('toast_bulk_assigned'), 'success');
-        selected.clear();
-        bulkAssignSel.value = '';
-        loadBacklog();
-      } catch (err) {
-        showToast(err.message, 'error');
-      }
-    });
-
-    bulkStatusSel.addEventListener('change', async () => {
-      if (!bulkStatusSel.value || !selected.size) return;
-      const status = bulkStatusSel.value;
-      try {
-        await Promise.all([...selected].map((id) => api(`/tickets/${id}`, { method: 'PATCH', body: { status } })));
-        showToast(t('toast_bulk_status_updated'), 'success');
-        selected.clear();
-        bulkStatusSel.value = '';
-        loadBacklog();
-      } catch (err) {
-        showToast(err.message, 'error');
-      }
-    });
-
-    loadBacklog();
-  }
-
   async function renderAssets() {
     appEl.innerHTML = `
       <div class="view-header">
@@ -6455,14 +6366,26 @@
     runSearch();
   }
 
-  async function renderReport() {
+  async function renderInsights(tab) {
     appEl.innerHTML = `
       <div class="view-header">
         <div>
-          <h1>${icon('activity')} ${t('nav_report')}</h1>
-          <p class="hint">${t('report_hint')}</p>
+          <h1>${icon('activity')} ${t('nav_insights')}</h1>
+          <p class="hint">${t('insights_hint')}</p>
         </div>
       </div>
+      <div class="admin-tabs" role="tablist">
+        <a href="#/report" class="admin-tab ${tab === 'report' ? 'active' : ''}" role="tab">${icon('activity', 'nav-icon')} ${t('nav_report')}</a>
+        <a href="#/audit" class="admin-tab ${tab === 'audit' ? 'active' : ''}" role="tab">${icon('eye', 'nav-icon')} ${t('nav_audit')}</a>
+      </div>
+      <div id="insightsBody"></div>`;
+    if (tab === 'audit') return renderAuditBody();
+    return renderReportBody();
+  }
+
+  async function renderReportBody() {
+    const bodyEl = document.getElementById('insightsBody');
+    bodyEl.innerHTML = `
       <div class="filters">
         <select id="reportTeam"><option value="">${t('filter_all_teams')}</option></select>
         <select id="reportMember"><option value="">${t('filter_all_members')}</option></select>
@@ -6686,17 +6609,12 @@
     renderAll();
   }
 
-  async function renderAudit() {
+  async function renderAuditBody() {
     let groups = [];
     try { groups = (await api('/groups')).groups; } catch { groups = []; }
 
-    appEl.innerHTML = `
-      <div class="view-header">
-        <div>
-          <h1>${icon('eye')} ${t('nav_audit')}</h1>
-          <p class="hint">${t('audit_hint')}</p>
-        </div>
-      </div>
+    const bodyEl = document.getElementById('insightsBody');
+    bodyEl.innerHTML = `
       <div class="filters">
         <input type="date" id="auditDateFrom" title="${t('report_date_from')}" />
         <input type="date" id="auditDateTo" title="${t('report_date_to')}" />
