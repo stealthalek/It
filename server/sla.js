@@ -11,24 +11,87 @@ function dateKey(ms) {
   return new Date(ms).toISOString().slice(0, 10);
 }
 
+const MS_PER_DAY = 24 * 3600 * 1000;
+
+function isBusinessDay(dayMs) {
+  const dow = new Date(dayMs).getUTCDay();
+  return dow >= 1 && dow <= 5 && !holidaySet.has(dateKey(dayMs));
+}
+
+function countWeekdays(fromDayMs, toDayMsInclusive) {
+  if (toDayMsInclusive < fromDayMs) return 0;
+  const totalDays = Math.round((toDayMsInclusive - fromDayMs) / MS_PER_DAY) + 1;
+  const fullWeeks = Math.floor(totalDays / 7);
+  let weekdayCount = fullWeeks * 5;
+  const remainder = totalDays - fullWeeks * 7;
+  const startDow = new Date(fromDayMs).getUTCDay();
+  for (let i = 0; i < remainder; i++) {
+    const dow = (startDow + i) % 7;
+    if (dow >= 1 && dow <= 5) weekdayCount++;
+  }
+  return weekdayCount;
+}
+
+function countHolidaysInRange(fromDayMs, toDayMsInclusive) {
+  const fromKey = dateKey(fromDayMs);
+  const toKey = dateKey(toDayMsInclusive);
+  let count = 0;
+  for (const h of holidaySet) {
+    if (h >= fromKey && h <= toKey) {
+      const dow = new Date(`${h}T00:00:00Z`).getUTCDay();
+      if (dow >= 1 && dow <= 5) count++;
+    }
+  }
+  return count;
+}
+
 function businessMillisBetween(startMs, endMs, startHour, endHour) {
   if (endMs <= startMs || endHour <= startHour) return 0;
-  const MS_PER_DAY = 24 * 3600 * 1000;
-  let total = 0;
-  let dayStart = new Date(startMs);
-  dayStart.setUTCHours(0, 0, 0, 0);
-  let cursor = dayStart.getTime();
-  while (cursor < endMs) {
-    const dayOfWeek = new Date(cursor).getUTCDay();
-    if (dayOfWeek >= 1 && dayOfWeek <= 5 && !holidaySet.has(dateKey(cursor))) {
-      const windowStart = cursor + startHour * 3600 * 1000;
-      const windowEnd = cursor + endHour * 3600 * 1000;
-      const overlapStart = Math.max(windowStart, startMs);
-      const overlapEnd = Math.min(windowEnd, endMs);
-      if (overlapEnd > overlapStart) total += overlapEnd - overlapStart;
-    }
-    cursor += MS_PER_DAY;
+  const dayLenMs = (endHour - startHour) * 3600 * 1000;
+
+  const firstDay = new Date(startMs);
+  firstDay.setUTCHours(0, 0, 0, 0);
+  const firstDayMs = firstDay.getTime();
+
+  const lastDay = new Date(endMs - 1);
+  lastDay.setUTCHours(0, 0, 0, 0);
+  const lastDayMs = lastDay.getTime();
+
+  if (firstDayMs === lastDayMs) {
+    if (!isBusinessDay(firstDayMs)) return 0;
+    const windowStart = firstDayMs + startHour * 3600 * 1000;
+    const windowEnd = firstDayMs + endHour * 3600 * 1000;
+    const overlapStart = Math.max(windowStart, startMs);
+    const overlapEnd = Math.min(windowEnd, endMs);
+    return overlapEnd > overlapStart ? overlapEnd - overlapStart : 0;
   }
+
+  let total = 0;
+
+  if (isBusinessDay(firstDayMs)) {
+    const windowStart = firstDayMs + startHour * 3600 * 1000;
+    const windowEnd = firstDayMs + endHour * 3600 * 1000;
+    const overlapStart = Math.max(windowStart, startMs);
+    const overlapEnd = Math.min(windowEnd, firstDayMs + MS_PER_DAY);
+    if (overlapEnd > overlapStart) total += overlapEnd - overlapStart;
+  }
+
+  if (isBusinessDay(lastDayMs)) {
+    const windowStart = lastDayMs + startHour * 3600 * 1000;
+    const windowEnd = lastDayMs + endHour * 3600 * 1000;
+    const overlapStart = Math.max(windowStart, lastDayMs);
+    const overlapEnd = Math.min(windowEnd, endMs);
+    if (overlapEnd > overlapStart) total += overlapEnd - overlapStart;
+  }
+
+  const middleFromMs = firstDayMs + MS_PER_DAY;
+  const middleToMs = lastDayMs - MS_PER_DAY;
+  if (middleToMs >= middleFromMs) {
+    const weekdays = countWeekdays(middleFromMs, middleToMs);
+    const holidays = countHolidaysInRange(middleFromMs, middleToMs);
+    total += Math.max(0, weekdays - holidays) * dayLenMs;
+  }
+
   return total;
 }
 

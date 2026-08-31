@@ -3,7 +3,7 @@ const os = require('os');
 const db = require('../db/database');
 const { authenticate, requireRole } = require('../middleware/auth');
 const asyncHandler = require('../middleware/asyncHandler');
-const { getStats } = require('../lib/requestStats');
+const { getStats, getEventLoopLagMs } = require('../lib/requestStats');
 
 const router = express.Router();
 router.use(authenticate);
@@ -33,6 +33,8 @@ router.get(
       db: { mode: db.usingTurso ? 'turso' : 'local', latencyMs: dbLatencyMs, error: dbError },
       requestWindow: getStats(),
       cpuCount: os.cpus().length,
+      loadAvg1m: Math.round(os.loadavg()[0] * 100) / 100,
+      eventLoopLagMs: getEventLoopLagMs(),
     });
   })
 );

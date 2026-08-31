@@ -6,6 +6,18 @@ let windowCount = 0;
 let totalCount = 0;
 const startedAt = Date.now();
 
+const LAG_SAMPLE_MS = 500;
+let lastLagCheck = process.hrtime.bigint();
+let eventLoopLagMs = 0;
+setInterval(() => {
+  const now = process.hrtime.bigint();
+  const expectedNs = BigInt(LAG_SAMPLE_MS) * 1000000n;
+  const actualNs = now - lastLagCheck;
+  lastLagCheck = now;
+  const lagNs = actualNs - expectedNs;
+  eventLoopLagMs = Math.max(0, Number(lagNs) / 1e6);
+}, LAG_SAMPLE_MS).unref();
+
 function recordRequest() {
   const now = Date.now();
   if (now - windowStart > WINDOW_MS) {
@@ -30,4 +42,8 @@ function getStats() {
   };
 }
 
-module.exports = { recordRequest, getStats, WINDOW_MS, MAX_REQUESTS };
+function getEventLoopLagMs() {
+  return Math.round(eventLoopLagMs * 10) / 10;
+}
+
+module.exports = { recordRequest, getStats, getEventLoopLagMs, WINDOW_MS, MAX_REQUESTS };

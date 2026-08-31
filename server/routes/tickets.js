@@ -190,9 +190,10 @@ async function runAutomationRules(ticketId, triggerEvent, actorId) {
   );
   if (!rules.length) return;
 
+  const ticket = await db.get(`${TICKET_SELECT} WHERE t.id = ?`, [ticketId]);
+  if (!ticket) return;
+
   for (const rule of rules) {
-    const ticket = await db.get(`${TICKET_SELECT} WHERE t.id = ?`, [ticketId]);
-    if (!ticket) return;
     if (rule.cond_status && rule.cond_status !== ticket.status) continue;
     if (rule.cond_priority && rule.cond_priority !== ticket.priority) continue;
     if (rule.cond_category && rule.cond_category !== ticket.category) continue;
@@ -229,6 +230,10 @@ async function runAutomationRules(ticketId, triggerEvent, actorId) {
       updates.push("updated_at = datetime('now')");
       params.push(ticketId);
       await db.run(`UPDATE tickets SET ${updates.join(', ')} WHERE id = ?`, params);
+      if (rule.action_set_status) ticket.status = rule.action_set_status;
+      if (rule.action_set_priority) ticket.priority = rule.action_set_priority;
+      if (rule.action_assign_group_id) ticket.group_id = rule.action_assign_group_id;
+      if (rule.action_assign_user_id) ticket.assigned_to = rule.action_assign_user_id;
       for (const message of events) {
         await logEvent(ticketId, actorId, message);
       }
