@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ticketing-static-v5';
+const CACHE_NAME = 'ticketing-static-v6';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -22,9 +22,28 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+const CORE_ASSET_PATTERN = /\/(index\.html|manifest\.json|js\/app\.js|css\/style\.css)$/;
+
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   if (event.request.method !== 'GET' || url.pathname.startsWith('/api/')) {
+    return;
+  }
+
+  const isCoreAsset = event.request.mode === 'navigate' || url.pathname === '/' || CORE_ASSET_PATTERN.test(url.pathname);
+
+  if (isCoreAsset) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(event.request))
+    );
     return;
   }
 

@@ -38,6 +38,7 @@ jobs:
           cp -r public/. dist/
           npx --yes terser@5 public/js/app.js --compress --mangle --output dist/js/app.js
           npx --yes clean-css-cli@5 -o dist/css/style.css public/css/style.css
+          sed -i "s/const CACHE_NAME = '.*';/const CACHE_NAME = 'ticketing-static-${GITHUB_SHA::12}';/" dist/service-worker.js
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
