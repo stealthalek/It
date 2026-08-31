@@ -96,17 +96,29 @@ async function publicUser(user) {
   };
 }
 
+async function resolveRegistrationCompanyId(companyId) {
+  const activeCompanies = await db.all('SELECT id FROM companies WHERE is_active = 1');
+  if (activeCompanies.length === 0) return { companyId: null };
+  if (activeCompanies.length === 1) return { companyId: activeCompanies[0].id };
+  if (!companyId) return { error: 'Seleziona un\'azienda' };
+  const match = activeCompanies.find((c) => c.id === Number(companyId));
+  if (!match) return { error: 'Azienda non valida' };
+  return { companyId: match.id };
+}
+
 async function findOrCreateSsoUser(email, name) {
   const existing = await db.get('SELECT * FROM users WHERE email = ?', [email]);
   if (existing) return existing;
 
   const randomPassword = crypto.randomBytes(24).toString('hex');
   const hash = bcrypt.hashSync(randomPassword, 10);
-  const info = await db.run('INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)', [
+  const { companyId } = await resolveRegistrationCompanyId(null);
+  const info = await db.run('INSERT INTO users (name, email, password, role, company_id) VALUES (?, ?, ?, ?, ?)', [
     name,
     email,
     hash,
     'customer',
+    companyId,
   ]);
   return db.get('SELECT * FROM users WHERE id = ?', [Number(info.lastInsertRowid)]);
 }
@@ -115,7 +127,7 @@ router.post(
   '/register',
   makeAuthLimiter(),
   asyncHandler(async (req, res) => {
-    const { name, email, password } = req.body || {};
+    const { name, email, password, companyId } = req.body || {};
 
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Il nome è obbligatorio' });
@@ -133,12 +145,18 @@ router.post(
       return res.status(409).json({ error: 'Email già registrata' });
     }
 
+    const companyResolution = await resolveRegistrationCompanyId(companyId);
+    if (companyResolution.error) {
+      return res.status(400).json({ error: companyResolution.error });
+    }
+
     const hash = bcrypt.hashSync(password, 10);
-    const info = await db.run('INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)', [
+    const info = await db.run('INSERT INTO users (name, email, password, role, company_id) VALUES (?, ?, ?, ?, ?)', [
       name.trim(),
       email.toLowerCase(),
       hash,
       'customer',
+      companyResolution.companyId,
     ]);
 
     const user = await db.get('SELECT id, name, email, role FROM users WHERE id = ?', [Number(info.lastInsertRowid)]);

@@ -21,7 +21,7 @@ async function authenticate(req, res, next) {
 
   try {
     const row = await db.get(
-      `SELECT u.id, u.name, u.email, u.role, u.is_super_admin, u.group_id, u.totp_enabled, u.role_id, u.is_blocked,
+      `SELECT u.id, u.name, u.email, u.role, u.is_super_admin, u.group_id, u.company_id, u.totp_enabled, u.role_id, u.is_blocked,
          r.label_it AS role_label_it, r.label_en AS role_label_en, r.color AS role_color,
          r.read_only AS role_read_only, r.permissions AS role_permissions_json,
          (SELECT COUNT(*) FROM users r2 WHERE r2.manager_id = u.id) > 0 AS is_manager,
