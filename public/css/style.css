@@ -1242,6 +1242,9 @@ body:not(.role-customer):not(.role-agent):not(.role-admin) .nav-toggle { display
 .system-bar-ok { background: var(--success); }
 .system-bar-warning { background: var(--warning); }
 .system-bar-danger { background: var(--danger); }
+.sparkline { width: 100%; height: 2.5rem; margin-top: 0.2rem; }
+.online-users-list { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; }
+.online-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); display: inline-block; }
 
 .sla-watch-list { display: flex; flex-direction: column; gap: 0.6rem; }
 .sla-watch-row {
@@ -1933,6 +1936,7 @@ body.col-resizing-active { cursor: col-resize !important; user-select: none; }
 }
 .role-tag-external { background: var(--warning-soft); color: var(--warning-text); border-color: transparent; }
 .role-tag-active { background: var(--success-soft); color: var(--success-text); border-color: transparent; }
+.role-tag-danger { background: var(--danger-soft); color: var(--danger-text); border-color: transparent; }
 .plain-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.88rem; }
 
 .totp-secret-code {

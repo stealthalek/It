@@ -17,6 +17,7 @@
   }
 
   let adminSystemStatusTimer = null;
+  let systemStatusHistory = [];
   function teardownAdminSystemStatusPolling() {
     if (adminSystemStatusTimer) {
       clearInterval(adminSystemStatusTimer);
@@ -311,7 +312,7 @@
       auto_update: 'Aggiornamento automatico', auto_update_on: 'Aggiornamento automatico attivo', impersonate: 'Immedesimati',
       btn_save: 'Salva', btn_cancel: 'Annulla', btn_delete: 'Elimina', btn_add: 'Aggiungi', btn_search: 'Cerca', btn_download: 'Scarica',
       attachments_title: 'Allegati', btn_add_attachment: 'Aggiungi allegato', no_attachments_hint: 'Nessun allegato.',
-      attachment_too_large: 'File troppo grande (max 20 MB)', toast_attachment_added: 'Allegato aggiunto', toast_attachment_deleted: 'Allegato eliminato',
+      attachment_too_large: 'File troppo grande (max 50 MB)', toast_attachment_added: 'Allegato aggiunto', toast_attachment_deleted: 'Allegato eliminato',
       rating_title: 'Valutazione', rated_on_label: 'Valutato il', btn_edit_rating: 'Modifica valutazione',
       rating_comment_placeholder: 'Un commento facoltativo sul servizio ricevuto...', btn_submit_rating: 'Invia valutazione',
       rating_required_hint: 'Seleziona una valutazione da 1 a 5 stelle', toast_rating_submitted: 'Valutazione inviata, grazie!',
@@ -517,6 +518,14 @@
       toast_specific_role_updated: 'Ruolo specifico aggiornato', toast_profile_updated: 'Dati account aggiornati',
       delete_account_btn: 'Elimina account', toast_account_deleted: 'Account eliminato',
       confirm_delete_account_prefix: 'Eliminare definitivamente l\'account di', confirm_delete_account_suffix: '? Questa azione non può essere annullata ed elimina anche i ticket aperti da questa persona.',
+      btn_block_account: 'Blocca account', btn_unblock_account: 'Sblocca account',
+      confirm_block_account_prefix: 'Bloccare l\'account di', confirm_block_account_suffix: '? Non potrà più accedere finché non lo sblocchi.',
+      confirm_unblock_account_prefix: 'Sbloccare l\'account di', confirm_unblock_account_suffix: '?',
+      block_reason_prompt: 'Motivo del blocco (opzionale):',
+      toast_account_blocked: 'Account bloccato', toast_account_unblocked: 'Account sbloccato',
+      blocked_badge: 'Bloccato', blocked_since_label: 'Bloccato il', blocked_reason_label: 'Motivo',
+      filter_all_users: 'Tutti', filter_active_users: 'Attivi', filter_blocked_users: 'Blacklist',
+      th_status: 'Stato',
       btn_copy: 'Copia', toast_copied: 'Copiato negli appunti', toast_copy_failed: 'Impossibile copiare',
       motion_fluid_label: 'Animazioni fluide', toast_accent_updated: 'Colore aggiornato', toast_motion_updated: 'Preferenza animazioni aggiornata', toast_theme_updated: 'Aspetto aggiornato',
       desktop_notif_label: 'Notifiche desktop', desktop_notif_hint: 'Ricevi un avviso pop-up del sistema operativo per nuovi ticket e commenti, anche a scheda non attiva.',
@@ -559,6 +568,7 @@
       system_db_label: 'Latenza database', system_db_error: 'Errore', system_db_mode_turso: 'Turso (persistente)', system_db_mode_local: 'File locale (non persistente)',
       system_eventloop_label: 'Ritardo event loop', system_eventloop_hint: 'Indicatore diretto di sovraccarico del server',
       system_load_label: 'Carico CPU (1 min)', system_load_hint: 'su',
+      system_online_users_label: 'Utenti online', system_online_staff_prefix: 'Staff:', system_online_customers_prefix: 'Utenti:',
       admin_roles_title: 'Ruoli personalizzati', admin_roles_hint: 'Crea ruoli con permessi specifici da assegnare al personale, oltre ad Agente e Amministratore.',
       field_color: 'Colore', field_role_read_only: 'Sola lettura (non può modificare i ticket)', field_role_permissions: 'Permessi',
       btn_add_role: 'Crea ruolo', no_roles_hint: 'Nessun ruolo personalizzato ancora creato.',
@@ -623,7 +633,7 @@
       auto_update: 'Auto update', auto_update_on: 'Auto update active', impersonate: 'View as',
       btn_save: 'Save', btn_cancel: 'Cancel', btn_delete: 'Delete', btn_add: 'Add', btn_search: 'Search', btn_download: 'Download',
       attachments_title: 'Attachments', btn_add_attachment: 'Add attachment', no_attachments_hint: 'No attachments.',
-      attachment_too_large: 'File too large (max 20 MB)', toast_attachment_added: 'Attachment added', toast_attachment_deleted: 'Attachment deleted',
+      attachment_too_large: 'File too large (max 50 MB)', toast_attachment_added: 'Attachment added', toast_attachment_deleted: 'Attachment deleted',
       rating_title: 'Rating', rated_on_label: 'Rated on', btn_edit_rating: 'Edit rating',
       rating_comment_placeholder: 'An optional comment about the service received...', btn_submit_rating: 'Submit rating',
       rating_required_hint: 'Select a rating from 1 to 5 stars', toast_rating_submitted: 'Rating submitted, thank you!',
@@ -829,6 +839,14 @@
       toast_specific_role_updated: 'Specific role updated', toast_profile_updated: 'Account details updated',
       delete_account_btn: 'Delete account', toast_account_deleted: 'Account deleted',
       confirm_delete_account_prefix: 'Permanently delete the account for', confirm_delete_account_suffix: '? This cannot be undone and also deletes tickets opened by this person.',
+      btn_block_account: 'Block account', btn_unblock_account: 'Unblock account',
+      confirm_block_account_prefix: 'Block the account for', confirm_block_account_suffix: '? They will not be able to sign in until you unblock them.',
+      confirm_unblock_account_prefix: 'Unblock the account for', confirm_unblock_account_suffix: '?',
+      block_reason_prompt: 'Reason for the block (optional):',
+      toast_account_blocked: 'Account blocked', toast_account_unblocked: 'Account unblocked',
+      blocked_badge: 'Blocked', blocked_since_label: 'Blocked on', blocked_reason_label: 'Reason',
+      filter_all_users: 'All', filter_active_users: 'Active', filter_blocked_users: 'Blacklist',
+      th_status: 'Status',
       btn_copy: 'Copy', toast_copied: 'Copied to clipboard', toast_copy_failed: 'Could not copy',
       motion_fluid_label: 'Smooth animations', toast_accent_updated: 'Color updated', toast_motion_updated: 'Animation preference updated', toast_theme_updated: 'Appearance updated',
       desktop_notif_label: 'Desktop notifications', desktop_notif_hint: 'Get an OS-level pop-up alert for new tickets and comments, even when the tab is not active.',
@@ -871,6 +889,7 @@
       system_db_label: 'Database latency', system_db_error: 'Error', system_db_mode_turso: 'Turso (persistent)', system_db_mode_local: 'Local file (not persistent)',
       system_eventloop_label: 'Event loop lag', system_eventloop_hint: 'Direct indicator of server overload',
       system_load_label: 'CPU load (1 min)', system_load_hint: 'of',
+      system_online_users_label: 'Online users', system_online_staff_prefix: 'Staff:', system_online_customers_prefix: 'Users:',
       admin_roles_title: 'Custom roles', admin_roles_hint: 'Create roles with specific permissions to assign to staff, beyond Agent and Administrator.',
       field_color: 'Color', field_role_read_only: 'Read-only (cannot modify tickets)', field_role_permissions: 'Permissions',
       btn_add_role: 'Create role', no_roles_hint: 'No custom roles created yet.',
@@ -4421,6 +4440,17 @@
         return `${mins}m`;
       }
 
+      function sparklineSvg(values, colorVar) {
+        const w = 200, h = 40;
+        if (values.length < 2) return `<svg width="${w}" height="${h}" class="sparkline"></svg>`;
+        const max = Math.max(...values, 0.001);
+        const stepX = w / (values.length - 1);
+        const points = values.map((v, i) => `${(i * stepX).toFixed(1)},${(h - (v / max) * (h - 4) - 2).toFixed(1)}`).join(' ');
+        return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" class="sparkline">
+          <polyline points="${points}" fill="none" stroke="${colorVar}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+        </svg>`;
+      }
+
       async function loadSystemStatus() {
         const bodyEl = document.getElementById('systemStatusBody');
         if (!bodyEl) return;
@@ -4434,6 +4464,23 @@
           const loadRatio = status.loadAvg1m / status.cpuCount;
           const loadClass = loadRatio > 1 ? 'system-bar-danger' : loadRatio > 0.7 ? 'system-bar-warning' : 'system-bar-ok';
           const loadPct = Math.min(100, Math.round(loadRatio * 100));
+
+          systemStatusHistory.push({
+            memRss: status.memory.rssMb,
+            lag: status.eventLoopLagMs,
+            reqCount: status.requestWindow.windowCount,
+            loadRatio: Math.round(loadRatio * 100),
+          });
+          if (systemStatusHistory.length > 30) systemStatusHistory.shift();
+          const memHistory = systemStatusHistory.map((s) => s.memRss);
+          const lagHistory = systemStatusHistory.map((s) => s.lag);
+          const reqHistory = systemStatusHistory.map((s) => s.reqCount);
+          const loadHistory = systemStatusHistory.map((s) => s.loadRatio);
+
+          const onlineUsers = status.onlineUsers || [];
+          const onlineStaff = onlineUsers.filter((u) => u.role === 'agent' || u.role === 'admin');
+          const onlineCustomers = onlineUsers.filter((u) => u.role === 'customer');
+
           bodyEl.className = '';
           bodyEl.innerHTML = `
             <div class="system-status-grid">
@@ -4443,16 +4490,23 @@
                 <span class="hint">Node ${escapeHtml(status.nodeVersion)} · ${status.cpuCount} CPU</span>
               </div>
               <div class="system-status-card">
+                <span class="system-status-label">${t('system_online_users_label')}</span>
+                <span class="system-status-value">${onlineUsers.length}</span>
+                <span class="hint">${t('system_online_staff_prefix')} ${onlineStaff.length} · ${t('system_online_customers_prefix')} ${onlineCustomers.length}</span>
+              </div>
+              <div class="system-status-card">
                 <span class="system-status-label">${t('system_memory_label')}</span>
                 <span class="system-status-value">${status.memory.rssMb} MB</span>
                 <div class="system-bar"><div class="system-bar-fill ${statusBarClass(memPct)}" style="width:${memPct}%"></div></div>
                 <span class="hint">Heap ${status.memory.heapUsedMb} / ${status.memory.heapTotalMb} MB</span>
+                ${sparklineSvg(memHistory, 'var(--primary)')}
               </div>
               <div class="system-status-card">
                 <span class="system-status-label">${t('system_requests_label')}</span>
                 <span class="system-status-value">${status.requestWindow.windowCount} / ${status.requestWindow.windowMax}</span>
                 <div class="system-bar"><div class="system-bar-fill ${statusBarClass(reqPct)}" style="width:${reqPct}%"></div></div>
                 <span class="hint">${t('system_requests_reset_prefix')} ${Math.ceil(status.requestWindow.resetInSeconds / 60)} ${t('system_requests_reset_suffix')} · ${status.requestWindow.totalCount} ${t('system_requests_total_suffix')}</span>
+                ${sparklineSvg(reqHistory, 'var(--primary)')}
               </div>
               <div class="system-status-card">
                 <span class="system-status-label">${t('system_db_label')}</span>
@@ -4465,14 +4519,20 @@
                 <span class="system-status-value">${status.eventLoopLagMs} ms</span>
                 <div class="system-bar"><div class="system-bar-fill ${lagClass}" style="width:${lagPct}%"></div></div>
                 <span class="hint">${t('system_eventloop_hint')}</span>
+                ${sparklineSvg(lagHistory, 'var(--primary)')}
               </div>
               <div class="system-status-card">
                 <span class="system-status-label">${t('system_load_label')}</span>
                 <span class="system-status-value">${status.loadAvg1m}</span>
                 <div class="system-bar"><div class="system-bar-fill ${loadClass}" style="width:${loadPct}%"></div></div>
                 <span class="hint">${t('system_load_hint')} ${status.cpuCount} CPU</span>
+                ${sparklineSvg(loadHistory, 'var(--primary)')}
               </div>
-            </div>`;
+            </div>
+            ${onlineUsers.length ? `
+            <div class="online-users-list">
+              ${onlineUsers.map((u) => `<span class="role-tag role-tag-active"><span class="online-dot"></span> ${escapeHtml(u.name)}</span>`).join('')}
+            </div>` : ''}`;
         } catch (err) {
           bodyEl.className = '';
           bodyEl.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
@@ -4480,6 +4540,7 @@
       }
 
       if (activeSection === 'system') {
+        systemStatusHistory = [];
         loadSystemStatus();
         teardownAdminSystemStatusPolling();
         adminSystemStatusTimer = setInterval(loadSystemStatus, 10000);
@@ -5584,51 +5645,69 @@
       try {
         const { users } = await api('/users');
         allUsersCache = users;
-        renderUsersTable(users);
+        renderUsersTable();
       } catch (err) {
         wrap.className = '';
         wrap.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
       }
     }
 
-    function renderUsersTable(users) {
+    function renderUsersTable() {
       const wrap = document.getElementById('usersWrap');
       wrap.className = 'card';
       wrap.innerHTML = `
-        <div class="field" style="max-width:320px;margin-bottom:1rem">
-          <label for="userSearchInput">${t('search_person_label')}</label>
-          <input id="userSearchInput" type="search" placeholder="${t('search_person_placeholder')}" />
+        <div class="filters" style="margin-bottom:1rem">
+          <div class="field" style="max-width:320px">
+            <label for="userSearchInput">${t('search_person_label')}</label>
+            <input id="userSearchInput" type="search" placeholder="${t('search_person_placeholder')}" />
+          </div>
+          <select id="userStatusFilter">
+            <option value="">${t('filter_all_users')}</option>
+            <option value="active">${t('filter_active_users')}</option>
+            <option value="blocked">${t('filter_blocked_users')}</option>
+          </select>
         </div>
         <div class="table-scroll">
           <table class="users-table">
-            <thead><tr><th>${t('th_name')}</th><th>${t('th_email')}</th><th>${t('th_role')}</th><th>${t('th_group')}</th><th>${t('th_registered')}</th></tr></thead>
-            <tbody>
-              ${users.length ? users.map((u) => `
-                <tr class="user-row" data-user-id="${u.id}" tabindex="0" role="link">
-                  <td>${escapeHtml(u.name)}</td>
-                  <td>${escapeHtml(u.email)}</td>
-                  <td><span class="role-tag">${roleLabels()[u.role] || u.role}</span> ${u.role_label_it ? `<span class="role-tag" style="background:${u.role_color}22;color:${u.role_color};border-color:${u.role_color}44">${escapeHtml(state.user.locale === 'en' ? u.role_label_en : u.role_label_it)}</span>` : ''} ${u.is_external ? `<span class="role-tag role-tag-external">${t('external_badge')}</span>` : ''}</td>
-                  <td>${escapeHtml(groupLabel(u) || '—')}</td>
-                  <td>${formatDate(u.created_at)}</td>
-                </tr>`).join('') : `<tr><td colspan="5"><p class="hint">${t('no_people_found')}</p></td></tr>`}
-            </tbody>
+            <thead><tr><th>${t('th_name')}</th><th>${t('th_email')}</th><th>${t('th_role')}</th><th>${t('th_group')}</th><th>${t('th_status')}</th><th>${t('th_registered')}</th></tr></thead>
+            <tbody id="usersTableBody"></tbody>
           </table>
         </div>`;
 
-      wrap.querySelectorAll('.user-row').forEach((row) => {
-        row.addEventListener('click', () => { location.hash = `#/users/${row.dataset.userId}`; });
-        row.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter') location.hash = `#/users/${row.dataset.userId}`;
+      function renderRows(users) {
+        const tbody = document.getElementById('usersTableBody');
+        tbody.innerHTML = users.length ? users.map((u) => `
+          <tr class="user-row" data-user-id="${u.id}" tabindex="0" role="link">
+            <td>${escapeHtml(u.name)}</td>
+            <td>${escapeHtml(u.email)}</td>
+            <td><span class="role-tag">${roleLabels()[u.role] || u.role}</span> ${u.role_label_it ? `<span class="role-tag" style="background:${u.role_color}22;color:${u.role_color};border-color:${u.role_color}44">${escapeHtml(state.user.locale === 'en' ? u.role_label_en : u.role_label_it)}</span>` : ''} ${u.is_external ? `<span class="role-tag role-tag-external">${t('external_badge')}</span>` : ''}</td>
+            <td>${escapeHtml(groupLabel(u) || '—')}</td>
+            <td>${u.is_blocked ? `<span class="role-tag role-tag-danger">${t('blocked_badge')}</span>` : ''}</td>
+            <td>${formatDate(u.created_at)}</td>
+          </tr>`).join('') : `<tr><td colspan="6"><p class="hint">${t('no_people_found')}</p></td></tr>`;
+        tbody.querySelectorAll('.user-row').forEach((row) => {
+          row.addEventListener('click', () => { location.hash = `#/users/${row.dataset.userId}`; });
+          row.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') location.hash = `#/users/${row.dataset.userId}`;
+          });
         });
-      });
+      }
+
+      function applyFilters() {
+        const q = searchInput.value.trim().toLowerCase();
+        const statusFilter = statusSelect.value;
+        let filtered = allUsersCache;
+        if (q) filtered = filtered.filter((u) => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
+        if (statusFilter === 'active') filtered = filtered.filter((u) => !u.is_blocked);
+        else if (statusFilter === 'blocked') filtered = filtered.filter((u) => u.is_blocked);
+        renderRows(filtered);
+      }
 
       const searchInput = document.getElementById('userSearchInput');
-      searchInput.addEventListener('input', () => {
-        const q = searchInput.value.trim().toLowerCase();
-        const filtered = q ? allUsersCache.filter((u) => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)) : allUsersCache;
-        renderUsersTable(filtered);
-        document.getElementById('userSearchInput').focus();
-      });
+      const statusSelect = document.getElementById('userStatusFilter');
+      searchInput.addEventListener('input', applyFilters);
+      statusSelect.addEventListener('change', applyFilters);
+      applyFilters();
     }
 
     loadUsersTable();
@@ -5675,6 +5754,7 @@
             <p class="hint" style="margin:0">${escapeHtml(user.email)}</p>
             <span class="role-tag" style="margin-top:0.5rem;display:inline-block">${roleLabels()[user.role] || user.role}</span>
             ${user.is_external ? `<span class="role-tag role-tag-external" style="margin-top:0.5rem;display:inline-block">${t('external_badge')}</span>` : ''}
+            ${user.is_blocked ? `<span class="role-tag role-tag-danger" style="margin-top:0.5rem;display:inline-block">${t('blocked_badge')}</span>` : ''}
           </div>
           ${state.user.is_super_admin && !isSelf ? `<button type="button" id="impersonateBtn" class="btn btn-sm" style="margin-left:auto">${icon('eye')} ${t('impersonate')}</button>` : ''}
         </div>
@@ -5727,6 +5807,8 @@
           ` : ''}
           <button type="button" id="detailResetPwBtn" class="btn btn-sm btn-outline-danger" style="margin-top:0.5rem">${icon('refresh')} ${t('reset_password_btn')}</button>
           <div id="detailResetPwBox"></div>
+          ${user.is_blocked && user.blocked_reason ? `<p class="hint" style="margin-top:0.5rem"><strong>${t('blocked_reason_label')}:</strong> ${escapeHtml(user.blocked_reason)}</p>` : ''}
+          ${!isSelf ? `<button type="button" id="detailBlockBtn" class="btn btn-sm ${user.is_blocked ? '' : 'btn-outline-danger'}" style="margin-top:0.5rem">${icon(user.is_blocked ? 'check' : 'lock')} ${t(user.is_blocked ? 'btn_unblock_account' : 'btn_block_account')}</button>` : ''}
           ${!isSelf ? `<button type="button" id="detailDeleteBtn" class="btn btn-sm btn-danger" style="margin-top:0.5rem">${icon('trash')} ${t('delete_account_btn')}</button>` : ''}
           ` : `
           <div class="field"><label>${t('field_group')}</label><p>${escapeHtml(groupLabel(user) || '—')}</p></div>
@@ -5846,6 +5928,24 @@
           errEl.textContent = err.message;
         }
       });
+      const detailBlockBtn = document.getElementById('detailBlockBtn');
+      if (detailBlockBtn) {
+        detailBlockBtn.addEventListener('click', async () => {
+          const nextBlocked = !user.is_blocked;
+          const confirmMsg = nextBlocked
+            ? `${t('confirm_block_account_prefix')} ${user.name}${t('confirm_block_account_suffix')}`
+            : `${t('confirm_unblock_account_prefix')} ${user.name}${t('confirm_unblock_account_suffix')}`;
+          if (!confirm(confirmMsg)) return;
+          const reason = nextBlocked ? prompt(t('block_reason_prompt')) : null;
+          try {
+            await api(`/users/${user.id}/block`, { method: 'PATCH', body: { blocked: nextBlocked, reason } });
+            showToast(t(nextBlocked ? 'toast_account_blocked' : 'toast_account_unblocked'), 'success');
+            renderUserDetail(id);
+          } catch (err) {
+            showToast(err.message, 'error');
+          }
+        });
+      }
       const detailDeleteBtn = document.getElementById('detailDeleteBtn');
       if (detailDeleteBtn) {
         detailDeleteBtn.addEventListener('click', async () => {

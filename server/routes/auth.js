@@ -160,6 +160,9 @@ router.post(
     if (!user) {
       return res.status(401).json({ error: 'Credenziali non valide' });
     }
+    if (user.is_blocked) {
+      return res.status(403).json({ error: 'Questo account è stato bloccato da un amministratore.' });
+    }
     if (isAccountLocked(user)) {
       return res.status(423).json({ error: `Account temporaneamente bloccato per troppi tentativi falliti. Riprova tra ${lockedUntilMinutesLeft(user)} minuti.` });
     }
@@ -202,6 +205,9 @@ router.post(
     if (!user || !user.totp_enabled) {
       return res.status(401).json({ error: 'Codice non valido' });
     }
+    if (user.is_blocked) {
+      return res.status(403).json({ error: 'Questo account è stato bloccato da un amministratore.' });
+    }
     if (isAccountLocked(user)) {
       return res.status(423).json({ error: `Account temporaneamente bloccato per troppi tentativi falliti. Riprova tra ${lockedUntilMinutesLeft(user)} minuti.` });
     }
@@ -231,6 +237,9 @@ router.post(
     try {
       const { email, name } = await verifyGoogleCredential(credential);
       const user = await findOrCreateSsoUser(email, name);
+      if (user.is_blocked) {
+        return res.status(403).json({ error: 'Questo account è stato bloccato da un amministratore.' });
+      }
       const token = await issueSessionToken(user, req);
       res.json({ token, user: await publicUser(user) });
     } catch (err) {
@@ -250,6 +259,9 @@ router.post(
     try {
       const { email, name } = await verifyMicrosoftToken(idToken);
       const user = await findOrCreateSsoUser(email, name);
+      if (user.is_blocked) {
+        return res.status(403).json({ error: 'Questo account è stato bloccato da un amministratore.' });
+      }
       const token = await issueSessionToken(user, req);
       res.json({ token, user: await publicUser(user) });
     } catch (err) {

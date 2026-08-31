@@ -21,7 +21,7 @@ async function authenticate(req, res, next) {
 
   try {
     const row = await db.get(
-      `SELECT u.id, u.name, u.email, u.role, u.is_super_admin, u.group_id, u.totp_enabled, u.role_id,
+      `SELECT u.id, u.name, u.email, u.role, u.is_super_admin, u.group_id, u.totp_enabled, u.role_id, u.is_blocked,
          r.label_it AS role_label_it, r.label_en AS role_label_en, r.color AS role_color,
          r.read_only AS role_read_only, r.permissions AS role_permissions_json,
          (SELECT COUNT(*) FROM users r2 WHERE r2.manager_id = u.id) > 0 AS is_manager,
@@ -34,6 +34,9 @@ async function authenticate(req, res, next) {
     );
     if (!row) {
       return res.status(401).json({ error: 'Utente non valido' });
+    }
+    if (row.is_blocked) {
+      return res.status(403).json({ error: 'Questo account è stato bloccato. Contatta un amministratore.' });
     }
     if (payload.sid && (row.session_revoked === null || row.session_revoked === 1)) {
       return res.status(401).json({ error: 'Sessione scaduta, effettua di nuovo l\'accesso' });

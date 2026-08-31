@@ -708,6 +708,18 @@ async function migrate() {
   )`);
   await run('CREATE INDEX IF NOT EXISTS idx_asset_letters_user_id ON asset_assignment_letters(user_id)');
   await run('CREATE INDEX IF NOT EXISTS idx_asset_letters_asset_id ON asset_assignment_letters(asset_id)');
+
+  const userCols6 = await all('PRAGMA table_info(users)');
+  if (!userCols6.some((c) => c.name === 'is_blocked')) {
+    await run('ALTER TABLE users ADD COLUMN is_blocked INTEGER NOT NULL DEFAULT 0');
+  }
+  if (!userCols6.some((c) => c.name === 'blocked_at')) {
+    await run('ALTER TABLE users ADD COLUMN blocked_at TEXT');
+  }
+  if (!userCols6.some((c) => c.name === 'blocked_reason')) {
+    await run('ALTER TABLE users ADD COLUMN blocked_reason TEXT');
+  }
+  await run('CREATE INDEX IF NOT EXISTS idx_users_is_blocked ON users(is_blocked)');
 }
 
 async function seedDefaultRoles() {

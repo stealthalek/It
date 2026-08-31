@@ -24,7 +24,7 @@ const KINDS = ['checkbox', 'license', 'copy_user', 'asset'];
 const ASSET_TYPES = ['laptop', 'desktop', 'monitor', 'telefono', 'tablet', 'altro'];
 const ITEM_STATUSES = ['pending', 'in_progress', 'done', 'skipped'];
 
-const ATTACHMENT_MAX_BYTES = 20 * 1024 * 1024;
+const ATTACHMENT_MAX_BYTES = 50 * 1024 * 1024;
 const ATTACHMENT_ALLOWED_MIME = new Set([
   'image/png', 'image/jpeg', 'image/gif', 'image/webp',
   'application/pdf', 'text/plain', 'text/csv',
@@ -669,7 +669,7 @@ router.post(
     const [, mimeType, base64Data] = match;
     if (!ATTACHMENT_ALLOWED_MIME.has(mimeType)) return res.status(400).json({ error: 'Tipo di file non consentito' });
     const sizeBytes = Buffer.byteLength(base64Data, 'base64');
-    if (sizeBytes > ATTACHMENT_MAX_BYTES) return res.status(400).json({ error: 'File troppo grande (max 20 MB)' });
+    if (sizeBytes > ATTACHMENT_MAX_BYTES) return res.status(400).json({ error: 'File troppo grande (max 50 MB)' });
 
     const info = await db.run(
       'INSERT INTO onboarding_attachments (request_id, uploaded_by, file_name, mime_type, size_bytes, data) VALUES (?, ?, ?, ?, ?, ?)',
