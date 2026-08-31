@@ -51,12 +51,13 @@ function passwordError(password) {
   return null;
 }
 
-function makeAuthLimiter(max = 60) {
+function makeAuthLimiter(max = 120, skipSuccessfulRequests = true) {
   return rateLimit({
     windowMs: 15 * 60 * 1000,
     max,
     standardHeaders: true,
     legacyHeaders: false,
+    skipSuccessfulRequests,
     message: { error: 'Troppi tentativi, riprova tra qualche minuto' },
   });
 }
@@ -148,7 +149,7 @@ router.post(
 
 router.post(
   '/login',
-  makeAuthLimiter(30),
+  makeAuthLimiter(60),
   asyncHandler(async (req, res) => {
     const { email, password } = req.body || {};
     if (!email || !password) {
@@ -180,7 +181,7 @@ router.post(
 
 router.post(
   '/2fa/login',
-  makeAuthLimiter(30),
+  makeAuthLimiter(60),
   asyncHandler(async (req, res) => {
     const { challenge_token: challengeToken, code } = req.body || {};
     if (!challengeToken || !code) {
