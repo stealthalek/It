@@ -298,6 +298,7 @@
       asset_status_available: 'Disponibile', asset_status_in_use: 'In uso', asset_status_repair: 'In riparazione', asset_status_retired: 'Dismesso',
       role_customer: 'Cliente', role_agent: 'Agente', role_admin: 'Amministratore',
       filter_all_types: 'Tutti i tipi', filter_all_statuses: 'Tutti gli stati', filter_all_priorities: 'Tutte le priorità',
+      onboarding_filter_active: 'Attivi',
       filter_chip_status: 'Stato', filter_chip_priority: 'Priorità', filter_chip_type: 'Tipo', filter_chip_remove_title: 'Rimuovi filtro',
       filter_all_assignees: 'Tutti gli assegnatari', filter_assigned_me: 'Assegnati a me', filter_unassigned: 'Non assegnati',
       search_placeholder_staff: 'Cerca per testo, numero ticket o richiedente...', search_placeholder_customer: 'Cerca per testo o numero ticket...',
@@ -539,6 +540,8 @@
       system_uptime_label: 'Attivo da', system_memory_label: 'Memoria (RSS)', system_requests_label: 'Richieste API (15 min)',
       system_requests_reset_prefix: 'si azzera tra', system_requests_reset_suffix: 'min', system_requests_total_suffix: 'totali dall\'avvio',
       system_db_label: 'Latenza database', system_db_error: 'Errore', system_db_mode_turso: 'Turso (persistente)', system_db_mode_local: 'File locale (non persistente)',
+      system_eventloop_label: 'Ritardo event loop', system_eventloop_hint: 'Indicatore diretto di sovraccarico del server',
+      system_load_label: 'Carico CPU (1 min)', system_load_hint: 'su',
       admin_roles_title: 'Ruoli personalizzati', admin_roles_hint: 'Crea ruoli con permessi specifici da assegnare al personale, oltre ad Agente e Amministratore.',
       field_color: 'Colore', field_role_read_only: 'Sola lettura (non può modificare i ticket)', field_role_permissions: 'Permessi',
       btn_add_role: 'Crea ruolo', no_roles_hint: 'Nessun ruolo personalizzato ancora creato.',
@@ -590,6 +593,7 @@
       asset_status_available: 'Available', asset_status_in_use: 'In use', asset_status_repair: 'Under repair', asset_status_retired: 'Retired',
       role_customer: 'Customer', role_agent: 'Agent', role_admin: 'Administrator',
       filter_all_types: 'All types', filter_all_statuses: 'All statuses', filter_all_priorities: 'All priorities',
+      onboarding_filter_active: 'Active',
       filter_chip_status: 'Status', filter_chip_priority: 'Priority', filter_chip_type: 'Type', filter_chip_remove_title: 'Remove filter',
       filter_all_assignees: 'All assignees', filter_assigned_me: 'Assigned to me', filter_unassigned: 'Unassigned',
       search_placeholder_staff: 'Search by text, ticket number or requester...', search_placeholder_customer: 'Search by text or ticket number...',
@@ -831,6 +835,8 @@
       system_uptime_label: 'Up for', system_memory_label: 'Memory (RSS)', system_requests_label: 'API requests (15 min)',
       system_requests_reset_prefix: 'resets in', system_requests_reset_suffix: 'min', system_requests_total_suffix: 'total since start',
       system_db_label: 'Database latency', system_db_error: 'Error', system_db_mode_turso: 'Turso (persistent)', system_db_mode_local: 'Local file (not persistent)',
+      system_eventloop_label: 'Event loop lag', system_eventloop_hint: 'Direct indicator of server overload',
+      system_load_label: 'CPU load (1 min)', system_load_hint: 'of',
       admin_roles_title: 'Custom roles', admin_roles_hint: 'Create roles with specific permissions to assign to staff, beyond Agent and Administrator.',
       field_color: 'Color', field_role_read_only: 'Read-only (cannot modify tickets)', field_role_permissions: 'Permissions',
       btn_add_role: 'Create role', no_roles_hint: 'No custom roles created yet.',
@@ -2561,19 +2567,20 @@
       const targetRole = viewingAs ? viewingAs.role : state.user.role;
       if (targetRole === 'customer') { scopedChartsEl.innerHTML = ''; return; }
 
+      const usersPromise = api('/users').catch(() => ({ users: [] }));
+      const minePromise = api(`/tickets?assigned=${targetId}`).catch(() => ({ tickets: [] }));
+
       let groupId = null;
       let groupName = '';
-      try {
-        const { users } = await api('/users');
-        const me = users.find((u) => u.id === targetId);
-        if (me && me.group_id) {
-          groupId = me.group_id;
-          groupName = me.group_parent_name ? `${me.group_parent_name} / ${me.group_name}` : me.group_name;
-        }
-      } catch {}
+      const { users } = await usersPromise;
+      const me = users.find((u) => u.id === targetId);
+      if (me && me.group_id) {
+        groupId = me.group_id;
+        groupName = me.group_parent_name ? `${me.group_parent_name} / ${me.group_name}` : me.group_name;
+      }
 
       const [mineData, teamData] = await Promise.all([
-        api(`/tickets?assigned=${targetId}`).catch(() => ({ tickets: [] })),
+        minePromise,
         groupId ? api(`/tickets?group=${groupId}`).catch(() => ({ tickets: [] })) : Promise.resolve({ tickets: [] }),
       ]);
 
@@ -2663,13 +2670,15 @@
         renderPersonalCounter(tickets);
         renderCharts(tickets);
         renderScopedCharts();
+        const showClosed = activeFilters.status === 'resolved' || activeFilters.status === 'closed';
+        const listTickets = showClosed ? tickets : tickets.filter((tk) => tk.status !== 'resolved' && tk.status !== 'closed');
         if (bulkBar) {
-          const currentIds = new Set(tickets.map((tk) => tk.id));
+          const currentIds = new Set(listTickets.map((tk) => tk.id));
           [...selected].forEach((id) => { if (!currentIds.has(id)) selected.delete(id); });
         }
         const listOpts = { selectable: !!bulkBar };
-        if (groupByTeam) renderGroupedTicketList(listEl, tickets, listOpts);
-        else renderTicketList(listEl, tickets, listOpts);
+        if (groupByTeam) renderGroupedTicketList(listEl, listTickets, listOpts);
+        else renderTicketList(listEl, listTickets, listOpts);
         if (bulkBar) {
           wireSelectionCheckboxes();
           updateBulkBar();
@@ -2925,26 +2934,16 @@
   }
 
   async function renderNewTicket() {
-    let categories = [];
-    let customFields = [];
-    let templates = [];
-    try {
-      const data = await api('/categories');
-      categories = data.categories;
-    } catch { categories = []; }
-    try {
-      const data = await api('/custom-fields');
-      customFields = data.fields;
-    } catch { customFields = []; }
-    try {
-      const data = await api('/ticket-templates');
-      templates = data.templates;
-    } catch { templates = []; }
-    let otherUsers = [];
-    try {
-      const data = await api('/users');
-      otherUsers = data.users.filter((u) => u.id !== state.user.id);
-    } catch { otherUsers = []; }
+    const [categoriesData, customFieldsData, templatesData, usersData] = await Promise.all([
+      api('/categories').catch(() => ({ categories: [] })),
+      api('/custom-fields').catch(() => ({ fields: [] })),
+      api('/ticket-templates').catch(() => ({ templates: [] })),
+      api('/users').catch(() => ({ users: [] })),
+    ]);
+    const categories = categoriesData.categories;
+    const customFields = customFieldsData.fields;
+    const templates = templatesData.templates;
+    const otherUsers = usersData.users.filter((u) => u.id !== state.user.id);
 
     appEl.innerHTML = `
       <div class="view-header">
@@ -3253,8 +3252,14 @@
     let groupOptions = '';
     let assetOptions = '';
     if (isStaff() && !readOnly) {
-      try {
-        const { users } = await api('/users');
+      const [usersResult, groupsResult, assetsResult] = await Promise.all([
+        api('/users').catch(() => null),
+        api('/groups').catch(() => null),
+        api('/assets').catch(() => null),
+      ]);
+
+      if (usersResult) {
+        const { users } = usersResult;
         const staffGroups = groupStaffByGroup(users);
         assigneesOptions = `<option value="">${t('unassigned_label')}</option>` +
           staffGroups.map(({ group, members }) => `
@@ -3284,18 +3289,17 @@
               </a>` : ''}
             </div>`;
         }
-      } catch { assigneesOptions = ''; }
+      }
 
-      try {
-        const { groups } = await api('/groups');
-        groupOptions = groupOptionsHtml(groups, ticket.group_id, t('no_group_option'));
-      } catch { groupOptions = ''; }
+      if (groupsResult) {
+        groupOptions = groupOptionsHtml(groupsResult.groups, ticket.group_id, t('no_group_option'));
+      }
 
-      try {
-        const { assets } = await api('/assets');
+      if (assetsResult) {
+        const { assets } = assetsResult;
         assetOptions = `<option value="">${t('no_asset_option')}</option>` +
           assets.map((a) => `<option value="${a.id}" ${ticket.asset_id === a.id ? 'selected' : ''}>${escapeHtml(a.name)}${a.tag ? ` (${escapeHtml(a.tag)})` : ''}</option>`).join('');
-      } catch { assetOptions = ''; }
+      }
 
       staffPanel = `
         <div class="card">
@@ -4376,6 +4380,11 @@
           const memPct = Math.min(100, Math.round((status.memory.rssMb / 512) * 100));
           const reqPct = Math.min(100, Math.round((status.requestWindow.windowCount / status.requestWindow.windowMax) * 100));
           const latencyClass = status.db.latencyMs === null ? 'system-bar-danger' : status.db.latencyMs > 400 ? 'system-bar-danger' : status.db.latencyMs > 100 ? 'system-bar-warning' : 'system-bar-ok';
+          const lagClass = status.eventLoopLagMs > 100 ? 'system-bar-danger' : status.eventLoopLagMs > 30 ? 'system-bar-warning' : 'system-bar-ok';
+          const lagPct = Math.min(100, Math.round((status.eventLoopLagMs / 200) * 100));
+          const loadRatio = status.loadAvg1m / status.cpuCount;
+          const loadClass = loadRatio > 1 ? 'system-bar-danger' : loadRatio > 0.7 ? 'system-bar-warning' : 'system-bar-ok';
+          const loadPct = Math.min(100, Math.round(loadRatio * 100));
           bodyEl.className = '';
           bodyEl.innerHTML = `
             <div class="system-status-grid">
@@ -4401,6 +4410,18 @@
                 <span class="system-status-value">${status.db.latencyMs !== null ? `${status.db.latencyMs} ms` : t('system_db_error')}</span>
                 <div class="system-bar"><div class="system-bar-fill ${latencyClass}" style="width:${status.db.latencyMs !== null ? Math.min(100, Math.round((status.db.latencyMs / 500) * 100)) : 100}%"></div></div>
                 <span class="hint">${status.db.mode === 'turso' ? t('system_db_mode_turso') : t('system_db_mode_local')}</span>
+              </div>
+              <div class="system-status-card">
+                <span class="system-status-label">${t('system_eventloop_label')}</span>
+                <span class="system-status-value">${status.eventLoopLagMs} ms</span>
+                <div class="system-bar"><div class="system-bar-fill ${lagClass}" style="width:${lagPct}%"></div></div>
+                <span class="hint">${t('system_eventloop_hint')}</span>
+              </div>
+              <div class="system-status-card">
+                <span class="system-status-label">${t('system_load_label')}</span>
+                <span class="system-status-value">${status.loadAvg1m}</span>
+                <div class="system-bar"><div class="system-bar-fill ${loadClass}" style="width:${loadPct}%"></div></div>
+                <span class="hint">${t('system_load_hint')} ${status.cpuCount} CPU</span>
               </div>
             </div>`;
         } catch (err) {
@@ -5015,8 +5036,7 @@
         listEl.className = 'spinner-row';
         listEl.textContent = t('loading');
         try {
-          const { categories } = await api('/categories');
-          const { groups } = await api('/groups');
+          const [{ categories }, { groups }] = await Promise.all([api('/categories'), api('/groups')]);
           const groupSelect = document.getElementById('newCategoryGroup');
           groupSelect.innerHTML = groupOptionsHtml(groups, '', t('option_none'));
 
@@ -6095,6 +6115,7 @@
       </div>
       <div class="filters">
         <select id="onbStatusFilter">
+          <option value="active" selected>${t('onboarding_filter_active')}</option>
           <option value="">${t('filter_all_statuses')}</option>
           ${Object.entries(onboardingStatusLabels()).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
         </select>
@@ -6622,10 +6643,12 @@
   }
 
   async function renderSearch() {
-    let groups = [];
-    let tags = [];
-    try { groups = (await api('/groups')).groups; } catch { groups = []; }
-    try { tags = (await api('/tags')).tags; } catch { tags = []; }
+    const [groupsData, tagsData] = await Promise.all([
+      api('/groups').catch(() => ({ groups: [] })),
+      api('/tags').catch(() => ({ tags: [] })),
+    ]);
+    const groups = groupsData.groups;
+    const tags = tagsData.tags;
 
     appEl.innerHTML = `
       <div class="view-header">

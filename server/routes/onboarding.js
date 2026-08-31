@@ -202,7 +202,9 @@ router.get(
       clauses.push('r.requested_by = ?');
       params.push(req.user.id);
     }
-    if (status && ['open', 'in_progress', 'completed', 'cancelled'].includes(status)) {
+    if (status === 'active') {
+      clauses.push("r.status IN ('open', 'in_progress')");
+    } else if (status && ['open', 'in_progress', 'completed', 'cancelled'].includes(status)) {
       clauses.push('r.status = ?');
       params.push(status);
     }
