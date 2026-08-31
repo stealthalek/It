@@ -57,23 +57,30 @@ router.get(
   '/',
   asyncHandler(async (req, res) => {
     const row = await db.get('SELECT org_name, org_logo FROM app_settings WHERE id = 1');
-    const defaultOrgName = (row && row.org_name) || 'Ticketing';
-    let orgName = defaultOrgName;
+    let orgName = (row && row.org_name) || 'Ticketing';
+    let orgLogo = (row && row.org_logo) || null;
 
     const header = req.headers.authorization || '';
     const token = header.startsWith('Bearer ') ? header.slice(7) : null;
     if (token) {
       try {
         const payload = jwt.verify(token, JWT_SECRET);
-        const user = await db.get('SELECT group_id FROM users WHERE id = ?', [payload.sub]);
-        if (user && user.group_id) {
-          const groupDisplayName = await resolveGroupDisplayName(user.group_id);
-          if (groupDisplayName) orgName = groupDisplayName;
+        const user = await db.get('SELECT group_id, company_id FROM users WHERE id = ?', [payload.sub]);
+        if (user) {
+          if (user.company_id) {
+            const company = await db.get('SELECT display_name, logo FROM companies WHERE id = ?', [user.company_id]);
+            if (company && company.display_name) orgName = company.display_name;
+            if (company && company.logo) orgLogo = company.logo;
+          }
+          if (user.group_id) {
+            const groupDisplayName = await resolveGroupDisplayName(user.group_id);
+            if (groupDisplayName) orgName = groupDisplayName;
+          }
         }
       } catch {}
     }
 
-    res.json({ orgName, orgLogo: (row && row.org_logo) || null });
+    res.json({ orgName, orgLogo });
   })
 );
 
@@ -91,7 +98,11 @@ router.patch(
         return res.status(400).json({ error: 'Immagine troppo grande (max 300 KB circa)' });
       }
     }
-    await db.run('UPDATE app_settings SET org_logo = ? WHERE id = 1', [orgLogo || null]);
+    if (req.user.is_super_admin) {
+      await db.run('UPDATE app_settings SET org_logo = ? WHERE id = 1', [orgLogo || null]);
+    } else if (req.user.company_id) {
+      await db.run('UPDATE companies SET logo = ? WHERE id = ?', [orgLogo || null, req.user.company_id]);
+    }
     logAudit(req.user.id, 'settings', null, orgLogo ? 'Logo organizzazione aggiornato' : 'Logo organizzazione rimosso').catch(() => {});
     res.json({ orgLogo: orgLogo || null });
   })
@@ -106,7 +117,11 @@ router.patch(
     if (!orgName || !orgName.trim()) {
       return res.status(400).json({ error: 'Il nome dell\'organizzazione è obbligatorio' });
     }
-    await db.run('UPDATE app_settings SET org_name = ? WHERE id = 1', [orgName.trim()]);
+    if (req.user.is_super_admin) {
+      await db.run('UPDATE app_settings SET org_name = ? WHERE id = 1', [orgName.trim()]);
+    } else if (req.user.company_id) {
+      await db.run('UPDATE companies SET display_name = ? WHERE id = ?', [orgName.trim(), req.user.company_id]);
+    }
     logAudit(req.user.id, 'settings', null, `Nome organizzazione aggiornato a "${orgName.trim()}"`).catch(() => {});
     res.json({ orgName: orgName.trim() });
   })

@@ -179,6 +179,7 @@
     x: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
     sun: '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>',
     moon: '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>',
+    building: '<rect x="4" y="2" width="16" height="20" rx="1"/><line x1="9" y1="6" x2="9" y2="6.01"/><line x1="15" y1="6" x2="15" y2="6.01"/><line x1="9" y1="10" x2="9" y2="10.01"/><line x1="15" y1="10" x2="15" y2="10.01"/><line x1="9" y1="14" x2="9" y2="14.01"/><line x1="15" y1="14" x2="15" y2="14.01"/><line x1="9" y1="22" x2="9" y2="18"/><line x1="15" y1="22" x2="15" y2="18"/>',
   };
 
   const CATEGORY_ICON_CHOICES = ['ticket', 'wifi', 'globe', 'printer', 'mail', 'monitor', 'server', 'phone', 'grid', 'lock', 'shield', 'users', 'laptop', 'tablet', 'package', 'bulb', 'flame', 'truck', 'megaphone'];
@@ -200,6 +201,28 @@
     return String(str ?? '').replace(/[&<>"']/g, (c) => ({
       '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
     }[c]));
+  }
+
+  function resizeImageToDataUri(file, maxSize) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error('Lettura file fallita'));
+      reader.onload = () => {
+        const img = new Image();
+        img.onerror = () => reject(new Error('Immagine non valida'));
+        img.onload = () => {
+          const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.round(img.width * scale);
+          canvas.height = Math.round(img.height * scale);
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL('image/png'));
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
   }
 
   function formatDate(iso) {
@@ -562,6 +585,18 @@
       admin_section_overview: 'Panoramica', admin_section_users: 'Utenti', admin_section_groups: 'Gruppi e organigramma',
       admin_section_catalog: 'Catalogo e campi', admin_section_automation: 'Automazione', admin_section_onboarding: 'Onboarding',
       admin_section_org: 'Organizzazione', admin_section_roles: 'Ruoli', admin_section_system: 'Sistema',
+      admin_section_companies: 'Aziende',
+      admin_companies_title: 'Gestione aziende', admin_companies_hint: 'Ogni azienda ha una propria intestazione, logo, gruppi e utenti separati dalle altre.',
+      field_company_name: 'Nome interno', field_company_display_name: 'Titolo mostrato (opzionale)',
+      btn_create_company: 'Crea azienda', company_error_required: 'Il nome interno è obbligatorio',
+      table_company: 'Azienda', table_members: 'Utenti', table_groups: 'Gruppi',
+      company_active_label: 'Attiva', company_inactive_label: 'Disattivata',
+      btn_deactivate: 'Disattiva', btn_activate: 'Attiva',
+      toast_company_created: 'Azienda creata', toast_company_updated: 'Azienda aggiornata', toast_company_deleted: 'Azienda eliminata',
+      confirm_delete_company: 'Eliminare questa azienda? L\'operazione è possibile solo se non ha più utenti o gruppi collegati.',
+      company_logo_label: 'Logo', no_companies_hint: 'Nessuna azienda creata.',
+      field_company_select: 'Azienda', option_select_company: 'Seleziona la tua azienda',
+      company_select_required: 'Seleziona la tua azienda per continuare',
       admin_system_title: 'Stato del server', admin_system_hint: 'Indicatori in tempo reale su carico, memoria e limiti tecnici della piattaforma (solo admin).',
       system_uptime_label: 'Attivo da', system_memory_label: 'Memoria (RSS)', system_requests_label: 'Richieste API (15 min)',
       system_requests_reset_prefix: 'si azzera tra', system_requests_reset_suffix: 'min', system_requests_total_suffix: 'totali dall\'avvio',
@@ -883,6 +918,18 @@
       admin_section_overview: 'Overview', admin_section_users: 'Users', admin_section_groups: 'Groups and org chart',
       admin_section_catalog: 'Catalog and fields', admin_section_automation: 'Automation', admin_section_onboarding: 'Onboarding',
       admin_section_org: 'Organization', admin_section_roles: 'Roles', admin_section_system: 'System',
+      admin_section_companies: 'Companies',
+      admin_companies_title: 'Company management', admin_companies_hint: 'Each company has its own title, logo, groups and users, separate from the others.',
+      field_company_name: 'Internal name', field_company_display_name: 'Displayed title (optional)',
+      btn_create_company: 'Create company', company_error_required: 'The internal name is required',
+      table_company: 'Company', table_members: 'Users', table_groups: 'Groups',
+      company_active_label: 'Active', company_inactive_label: 'Deactivated',
+      btn_deactivate: 'Deactivate', btn_activate: 'Activate',
+      toast_company_created: 'Company created', toast_company_updated: 'Company updated', toast_company_deleted: 'Company deleted',
+      confirm_delete_company: 'Delete this company? This is only possible if it has no users or groups left.',
+      company_logo_label: 'Logo', no_companies_hint: 'No companies created yet.',
+      field_company_select: 'Company', option_select_company: 'Select your company',
+      company_select_required: 'Select your company to continue',
       admin_system_title: 'Server status', admin_system_hint: 'Real-time indicators of platform load, memory and technical limits (admin only).',
       system_uptime_label: 'Up for', system_memory_label: 'Memory (RSS)', system_requests_label: 'API requests (15 min)',
       system_requests_reset_prefix: 'resets in', system_requests_reset_suffix: 'min', system_requests_total_suffix: 'total since start',
@@ -1803,6 +1850,10 @@
               <label for="name">${t('field_name')}</label>
               <input id="name" type="text" required autocomplete="name" />
             </div>
+            <div class="field" id="registerCompanyWrap" hidden>
+              <label for="registerCompany">${t('field_company_select')}</label>
+              <select id="registerCompany"></select>
+            </div>
             <div class="field">
               <label for="email">${t('login_email')}</label>
               <input id="email" type="email" required autocomplete="email" />
@@ -1837,19 +1888,34 @@
     attachPasswordMatch('password', 'password2', 'pwMatchHint');
     renderSsoButtons('ssoContainer');
 
+    api('/companies/public').then(({ companies }) => {
+      if (companies.length <= 1) return;
+      const wrap = document.getElementById('registerCompanyWrap');
+      const select = document.getElementById('registerCompany');
+      select.innerHTML = `<option value="">${t('option_select_company')}</option>` +
+        companies.map((c) => `<option value="${c.id}">${escapeHtml(c.display_name || c.name)}</option>`).join('');
+      wrap.hidden = false;
+    }).catch(() => {});
+
     guardForm(document.getElementById('registerForm'), async () => {
       const name = document.getElementById('name').value.trim();
       const email = document.getElementById('email').value.trim();
       const password = document.getElementById('password').value;
       const password2 = document.getElementById('password2').value;
+      const companyWrap = document.getElementById('registerCompanyWrap');
+      const companyId = companyWrap.hidden ? undefined : document.getElementById('registerCompany').value || undefined;
       const errEl = document.getElementById('registerError');
       errEl.textContent = '';
       if (password !== password2) {
         errEl.textContent = t('passwords_mismatch');
         return;
       }
+      if (!companyWrap.hidden && !companyId) {
+        errEl.textContent = t('company_select_required');
+        return;
+      }
       try {
-        const { token, user } = await api('/auth/register', { method: 'POST', body: { name, email, password } });
+        const { token, user } = await api('/auth/register', { method: 'POST', body: { name, email, password, companyId } });
         setSession(token, user);
         showToast(`${t('toast_account_created')} ${user.name}`, 'success');
         location.hash = '#/dashboard';
@@ -4134,6 +4200,7 @@
       { key: 'roles', icon: 'shield', label: t('admin_section_roles') },
       { key: 'org', icon: 'globe', label: t('admin_section_org') },
       { key: 'system', icon: 'server', label: t('admin_section_system') },
+      ...(state.user.is_super_admin ? [{ key: 'companies', icon: 'building', label: t('admin_section_companies') }] : []),
     ];
     const activeSection = isAdmin ? (ADMIN_SECTIONS.some((s) => s.key === state.adminSection) ? state.adminSection : 'overview') : 'users';
 
@@ -4407,6 +4474,18 @@
           <p class="hint">${t('admin_system_hint')}</p>
           <div id="systemStatusBody" class="spinner-row">${t('loading')}</div>
         </div>
+        ${state.user.is_super_admin ? `
+        <div class="card admin-grid-full" data-admin-panel="companies" data-block-id="companiesManagement" ${activeSection === 'companies' ? '' : 'hidden'}>
+          <h3 class="section-title" style="margin-top:0">${icon('building')} ${t('admin_companies_title')}</h3>
+          <p class="hint">${t('admin_companies_hint')}</p>
+          <form id="newCompanyForm" style="display:flex;flex-wrap:wrap;gap:0.6rem;align-items:flex-end;margin:0.75rem 0">
+            <div class="field" style="flex:1 1 12rem"><label for="newCompanyName">${t('field_company_name')}</label><input id="newCompanyName" required /></div>
+            <div class="field" style="flex:1 1 12rem"><label for="newCompanyDisplayName">${t('field_company_display_name')}</label><input id="newCompanyDisplayName" /></div>
+            <button class="btn btn-sm" type="submit">${t('btn_create_company')}</button>
+          </form>
+          <p class="error-text" id="companyError"></p>
+          <div id="companiesList" class="spinner-row">${t('loading')}</div>
+        </div>` : ''}
       </div>` : ''}
       <div id="usersWrap" class="card spinner-row" ${isAdmin && activeSection !== 'users' ? 'hidden' : ''}>${t('loading')}</div>`;
 
@@ -5088,6 +5167,126 @@
       });
 
       loadRoles();
+
+      if (state.user.is_super_admin) {
+        async function loadCompanies() {
+          const listEl = document.getElementById('companiesList');
+          if (!listEl) return;
+          listEl.className = 'spinner-row';
+          listEl.textContent = t('loading');
+          try {
+            const { companies } = await api('/companies');
+            listEl.className = '';
+            listEl.innerHTML = companies.length ? `
+              <div class="table-scroll">
+                <table class="users-table">
+                  <thead><tr>
+                    <th>${t('table_company')}</th><th>${t('field_company_display_name')}</th>
+                    <th>${t('company_logo_label')}</th><th>${t('table_members')}</th><th>${t('table_groups')}</th>
+                    <th>${t('th_status')}</th><th></th>
+                  </tr></thead>
+                  <tbody>
+                    ${companies.map((c) => `
+                      <tr>
+                        <td>${escapeHtml(c.name)}</td>
+                        <td><input type="text" class="companyDisplayNameInput" data-id="${c.id}" value="${escapeHtml(c.display_name || '')}" style="max-width:12rem" /></td>
+                        <td>
+                          <div style="display:flex;align-items:center;gap:0.5rem">
+                            <img src="${c.logo || 'img/icon.svg'}" alt="" width="28" height="28" style="border-radius:6px;object-fit:contain;background:var(--surface-alt)" />
+                            <input type="file" class="companyLogoInput" data-id="${c.id}" accept="image/png,image/jpeg,image/svg+xml,image/webp" style="max-width:8rem" />
+                          </div>
+                        </td>
+                        <td>${c.member_count}</td>
+                        <td>${c.group_count}</td>
+                        <td>${c.is_active ? `<span class="role-tag role-tag-active">${t('company_active_label')}</span>` : `<span class="role-tag role-tag-danger">${t('company_inactive_label')}</span>`}</td>
+                        <td style="display:flex;gap:0.4rem">
+                          <button type="button" class="btn btn-ghost btn-sm toggleCompanyActiveBtn" data-id="${c.id}" data-active="${c.is_active ? '1' : '0'}">${c.is_active ? t('btn_deactivate') : t('btn_activate')}</button>
+                          <button type="button" class="icon-btn deleteCompanyBtn" data-id="${c.id}" title="${t('btn_delete')}">${icon('trash')}</button>
+                        </td>
+                      </tr>`).join('')}
+                  </tbody>
+                </table>
+              </div>` : `<p class="hint">${t('no_companies_hint')}</p>`;
+
+            listEl.querySelectorAll('.companyDisplayNameInput').forEach((input) => {
+              input.addEventListener('change', async () => {
+                try {
+                  await api(`/companies/${input.dataset.id}`, { method: 'PATCH', body: { displayName: input.value.trim() || null } });
+                  showToast(t('toast_company_updated'), 'success');
+                } catch (err) {
+                  showToast(err.message, 'error');
+                }
+              });
+            });
+
+            listEl.querySelectorAll('.companyLogoInput').forEach((input) => {
+              input.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                try {
+                  const dataUri = await resizeImageToDataUri(file, 160);
+                  await api(`/companies/${input.dataset.id}`, { method: 'PATCH', body: { logo: dataUri } });
+                  showToast(t('toast_company_updated'), 'success');
+                  loadCompanies();
+                } catch (err) {
+                  showToast(err.message, 'error');
+                }
+              });
+            });
+
+            listEl.querySelectorAll('.toggleCompanyActiveBtn').forEach((btn) => {
+              btn.addEventListener('click', async () => {
+                try {
+                  await api(`/companies/${btn.dataset.id}`, { method: 'PATCH', body: { isActive: btn.dataset.active !== '1' } });
+                  showToast(t('toast_company_updated'), 'success');
+                  loadCompanies();
+                } catch (err) {
+                  showToast(err.message, 'error');
+                }
+              });
+            });
+
+            listEl.querySelectorAll('.deleteCompanyBtn').forEach((btn) => {
+              btn.addEventListener('click', async () => {
+                if (!confirm(t('confirm_delete_company'))) return;
+                try {
+                  await api(`/companies/${btn.dataset.id}`, { method: 'DELETE' });
+                  showToast(t('toast_company_deleted'), 'success');
+                  loadCompanies();
+                } catch (err) {
+                  showToast(err.message, 'error');
+                }
+              });
+            });
+          } catch (err) {
+            listEl.className = '';
+            listEl.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
+          }
+        }
+
+        guardForm(document.getElementById('newCompanyForm'), async () => {
+          const errEl = document.getElementById('companyError');
+          errEl.textContent = '';
+          const name = document.getElementById('newCompanyName').value.trim();
+          if (!name) {
+            errEl.textContent = t('company_error_required');
+            return;
+          }
+          try {
+            await api('/companies', {
+              method: 'POST',
+              body: { name, displayName: document.getElementById('newCompanyDisplayName').value.trim() || null },
+            });
+            document.getElementById('newCompanyForm').reset();
+            showToast(t('toast_company_created'), 'success');
+            loadCompanies();
+          } catch (err) {
+            errEl.textContent = err.message;
+          }
+        });
+
+        loadCompanies();
+      }
 
       guardForm(document.getElementById('createStaffForm'), async (e) => {
         const errEl = document.getElementById('createStaffError');
@@ -7880,28 +8079,6 @@
           orgLogoRemoveBtn.hidden = false;
         }
       }).catch(() => {});
-
-      function resizeImageToDataUri(file, maxSize) {
-        return new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onerror = () => reject(new Error('Lettura file fallita'));
-          reader.onload = () => {
-            const img = new Image();
-            img.onerror = () => reject(new Error('Immagine non valida'));
-            img.onload = () => {
-              const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
-              const canvas = document.createElement('canvas');
-              canvas.width = Math.round(img.width * scale);
-              canvas.height = Math.round(img.height * scale);
-              const ctx = canvas.getContext('2d');
-              ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-              resolve(canvas.toDataURL('image/png'));
-            };
-            img.src = reader.result;
-          };
-          reader.readAsDataURL(file);
-        });
-      }
 
       document.getElementById('orgLogoInput').addEventListener('change', async (e) => {
         const file = e.target.files[0];

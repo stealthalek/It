@@ -312,11 +312,9 @@ async function setupSchema() {
       'CREATE INDEX IF NOT EXISTS idx_onboarding_items_ticket_id ON onboarding_items(ticket_id)',
       'CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON user_sessions(user_id)',
       'CREATE INDEX IF NOT EXISTS idx_onboarding_attachments_request_id ON onboarding_attachments(request_id)',
-      'CREATE INDEX IF NOT EXISTS idx_tickets_group_id ON tickets(group_id)',
       'CREATE INDEX IF NOT EXISTS idx_tickets_status ON tickets(status)',
       'CREATE INDEX IF NOT EXISTS idx_tickets_category ON tickets(category)',
       'CREATE INDEX IF NOT EXISTS idx_tickets_updated_at ON tickets(updated_at)',
-      'CREATE INDEX IF NOT EXISTS idx_users_group_id ON users(group_id)',
     ],
     'write'
   );
@@ -460,6 +458,7 @@ async function migrate() {
   if (!userCols.some((c) => c.name === 'group_id')) {
     await run('ALTER TABLE users ADD COLUMN group_id INTEGER REFERENCES groups(id) ON DELETE SET NULL');
   }
+  await run('CREATE INDEX IF NOT EXISTS idx_users_group_id ON users(group_id)');
   if (!userCols.some((c) => c.name === 'is_super_admin')) {
     await run('ALTER TABLE users ADD COLUMN is_super_admin INTEGER NOT NULL DEFAULT 0');
   }
@@ -484,6 +483,7 @@ async function migrate() {
   if (!ticketCols2.some((c) => c.name === 'group_id')) {
     await run('ALTER TABLE tickets ADD COLUMN group_id INTEGER REFERENCES groups(id) ON DELETE SET NULL');
   }
+  await run('CREATE INDEX IF NOT EXISTS idx_tickets_group_id ON tickets(group_id)');
   if (!ticketCols2.some((c) => c.name === 'resolved_at')) {
     await run('ALTER TABLE tickets ADD COLUMN resolved_at TEXT');
   }
@@ -720,6 +720,68 @@ async function migrate() {
     await run('ALTER TABLE users ADD COLUMN blocked_reason TEXT');
   }
   await run('CREATE INDEX IF NOT EXISTS idx_users_is_blocked ON users(is_blocked)');
+
+  await run(`CREATE TABLE IF NOT EXISTS companies (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    display_name TEXT,
+    logo TEXT,
+    is_active INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`);
+
+  const groupCols5 = await all('PRAGMA table_info(groups)');
+  if (!groupCols5.some((c) => c.name === 'company_id')) {
+    await run('ALTER TABLE groups ADD COLUMN company_id INTEGER REFERENCES companies(id) ON DELETE SET NULL');
+  }
+  const userCols7 = await all('PRAGMA table_info(users)');
+  if (!userCols7.some((c) => c.name === 'company_id')) {
+    await run('ALTER TABLE users ADD COLUMN company_id INTEGER REFERENCES companies(id) ON DELETE SET NULL');
+  }
+  const groupsTable = await get("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'groups'");
+  if (groupsTable && groupsTable.sql && groupsTable.sql.includes('name TEXT NOT NULL UNIQUE')) {
+    await run('PRAGMA foreign_keys = OFF');
+    await run(`CREATE TABLE groups_new (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      parent_id INTEGER REFERENCES groups(id) ON DELETE SET NULL,
+      sla_response_hours INTEGER,
+      sla_resolve_hours INTEGER,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      work_start_hour INTEGER NOT NULL DEFAULT 9,
+      work_end_hour INTEGER NOT NULL DEFAULT 18,
+      manager_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      display_name TEXT,
+      company_id INTEGER REFERENCES companies(id) ON DELETE SET NULL,
+      UNIQUE(name, company_id)
+    )`);
+    await run(`INSERT INTO groups_new (id, name, parent_id, sla_response_hours, sla_resolve_hours, created_at, work_start_hour, work_end_hour, manager_id, display_name, company_id)
+      SELECT id, name, parent_id, sla_response_hours, sla_resolve_hours, created_at, work_start_hour, work_end_hour, manager_id, display_name, company_id FROM groups`);
+    await run('DROP TABLE groups');
+    await run('ALTER TABLE groups_new RENAME TO groups');
+    await run('PRAGMA foreign_keys = ON');
+  }
+
+  await run('CREATE INDEX IF NOT EXISTS idx_groups_company_id ON groups(company_id)');
+  await run('CREATE INDEX IF NOT EXISTS idx_users_company_id ON users(company_id)');
+}
+
+async function seedDefaultCompany() {
+  const anyUser = await get('SELECT id FROM users LIMIT 1');
+  if (!anyUser) return;
+
+  let defaultCompany = await get('SELECT id FROM companies ORDER BY id ASC LIMIT 1');
+  if (!defaultCompany) {
+    const settingsRow = await get('SELECT org_name, org_logo FROM app_settings WHERE id = 1');
+    const info = await run('INSERT INTO companies (name, display_name, logo) VALUES (?, ?, ?)', [
+      'Azienda principale',
+      (settingsRow && settingsRow.org_name) || null,
+      (settingsRow && settingsRow.org_logo) || null,
+    ]);
+    defaultCompany = { id: Number(info.lastInsertRowid) };
+  }
+  await run('UPDATE users SET company_id = ? WHERE company_id IS NULL', [defaultCompany.id]);
+  await run('UPDATE groups SET company_id = ? WHERE company_id IS NULL', [defaultCompany.id]);
 }
 
 async function seedDefaultRoles() {
@@ -1077,6 +1139,7 @@ async function initDb() {
   await migrate();
   await seedDefaultAdmin();
   await seedAppSettings();
+  await seedDefaultCompany();
   await seedDefaultContent();
   console.log(usingTurso ? 'Database: Turso (persistente)' : `Database: file locale (${url})`);
 }

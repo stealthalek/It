@@ -30,6 +30,7 @@ const onboardingRoutes = require('./routes/onboarding');
 const roleRoutes = require('./routes/roles');
 const adminStatusRoutes = require('./routes/admin-status');
 const assetLetterRoutes = require('./routes/asset-letters');
+const companyRoutes = require('./routes/companies');
 const { loadHolidays } = require('./sla');
 const { recordRequest } = require('./lib/requestStats');
 
@@ -93,6 +94,7 @@ app.use('/api/onboarding', onboardingRoutes);
 app.use('/api/roles', roleRoutes);
 app.use('/api/admin/status', adminStatusRoutes);
 app.use('/api/asset-letters', assetLetterRoutes);
+app.use('/api/companies', companyRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() });

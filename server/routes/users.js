@@ -19,19 +19,37 @@ const USER_SELECT = `
   SELECT u.id, u.name, u.email, u.role, u.group_id, g.name AS group_name, gParent.name AS group_parent_name,
     u.locale, u.created_at, u.is_external, u.manager_id, manager.name AS manager_name,
     u.role_id, r.label_it AS role_label_it, r.label_en AS role_label_en, r.color AS role_color, r.read_only AS role_read_only,
-    u.is_blocked, u.blocked_at, u.blocked_reason
+    u.is_blocked, u.blocked_at, u.blocked_reason, u.company_id, c.display_name AS company_display_name, c.name AS company_name
   FROM users u
   LEFT JOIN groups g ON g.id = u.group_id
   LEFT JOIN groups gParent ON gParent.id = g.parent_id
   LEFT JOIN users manager ON manager.id = u.manager_id
   LEFT JOIN roles r ON r.id = u.role_id
+  LEFT JOIN companies c ON c.id = u.company_id
 `;
+
+function outOfScope(target, requester) {
+  if (!target) return true;
+  if (target.is_super_admin && !requester.is_super_admin) return true;
+  if (!requester.is_super_admin && target.company_id !== requester.company_id) return true;
+  return false;
+}
 
 router.get(
   '/',
   asyncHandler(async (req, res) => {
-    const where = req.user.is_super_admin ? '' : 'WHERE u.is_super_admin = 0';
-    const users = await db.all(`${USER_SELECT} ${where} ORDER BY u.name ASC LIMIT 5000`);
+    const conditions = [];
+    const params = [];
+    if (!req.user.is_super_admin) {
+      conditions.push('u.is_super_admin = 0');
+      conditions.push('u.company_id = ?');
+      params.push(req.user.company_id);
+    } else if (req.query.companyId) {
+      conditions.push('u.company_id = ?');
+      params.push(Number(req.query.companyId));
+    }
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+    const users = await db.all(`${USER_SELECT} ${where} ORDER BY u.name ASC LIMIT 5000`, params);
     res.json({ users });
   })
 );
@@ -44,8 +62,8 @@ router.get(
     if (!user) {
       return res.status(404).json({ error: 'Utente non trovato' });
     }
-    const full = await db.get('SELECT is_super_admin FROM users WHERE id = ?', [req.params.id]);
-    if (full.is_super_admin && !req.user.is_super_admin) {
+    const full = await db.get('SELECT is_super_admin, company_id FROM users WHERE id = ?', [req.params.id]);
+    if (outOfScope(full, req.user)) {
       return res.status(404).json({ error: 'Utente non trovato' });
     }
     res.json({ user: { ...user, is_super_admin: !!full.is_super_admin } });
@@ -56,7 +74,7 @@ router.post(
   '/',
   requireRole('admin'),
   asyncHandler(async (req, res) => {
-    const { name, email, role, groupId, locale, isExternal, managerId, roleId } = req.body || {};
+    const { name, email, role, groupId, locale, isExternal, managerId, roleId, companyId } = req.body || {};
 
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Il nome è obbligatorio' });
@@ -73,10 +91,19 @@ router.post(
       return res.status(409).json({ error: 'Email già registrata' });
     }
 
+    let finalCompanyId = req.user.company_id;
+    if (req.user.is_super_admin && companyId) {
+      const company = await db.get('SELECT id FROM companies WHERE id = ?', [companyId]);
+      if (!company) {
+        return res.status(400).json({ error: 'Azienda non valida' });
+      }
+      finalCompanyId = company.id;
+    }
+
     let finalGroupId = null;
     if (groupId) {
-      const group = await db.get('SELECT id FROM groups WHERE id = ?', [groupId]);
-      if (!group) {
+      const group = await db.get('SELECT id, company_id FROM groups WHERE id = ?', [groupId]);
+      if (!group || group.company_id !== finalCompanyId) {
         return res.status(400).json({ error: 'Gruppo non valido' });
       }
       finalGroupId = group.id;
@@ -85,8 +112,8 @@ router.post(
 
     let finalManagerId = null;
     if (managerId) {
-      const manager = await db.get('SELECT id FROM users WHERE id = ?', [managerId]);
-      if (!manager) {
+      const manager = await db.get('SELECT id, company_id FROM users WHERE id = ?', [managerId]);
+      if (!manager || manager.company_id !== finalCompanyId) {
         return res.status(400).json({ error: 'Manager non valido' });
       }
       finalManagerId = manager.id;
@@ -105,8 +132,8 @@ router.post(
     const hash = bcrypt.hashSync(tempPassword, 10);
 
     const info = await db.run(
-      'INSERT INTO users (name, email, password, role, group_id, locale, is_external, manager_id, role_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [name.trim(), email.toLowerCase(), hash, role, finalGroupId, finalLocale, isExternal ? 1 : 0, finalManagerId, finalRoleId]
+      'INSERT INTO users (name, email, password, role, group_id, locale, is_external, manager_id, role_id, company_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [name.trim(), email.toLowerCase(), hash, role, finalGroupId, finalLocale, isExternal ? 1 : 0, finalManagerId, finalRoleId, finalCompanyId]
     );
 
     const user = await db.get(`${USER_SELECT} WHERE u.id = ?`, [Number(info.lastInsertRowid)]);
@@ -128,8 +155,8 @@ router.patch(
       return res.status(400).json({ error: 'Non puoi modificare il tuo stesso ruolo' });
     }
 
-    const target = await db.get('SELECT is_super_admin FROM users WHERE id = ?', [req.params.id]);
-    if (target && target.is_super_admin && !req.user.is_super_admin) {
+    const target = await db.get('SELECT is_super_admin, company_id FROM users WHERE id = ?', [req.params.id]);
+    if (outOfScope(target, req.user)) {
       return res.status(404).json({ error: 'Utente non trovato' });
     }
 
@@ -148,8 +175,8 @@ router.patch(
   '/:id/role_id',
   requireRole('admin'),
   asyncHandler(async (req, res) => {
-    const target = await db.get('SELECT is_super_admin FROM users WHERE id = ?', [req.params.id]);
-    if (target && target.is_super_admin && !req.user.is_super_admin) {
+    const target = await db.get('SELECT is_super_admin, company_id FROM users WHERE id = ?', [req.params.id]);
+    if (outOfScope(target, req.user)) {
       return res.status(404).json({ error: 'Utente non trovato' });
     }
 
@@ -178,16 +205,16 @@ router.patch(
   '/:id/group',
   requireRole('admin'),
   asyncHandler(async (req, res) => {
-    const target = await db.get('SELECT is_super_admin FROM users WHERE id = ?', [req.params.id]);
-    if (target && target.is_super_admin && !req.user.is_super_admin) {
+    const target = await db.get('SELECT is_super_admin, company_id FROM users WHERE id = ?', [req.params.id]);
+    if (outOfScope(target, req.user)) {
       return res.status(404).json({ error: 'Utente non trovato' });
     }
 
     const { groupId } = req.body || {};
     let finalGroupId = null;
     if (groupId) {
-      const group = await db.get('SELECT id FROM groups WHERE id = ?', [groupId]);
-      if (!group) {
+      const group = await db.get('SELECT id, company_id FROM groups WHERE id = ?', [groupId]);
+      if (!group || group.company_id !== target.company_id) {
         return res.status(400).json({ error: 'Gruppo non valido' });
       }
       finalGroupId = group.id;
@@ -213,8 +240,8 @@ router.patch(
       return res.status(400).json({ error: 'Lingua non valida' });
     }
 
-    const target = await db.get('SELECT is_super_admin FROM users WHERE id = ?', [req.params.id]);
-    if (target && target.is_super_admin && !req.user.is_super_admin) {
+    const target = await db.get('SELECT is_super_admin, company_id FROM users WHERE id = ?', [req.params.id]);
+    if (outOfScope(target, req.user)) {
       return res.status(404).json({ error: 'Utente non trovato' });
     }
 
@@ -233,8 +260,8 @@ router.patch(
   '/:id/external',
   requireRole('admin'),
   asyncHandler(async (req, res) => {
-    const target = await db.get('SELECT is_super_admin FROM users WHERE id = ?', [req.params.id]);
-    if (target && target.is_super_admin && !req.user.is_super_admin) {
+    const target = await db.get('SELECT is_super_admin, company_id FROM users WHERE id = ?', [req.params.id]);
+    if (outOfScope(target, req.user)) {
       return res.status(404).json({ error: 'Utente non trovato' });
     }
 
@@ -251,11 +278,38 @@ router.patch(
 );
 
 router.patch(
+  '/:id/company',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    if (!req.user.is_super_admin) {
+      return res.status(403).json({ error: 'Permessi insufficienti' });
+    }
+    const target = await db.get('SELECT id FROM users WHERE id = ?', [req.params.id]);
+    if (!target) {
+      return res.status(404).json({ error: 'Utente non trovato' });
+    }
+    const { companyId } = req.body || {};
+    if (!companyId) {
+      return res.status(400).json({ error: 'Azienda obbligatoria' });
+    }
+    const company = await db.get('SELECT id FROM companies WHERE id = ?', [companyId]);
+    if (!company) {
+      return res.status(400).json({ error: 'Azienda non valida' });
+    }
+    await db.run('UPDATE users SET company_id = ?, group_id = NULL WHERE id = ?', [company.id, req.params.id]);
+
+    const user = await db.get(`${USER_SELECT} WHERE u.id = ?`, [req.params.id]);
+    logAudit(req.user.id, 'user', user.id, `Azienda di "${user.name}" impostata a "${user.company_name}"`).catch(() => {});
+    res.json({ user });
+  })
+);
+
+router.patch(
   '/:id/manager',
   requireRole('admin'),
   asyncHandler(async (req, res) => {
-    const target = await db.get('SELECT is_super_admin FROM users WHERE id = ?', [req.params.id]);
-    if (target && target.is_super_admin && !req.user.is_super_admin) {
+    const target = await db.get('SELECT is_super_admin, company_id FROM users WHERE id = ?', [req.params.id]);
+    if (outOfScope(target, req.user)) {
       return res.status(404).json({ error: 'Utente non trovato' });
     }
     if (Number(req.params.id) === Number(req.body && req.body.managerId)) {
@@ -265,8 +319,8 @@ router.patch(
     const { managerId } = req.body || {};
     let finalManagerId = null;
     if (managerId) {
-      const manager = await db.get('SELECT id FROM users WHERE id = ?', [managerId]);
-      if (!manager) {
+      const manager = await db.get('SELECT id, company_id FROM users WHERE id = ?', [managerId]);
+      if (!manager || manager.company_id !== target.company_id) {
         return res.status(400).json({ error: 'Manager non valido' });
       }
       finalManagerId = manager.id;
@@ -307,11 +361,8 @@ router.patch(
   '/:id/profile',
   requireRole('admin'),
   asyncHandler(async (req, res) => {
-    const target = await db.get('SELECT is_super_admin FROM users WHERE id = ?', [req.params.id]);
-    if (!target) {
-      return res.status(404).json({ error: 'Utente non trovato' });
-    }
-    if (target.is_super_admin && !req.user.is_super_admin) {
+    const target = await db.get('SELECT is_super_admin, company_id FROM users WHERE id = ?', [req.params.id]);
+    if (outOfScope(target, req.user)) {
       return res.status(404).json({ error: 'Utente non trovato' });
     }
 
@@ -359,7 +410,7 @@ router.patch(
     if (!target) {
       return res.status(404).json({ error: 'Utente non trovato' });
     }
-    if (target.is_super_admin && !req.user.is_super_admin) {
+    if (outOfScope(target, req.user)) {
       return res.status(404).json({ error: 'Utente non trovato' });
     }
 
@@ -393,7 +444,7 @@ router.delete(
     if (!target) {
       return res.status(404).json({ error: 'Utente non trovato' });
     }
-    if (target.is_super_admin && !req.user.is_super_admin) {
+    if (outOfScope(target, req.user)) {
       return res.status(404).json({ error: 'Utente non trovato' });
     }
     await db.run('DELETE FROM users WHERE id = ?', [req.params.id]);
