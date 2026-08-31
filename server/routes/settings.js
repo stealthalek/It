@@ -1,8 +1,22 @@
 const express = require('express');
+const jwt = require('jsonwebtoken');
 const db = require('../db/database');
-const { authenticate, requireRole } = require('../middleware/auth');
+const { authenticate, requireRole, JWT_SECRET } = require('../middleware/auth');
 const asyncHandler = require('../middleware/asyncHandler');
 const { logAudit } = require('../audit');
+
+async function resolveGroupDisplayName(groupId) {
+  let currentId = groupId;
+  let guard = 0;
+  while (currentId && guard < 20) {
+    guard += 1;
+    const group = await db.get('SELECT display_name, parent_id FROM groups WHERE id = ?', [currentId]);
+    if (!group) return null;
+    if (group.display_name) return group.display_name;
+    currentId = group.parent_id;
+  }
+  return null;
+}
 
 const router = express.Router();
 
@@ -43,7 +57,23 @@ router.get(
   '/',
   asyncHandler(async (req, res) => {
     const row = await db.get('SELECT org_name, org_logo FROM app_settings WHERE id = 1');
-    res.json({ orgName: (row && row.org_name) || 'Ticketing', orgLogo: (row && row.org_logo) || null });
+    const defaultOrgName = (row && row.org_name) || 'Ticketing';
+    let orgName = defaultOrgName;
+
+    const header = req.headers.authorization || '';
+    const token = header.startsWith('Bearer ') ? header.slice(7) : null;
+    if (token) {
+      try {
+        const payload = jwt.verify(token, JWT_SECRET);
+        const user = await db.get('SELECT group_id FROM users WHERE id = ?', [payload.sub]);
+        if (user && user.group_id) {
+          const groupDisplayName = await resolveGroupDisplayName(user.group_id);
+          if (groupDisplayName) orgName = groupDisplayName;
+        }
+      } catch {}
+    }
+
+    res.json({ orgName, orgLogo: (row && row.org_logo) || null });
   })
 );
 

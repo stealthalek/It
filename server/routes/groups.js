@@ -9,7 +9,7 @@ router.use(authenticate);
 
 const GROUP_SELECT = `
   SELECT g.id, g.name, g.parent_id, parent.name AS parent_name, g.sla_response_hours, g.sla_resolve_hours,
-    g.work_start_hour, g.work_end_hour, g.manager_id, manager.name AS manager_name,
+    g.work_start_hour, g.work_end_hour, g.manager_id, manager.name AS manager_name, g.display_name,
     (SELECT COUNT(*) FROM users mem WHERE mem.group_id = g.id) AS member_count
   FROM groups g
   LEFT JOIN groups parent ON parent.id = g.parent_id
@@ -42,7 +42,7 @@ router.post(
   '/',
   requireRole('admin'),
   asyncHandler(async (req, res) => {
-    const { name, parentId, slaResponseHours, slaResolveHours, workStartHour, workEndHour, managerId } = req.body || {};
+    const { name, parentId, slaResponseHours, slaResolveHours, workStartHour, workEndHour, managerId, displayName } = req.body || {};
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Il nome del gruppo è obbligatorio' });
     }
@@ -68,7 +68,7 @@ router.post(
     }
 
     const info = await db.run(
-      'INSERT INTO groups (name, parent_id, sla_response_hours, sla_resolve_hours, work_start_hour, work_end_hour, manager_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO groups (name, parent_id, sla_response_hours, sla_resolve_hours, work_start_hour, work_end_hour, manager_id, display_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
       [
         name.trim(),
         finalParentId,
@@ -77,6 +77,7 @@ router.post(
         workStartHour !== undefined && workStartHour !== null ? Number(workStartHour) : 9,
         workEndHour !== undefined && workEndHour !== null ? Number(workEndHour) : 18,
         managerId || null,
+        displayName && displayName.trim() ? displayName.trim() : null,
       ]
     );
     const group = await db.get(`${GROUP_SELECT} WHERE g.id = ?`, [Number(info.lastInsertRowid)]);
@@ -94,7 +95,7 @@ router.patch(
       return res.status(404).json({ error: 'Gruppo non trovato' });
     }
 
-    const { parentId, slaResponseHours, slaResolveHours, workStartHour, workEndHour, managerId, name } = req.body || {};
+    const { parentId, slaResponseHours, slaResolveHours, workStartHour, workEndHour, managerId, name, displayName } = req.body || {};
     const updates = [];
     const params = [];
 
@@ -104,6 +105,10 @@ router.patch(
       }
       updates.push('name = ?');
       params.push(name.trim());
+    }
+    if (displayName !== undefined) {
+      updates.push('display_name = ?');
+      params.push(displayName && displayName.trim() ? displayName.trim() : null);
     }
     if (managerId !== undefined) {
       updates.push('manager_id = ?');
