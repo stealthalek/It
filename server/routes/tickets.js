@@ -182,19 +182,19 @@ async function logEvent(ticketId, actorId, message) {
 }
 
 async function runAutomationRules(ticketId, triggerEvent, actorId) {
+  const ticket = await db.get(`${TICKET_SELECT} WHERE t.id = ?`, [ticketId]);
+  if (!ticket) return;
+
   const rules = await db.all(
     `SELECT r.*, grpAction.name AS action_assign_group_name, u.name AS action_assign_user_name
      FROM automation_rules r
      LEFT JOIN groups grpAction ON grpAction.id = r.action_assign_group_id
      LEFT JOIN users u ON u.id = r.action_assign_user_id
-     WHERE r.enabled = 1 AND r.trigger_event = ?
+     WHERE r.enabled = 1 AND r.trigger_event = ? AND (r.company_id IS NULL OR r.company_id = ?)
      ORDER BY r.position ASC, r.id ASC`,
-    [triggerEvent]
+    [triggerEvent, ticket.company_id || null]
   );
   if (!rules.length) return;
-
-  const ticket = await db.get(`${TICKET_SELECT} WHERE t.id = ?`, [ticketId]);
-  if (!ticket) return;
 
   for (const rule of rules) {
     if (rule.cond_status && rule.cond_status !== ticket.status) continue;

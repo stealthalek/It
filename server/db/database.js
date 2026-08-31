@@ -787,6 +787,12 @@ async function migrate() {
     await run('ALTER TABLE audit_log ADD COLUMN company_id INTEGER REFERENCES companies(id) ON DELETE SET NULL');
   }
   await run('CREATE INDEX IF NOT EXISTS idx_audit_log_company_id ON audit_log(company_id)');
+
+  const automationRuleCols = await all('PRAGMA table_info(automation_rules)');
+  if (automationRuleCols.length && !automationRuleCols.some((c) => c.name === 'company_id')) {
+    await run('ALTER TABLE automation_rules ADD COLUMN company_id INTEGER REFERENCES companies(id) ON DELETE SET NULL');
+  }
+  await run('CREATE INDEX IF NOT EXISTS idx_automation_rules_company_id ON automation_rules(company_id)');
 }
 
 async function seedDefaultCompany() {
@@ -811,6 +817,9 @@ async function seedDefaultCompany() {
   await run(`UPDATE audit_log SET company_id = (
     SELECT company_id FROM users WHERE users.id = audit_log.actor_id
   ) WHERE company_id IS NULL AND actor_id IS NOT NULL`);
+  await run(`UPDATE automation_rules SET company_id = (
+    SELECT g.company_id FROM groups g WHERE g.id = COALESCE(automation_rules.cond_group_id, automation_rules.action_assign_group_id)
+  ) WHERE company_id IS NULL AND (cond_group_id IS NOT NULL OR action_assign_group_id IS NOT NULL)`);
 }
 
 async function seedDefaultRoles() {

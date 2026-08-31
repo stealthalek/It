@@ -60,7 +60,9 @@ function parseRuleBody(body) {
 router.get(
   '/',
   asyncHandler(async (req, res) => {
-    const rules = await db.all(`${RULE_SELECT} ORDER BY r.position ASC, r.id ASC`);
+    const where = req.user.is_super_admin ? '' : 'WHERE r.company_id IS NULL OR r.company_id = ?';
+    const params = req.user.is_super_admin ? [] : [req.user.company_id];
+    const rules = await db.all(`${RULE_SELECT} ${where} ORDER BY r.position ASC, r.id ASC`, params);
     res.json({ rules });
   })
 );
@@ -74,28 +76,34 @@ router.post(
     const v = parsed.values;
 
     if (v.condGroupId) {
-      const group = await db.get('SELECT id FROM groups WHERE id = ?', [v.condGroupId]);
-      if (!group) return res.status(400).json({ error: 'Gruppo (condizione) non valido' });
+      const group = await db.get('SELECT id, company_id FROM groups WHERE id = ?', [v.condGroupId]);
+      if (!group || (!req.user.is_super_admin && group.company_id && group.company_id !== req.user.company_id)) {
+        return res.status(400).json({ error: 'Gruppo (condizione) non valido' });
+      }
     }
     if (v.actionAssignGroupId) {
-      const group = await db.get('SELECT id FROM groups WHERE id = ?', [v.actionAssignGroupId]);
-      if (!group) return res.status(400).json({ error: 'Gruppo (azione) non valido' });
+      const group = await db.get('SELECT id, company_id FROM groups WHERE id = ?', [v.actionAssignGroupId]);
+      if (!group || (!req.user.is_super_admin && group.company_id && group.company_id !== req.user.company_id)) {
+        return res.status(400).json({ error: 'Gruppo (azione) non valido' });
+      }
     }
     if (v.actionAssignUserId) {
-      const user = await db.get("SELECT id FROM users WHERE id = ? AND role IN ('agent', 'admin')", [v.actionAssignUserId]);
-      if (!user) return res.status(400).json({ error: 'Utente (azione) non valido' });
+      const user = await db.get("SELECT id, company_id FROM users WHERE id = ? AND role IN ('agent', 'admin')", [v.actionAssignUserId]);
+      if (!user || (!req.user.is_super_admin && user.company_id && user.company_id !== req.user.company_id)) {
+        return res.status(400).json({ error: 'Utente (azione) non valido' });
+      }
     }
 
     const posRow = await db.get('SELECT COALESCE(MAX(position), -1) AS maxPos FROM automation_rules');
     const info = await db.run(
       `INSERT INTO automation_rules
         (name, trigger_event, cond_status, cond_priority, cond_category, cond_type, cond_group_id,
-         action_set_status, action_set_priority, action_assign_group_id, action_assign_user_id, action_note, position)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         action_set_status, action_set_priority, action_assign_group_id, action_assign_user_id, action_note, position, company_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         v.name, v.triggerEvent, v.condStatus, v.condPriority, v.condCategory, v.condType, v.condGroupId,
         v.actionSetStatus, v.actionSetPriority, v.actionAssignGroupId, v.actionAssignUserId, v.actionNote,
-        posRow.maxPos + 1,
+        posRow.maxPos + 1, req.user.company_id || null,
       ]
     );
 
@@ -111,6 +119,9 @@ router.patch(
   asyncHandler(async (req, res) => {
     const rule = await db.get('SELECT * FROM automation_rules WHERE id = ?', [req.params.id]);
     if (!rule) return res.status(404).json({ error: 'Regola non trovata' });
+    if (!req.user.is_super_admin && rule.company_id && rule.company_id !== req.user.company_id) {
+      return res.status(404).json({ error: 'Regola non trovata' });
+    }
 
     if (req.body && req.body.enabled !== undefined) {
       await db.run('UPDATE automation_rules SET enabled = ? WHERE id = ?', [req.body.enabled ? 1 : 0, req.params.id]);
@@ -127,8 +138,11 @@ router.delete(
   '/:id',
   requirePermission('automations_manage'),
   asyncHandler(async (req, res) => {
-    const rule = await db.get('SELECT name FROM automation_rules WHERE id = ?', [req.params.id]);
+    const rule = await db.get('SELECT name, company_id FROM automation_rules WHERE id = ?', [req.params.id]);
     if (!rule) return res.status(404).json({ error: 'Regola non trovata' });
+    if (!req.user.is_super_admin && rule.company_id && rule.company_id !== req.user.company_id) {
+      return res.status(404).json({ error: 'Regola non trovata' });
+    }
     await db.run('DELETE FROM automation_rules WHERE id = ?', [req.params.id]);
     logAudit(req.user.id, 'automation_rule', Number(req.params.id), `Regola di automazione "${rule.name}" eliminata`).catch(() => {});
     res.status(204).end();
