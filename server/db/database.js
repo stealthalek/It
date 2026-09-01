@@ -312,6 +312,23 @@ async function setupSchema() {
         read_at TEXT NOT NULL DEFAULT (datetime('now')),
         PRIMARY KEY (announcement_id, user_id)
       )`,
+      `CREATE TABLE IF NOT EXISTS announcement_targets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        announcement_id INTEGER NOT NULL REFERENCES announcements(id) ON DELETE CASCADE,
+        target_type TEXT NOT NULL CHECK (target_type IN ('group', 'user')),
+        target_id INTEGER NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS announcement_attachments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        announcement_id INTEGER NOT NULL REFERENCES announcements(id) ON DELETE CASCADE,
+        uploaded_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        file_name TEXT NOT NULL,
+        mime_type TEXT NOT NULL,
+        size_bytes INTEGER NOT NULL,
+        data TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`,
       `CREATE TABLE IF NOT EXISTS leave_requests (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -342,6 +359,8 @@ async function setupSchema() {
       'CREATE INDEX IF NOT EXISTS idx_announcements_company_id ON announcements(company_id)',
       'CREATE INDEX IF NOT EXISTS idx_announcements_pinned_created ON announcements(pinned, created_at)',
       'CREATE INDEX IF NOT EXISTS idx_announcement_reads_user_id ON announcement_reads(user_id)',
+      'CREATE INDEX IF NOT EXISTS idx_announcement_targets_announcement_id ON announcement_targets(announcement_id)',
+      'CREATE INDEX IF NOT EXISTS idx_announcement_attachments_announcement_id ON announcement_attachments(announcement_id)',
       'CREATE INDEX IF NOT EXISTS idx_leave_requests_user_id ON leave_requests(user_id)',
       'CREATE INDEX IF NOT EXISTS idx_leave_requests_company_id ON leave_requests(company_id)',
       'CREATE INDEX IF NOT EXISTS idx_leave_requests_status ON leave_requests(status)',

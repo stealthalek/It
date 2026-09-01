@@ -1102,6 +1102,22 @@ body:not(.role-customer):not(.role-agent):not(.role-admin) .nav-toggle { display
 .attachment-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .attachment-meta { font-size: 0.78rem; color: var(--muted); }
 
+.dropzone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius-sm);
+  padding: 1.5rem 1rem;
+  color: var(--muted);
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+.dropzone:hover, .dropzone.dropzone-active { border-color: var(--primary); background: var(--primary-soft); color: var(--text); }
+.announcement-target-groups { display: flex; flex-wrap: wrap; gap: 0.6rem 1.2rem; margin-top: 0.4rem; }
+
 .onb-checklist { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.4rem; }
 .onb-checklist-item {
   border: 1px solid var(--border);
