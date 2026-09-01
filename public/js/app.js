@@ -384,6 +384,8 @@
       confirm_bulk_delete_users_prefix: 'Eliminare definitivamente', confirm_bulk_delete_users_suffix: ' utenti selezionati? L\'operazione non è reversibile.',
       bulk_assignment_placeholder: 'Cambia assegnazione...', bulk_tag_prefix_placeholder: 'es. ITA-', bulk_apply_prefix: 'Applica prefisso',
       toast_bulk_asset_updated: 'Asset selezionati aggiornati', toast_bulk_prefix_applied: 'Prefisso applicato agli asset selezionati',
+      toast_bulk_assets_deleted: 'Asset eliminati',
+      confirm_bulk_delete_assets_prefix: 'Eliminare definitivamente', confirm_bulk_delete_assets_suffix: ' asset selezionati? L\'operazione non è reversibile.',
       add_tag_placeholder: 'Aggiungi etichetta e premi invio',
       linked_tickets_title: 'Ticket collegati', link_ticket_placeholder: 'Numero ticket (es. 12)', btn_link_ticket: 'Collega',
       similar_tickets_title: 'Ticket simili', no_similar_tickets_hint: 'Nessun ticket simile trovato nella stessa categoria.', toast_ticket_linked: 'Ticket collegato',
@@ -754,6 +756,8 @@
       confirm_bulk_delete_users_prefix: 'Permanently delete', confirm_bulk_delete_users_suffix: ' selected users? This cannot be undone.',
       bulk_assignment_placeholder: 'Change assignment...', bulk_tag_prefix_placeholder: 'e.g. ITA-', bulk_apply_prefix: 'Apply prefix',
       toast_bulk_asset_updated: 'Selected assets updated', toast_bulk_prefix_applied: 'Prefix applied to selected assets',
+      toast_bulk_assets_deleted: 'Assets deleted',
+      confirm_bulk_delete_assets_prefix: 'Permanently delete', confirm_bulk_delete_assets_suffix: ' selected assets? This cannot be undone.',
       add_tag_placeholder: 'Add a tag and press enter',
       linked_tickets_title: 'Linked tickets', link_ticket_placeholder: 'Ticket number (e.g. 12)', btn_link_ticket: 'Link',
       similar_tickets_title: 'Similar tickets', no_similar_tickets_hint: 'No similar tickets found in the same category.', toast_ticket_linked: 'Ticket linked',
@@ -6604,6 +6608,7 @@
         </select>
         <input id="assetBulkPrefixInput" type="text" value="ITA-" placeholder="${t('bulk_tag_prefix_placeholder')}" style="width:8rem" />
         <button type="button" id="assetBulkPrefixBtn" class="btn btn-ghost btn-sm">${t('bulk_apply_prefix')}</button>
+        ${state.user.role === 'admin' ? `<button type="button" id="assetBulkDeleteBtn" class="btn btn-outline-danger btn-sm">${icon('trash')} ${t('bulk_delete_btn')}</button>` : ''}
         <button type="button" id="assetBulkClearBtn" class="btn btn-ghost btn-sm">${t('bulk_clear_selection')}</button>
       </div>
       <div id="assetsWrap" class="card spinner-row">${t('loading')}</div>`;
@@ -6779,6 +6784,22 @@
         showToast(err.message, 'error');
       }
     });
+
+    const assetBulkDeleteBtn = document.getElementById('assetBulkDeleteBtn');
+    if (assetBulkDeleteBtn) {
+      assetBulkDeleteBtn.addEventListener('click', async () => {
+        if (!selectedAssets.size) return;
+        if (!confirm(`${t('confirm_bulk_delete_assets_prefix')} ${selectedAssets.size}${t('confirm_bulk_delete_assets_suffix')}`)) return;
+        try {
+          await Promise.all([...selectedAssets].map((id) => api(`/assets/${id}`, { method: 'DELETE' })));
+          showToast(t('toast_bulk_assets_deleted'), 'success');
+          selectedAssets.clear();
+          loadAssets();
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      });
+    }
 
     statusFilter.addEventListener('change', loadAssets);
     let assetQueryDebounce;
