@@ -14,7 +14,9 @@ const TYPES = ['incident', 'task'];
 router.get(
   '/',
   asyncHandler(async (req, res) => {
-    const templates = await db.all('SELECT * FROM ticket_templates ORDER BY position ASC, id ASC');
+    const where = req.user.is_super_admin ? '' : 'WHERE company_id IS NULL OR company_id = ?';
+    const params = req.user.is_super_admin ? [] : [req.user.company_id];
+    const templates = await db.all(`SELECT * FROM ticket_templates ${where} ORDER BY position ASC, id ASC`, params);
     res.json({ templates });
   })
 );
@@ -43,10 +45,10 @@ router.post(
 
     const posRow = await db.get('SELECT COALESCE(MAX(position), -1) AS maxPos FROM ticket_templates');
     const info = await db.run(
-      'INSERT INTO ticket_templates (name, category, subject, description, priority, type, position, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO ticket_templates (name, category, subject, description, priority, type, position, created_by, company_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [
         name.trim(), category && category.trim() ? category.trim() : null, subject.trim(), description.trim(),
-        priority || null, type || null, posRow.maxPos + 1, req.user.id,
+        priority || null, type || null, posRow.maxPos + 1, req.user.id, req.user.company_id || null,
       ]
     );
 
@@ -60,8 +62,10 @@ router.delete(
   '/:id',
   requirePermission('templates_manage'),
   asyncHandler(async (req, res) => {
-    const template = await db.get('SELECT name FROM ticket_templates WHERE id = ?', [req.params.id]);
-    if (!template) return res.status(404).json({ error: 'Modello non trovato' });
+    const template = await db.get('SELECT name, company_id FROM ticket_templates WHERE id = ?', [req.params.id]);
+    if (!template || (!req.user.is_super_admin && template.company_id && template.company_id !== req.user.company_id)) {
+      return res.status(404).json({ error: 'Modello non trovato' });
+    }
     await db.run('DELETE FROM ticket_templates WHERE id = ?', [req.params.id]);
     logAudit(req.user.id, 'ticket_template', Number(req.params.id), `Modello ticket "${template.name}" eliminato`).catch(() => {});
     res.status(204).end();
