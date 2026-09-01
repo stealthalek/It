@@ -12,6 +12,22 @@ const ENTRY_SELECT = `
   JOIN users u ON u.id = te.user_id
 `;
 
+const DATETIME_RE = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
+
+function isTimeAdmin(user) {
+  return user.role === 'admin' || user.is_super_admin;
+}
+
+async function flexibleEntryAllowed(user) {
+  if (isTimeAdmin(user)) return true;
+  if (user.company_id) {
+    const company = await db.get('SELECT flexible_time_entry FROM companies WHERE id = ?', [user.company_id]);
+    return !!(company && company.flexible_time_entry);
+  }
+  const row = await db.get('SELECT flexible_time_entry FROM app_settings WHERE id = 1');
+  return !!(row && row.flexible_time_entry);
+}
+
 router.get(
   '/status',
   asyncHandler(async (req, res) => {
@@ -47,6 +63,63 @@ router.post(
     ]);
     const entry = await db.get(`${ENTRY_SELECT} WHERE te.id = ?`, [open.id]);
     res.json({ entry });
+  })
+);
+
+router.post(
+  '/manual',
+  asyncHandler(async (req, res) => {
+    if (!(await flexibleEntryAllowed(req.user))) {
+      return res.status(403).json({ error: 'Inserimento manuale non abilitato' });
+    }
+    const { clockIn, clockOut, notes } = req.body || {};
+    if (!clockIn || !DATETIME_RE.test(clockIn) || !clockOut || !DATETIME_RE.test(clockOut)) {
+      return res.status(400).json({ error: 'Data e ora di inizio/fine non valide' });
+    }
+    if (clockOut <= clockIn) {
+      return res.status(400).json({ error: 'L\'orario di fine deve essere successivo a quello di inizio' });
+    }
+    const info = await db.run('INSERT INTO time_entries (user_id, clock_in, clock_out, notes) VALUES (?, ?, ?, ?)', [
+      req.user.id,
+      clockIn,
+      clockOut,
+      notes && notes.trim() ? notes.trim().slice(0, 500) : null,
+    ]);
+    const entry = await db.get(`${ENTRY_SELECT} WHERE te.id = ?`, [Number(info.lastInsertRowid)]);
+    res.status(201).json({ entry });
+  })
+);
+
+router.patch(
+  '/:id',
+  asyncHandler(async (req, res) => {
+    const entry = await db.get('SELECT * FROM time_entries WHERE id = ?', [req.params.id]);
+    if (!entry) {
+      return res.status(404).json({ error: 'Timbratura non trovata' });
+    }
+    if (entry.user_id !== req.user.id && !req.user.is_super_admin) {
+      return res.status(403).json({ error: 'Permessi insufficienti' });
+    }
+    if (entry.user_id === req.user.id && !(await flexibleEntryAllowed(req.user))) {
+      return res.status(403).json({ error: 'Modifica manuale non abilitata' });
+    }
+    const { clockIn, clockOut, notes } = req.body || {};
+    const nextClockIn = clockIn !== undefined ? clockIn : entry.clock_in;
+    const nextClockOut = clockOut !== undefined ? clockOut : entry.clock_out;
+    if (!DATETIME_RE.test(nextClockIn) || (nextClockOut !== null && !DATETIME_RE.test(nextClockOut))) {
+      return res.status(400).json({ error: 'Data e ora non valide' });
+    }
+    if (nextClockOut !== null && nextClockOut <= nextClockIn) {
+      return res.status(400).json({ error: 'L\'orario di fine deve essere successivo a quello di inizio' });
+    }
+    await db.run('UPDATE time_entries SET clock_in = ?, clock_out = ?, notes = ? WHERE id = ?', [
+      nextClockIn,
+      nextClockOut,
+      notes !== undefined ? (notes && notes.trim() ? notes.trim().slice(0, 500) : null) : entry.notes,
+      req.params.id,
+    ]);
+    const updated = await db.get(`${ENTRY_SELECT} WHERE te.id = ?`, [req.params.id]);
+    res.json({ entry: updated });
   })
 );
 

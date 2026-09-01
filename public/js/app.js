@@ -548,6 +548,8 @@
       search_person_label: 'Cerca persona', search_person_placeholder: 'Nome o email...', no_people_found: 'Nessuna persona trovata.',
       th_name: 'Nome', th_email: 'Email', th_role: 'Ruolo', th_group: 'Gruppo', th_registered: 'Registrato',
       org_section_title: 'Organizzazione', org_section_hint: 'Il nome scelto compare nell\'intestazione e nelle email inviate agli utenti.',
+      flexible_time_entry_label: 'Inserimento manuale flessibile delle ore', flexible_time_entry_hint: 'Se attivo, ogni utente può aggiungere, modificare ed eliminare liberamente le proprie timbrature sul calendario, oltre alla timbratura automatica.',
+      toast_flexible_time_entry_enabled: 'Inserimento manuale flessibile attivato', toast_flexible_time_entry_disabled: 'Inserimento manuale flessibile disattivato',
       field_org_name: 'Nome organizzazione', btn_save: 'Salva', toast_org_updated: 'Nome organizzazione aggiornato',
       field_org_logo: 'Logo aziendale', logo_hint: 'PNG o JPG, viene ridimensionato automaticamente.', btn_remove_logo: 'Rimuovi logo',
       toast_logo_updated: 'Logo aggiornato', toast_logo_removed: 'Logo rimosso',
@@ -662,6 +664,10 @@
       timesheet_notes_placeholder: 'Note sul turno (opzionale)',
       timesheet_history_title: 'Storico timbrature', th_clock_in: 'Entrata', th_clock_out: 'Uscita', th_duration: 'Durata',
       timesheet_no_entries: 'Nessuna timbratura registrata.', timesheet_ongoing: 'in corso',
+      timesheet_manual_title: 'Aggiungi ore manualmente', timesheet_manual_hint: 'Registra o correggi una timbratura scegliendo data e orario sul calendario.',
+      field_start_time: 'Ora inizio', field_end_time: 'Ora fine', btn_add_entry: 'Aggiungi',
+      confirm_delete_time_entry: 'Eliminare questa timbratura?', toast_time_entry_added: 'Timbratura aggiunta',
+      toast_time_entry_updated: 'Timbratura aggiornata', toast_time_entry_deleted: 'Timbratura eliminata',
       timesheet_team_title: 'Ore del team', timesheet_team_hint: 'Timbrature del tuo team: dei tuoi collaboratori diretti, oppure di tutta l\'azienda se sei amministratore.',
       timesheet_pay_title: 'Stima paga mensile', timesheet_pay_hint: 'Calcolo approssimativo in base alle ore timbrate questo mese e al guadagno orario che inserisci qui sotto. Il valore resta solo su questo dispositivo.',
       timesheet_pay_wage_label: 'Guadagno orario (€)', timesheet_pay_hours_label: 'Ore timbrate questo mese', timesheet_pay_estimate_label: 'Stima paga del mese',
@@ -936,6 +942,8 @@
       search_person_label: 'Search person', search_person_placeholder: 'Name or email...', no_people_found: 'No people found.',
       th_name: 'Name', th_email: 'Email', th_role: 'Role', th_group: 'Group', th_registered: 'Registered',
       org_section_title: 'Organization', org_section_hint: 'The chosen name appears in the header and in emails sent to users.',
+      flexible_time_entry_label: 'Flexible manual time entry', flexible_time_entry_hint: 'When on, every user can freely add, edit and delete their own calendar time entries, in addition to automatic clock-in/out.',
+      toast_flexible_time_entry_enabled: 'Flexible manual entry enabled', toast_flexible_time_entry_disabled: 'Flexible manual entry disabled',
       field_org_name: 'Organization name', btn_save: 'Save', toast_org_updated: 'Organization name updated',
       field_org_logo: 'Company logo', logo_hint: 'PNG or JPG, resized automatically.', btn_remove_logo: 'Remove logo',
       toast_logo_updated: 'Logo updated', toast_logo_removed: 'Logo removed',
@@ -1050,6 +1058,10 @@
       timesheet_notes_placeholder: 'Notes for this shift (optional)',
       timesheet_history_title: 'Time entry history', th_clock_in: 'Clock in', th_clock_out: 'Clock out', th_duration: 'Duration',
       timesheet_no_entries: 'No time entries recorded yet.', timesheet_ongoing: 'ongoing',
+      timesheet_manual_title: 'Add hours manually', timesheet_manual_hint: 'Record or correct a time entry by picking a date and time on the calendar.',
+      field_start_time: 'Start time', field_end_time: 'End time', btn_add_entry: 'Add',
+      confirm_delete_time_entry: 'Delete this time entry?', toast_time_entry_added: 'Time entry added',
+      toast_time_entry_updated: 'Time entry updated', toast_time_entry_deleted: 'Time entry deleted',
       timesheet_team_title: 'Team hours', timesheet_team_hint: 'Time entries for your team: your direct reports, or the whole company if you\'re an administrator.',
       timesheet_pay_title: 'Estimated monthly pay', timesheet_pay_hint: 'A rough estimate based on the hours clocked this month and the hourly wage you enter below. This value stays on this device only.',
       timesheet_pay_wage_label: 'Hourly wage', timesheet_pay_hours_label: 'Hours clocked this month', timesheet_pay_estimate_label: 'Estimated pay this month',
@@ -8872,6 +8884,23 @@
           <p class="hint">${t('timesheet_team_hint')}</p>
           <div id="timesheetTeamList" class="spinner-row">${t('loading')}</div>
         </div>` : ''}
+        <div class="card admin-grid-full" id="timesheetManualCard" hidden>
+          <h3 class="section-title" style="margin-top:0">${icon('clock')} ${t('timesheet_manual_title')}</h3>
+          <p class="hint">${t('timesheet_manual_hint')}</p>
+          <form id="timesheetManualForm" class="form-grid" style="max-width:none">
+            <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+              <div class="field" style="flex:1 1 9rem"><label for="manualDate">${t('field_date')}</label><input id="manualDate" type="date" required /></div>
+              <div class="field" style="flex:1 1 7rem"><label for="manualStart">${t('field_start_time')}</label><input id="manualStart" type="time" required /></div>
+              <div class="field" style="flex:1 1 7rem"><label for="manualEnd">${t('field_end_time')}</label><input id="manualEnd" type="time" required /></div>
+            </div>
+            <div class="field"><label for="manualNotes">${t('field_notes')}</label><input id="manualNotes" type="text" maxlength="500" /></div>
+            <p class="error-text" id="timesheetManualError"></p>
+            <div style="display:flex; gap:0.6rem;">
+              <button class="btn btn-sm" type="submit" id="timesheetManualSubmitBtn">${t('btn_add_entry')}</button>
+              <button type="button" class="btn btn-sm btn-ghost" id="timesheetManualCancelBtn" hidden>${t('btn_cancel')}</button>
+            </div>
+          </form>
+        </div>
         <div class="card admin-grid-full">
           <h3 class="section-title" style="margin-top:0">${icon('activity')} ${t('timesheet_history_title')}</h3>
           <div id="timesheetHistory" class="spinner-row">${t('loading')}</div>
@@ -8924,7 +8953,7 @@
         </div>` : ''}
       </div>`;
 
-    function entriesTableHtml(entries, includeUser) {
+    function entriesTableHtml(entries, includeUser, editable) {
       if (!entries.length) return `<p class="hint">${t('timesheet_no_entries')}</p>`;
       return `
         <div class="table-scroll">
@@ -8932,6 +8961,7 @@
             <thead><tr>
               ${includeUser ? `<th>${t('field_name')}</th>` : ''}
               <th>${t('th_clock_in')}</th><th>${t('th_clock_out')}</th><th>${t('th_duration')}</th><th>${t('field_notes')}</th>
+              ${editable ? '<th></th>' : ''}
             </tr></thead>
             <tbody>
               ${entries.map((e) => `
@@ -8941,6 +8971,10 @@
                   <td>${e.clock_out ? formatDate(e.clock_out) : `<span class="role-tag role-tag-active">${t('timesheet_ongoing')}</span>`}</td>
                   <td>${formatDuration(e.clock_in, e.clock_out)}</td>
                   <td>${e.notes ? escapeHtml(e.notes) : ''}</td>
+                  ${editable ? `<td style="white-space:nowrap">
+                    ${e.clock_out ? `<button type="button" class="icon-btn timesheetEditBtn" data-id="${e.id}" data-clock-in="${e.clock_in}" data-clock-out="${e.clock_out}" data-notes="${e.notes ? escapeHtml(e.notes) : ''}" title="${t('btn_edit')}">${icon('edit')}</button>` : ''}
+                    <button type="button" class="icon-btn timesheetDeleteBtn" data-id="${e.id}" title="${t('btn_delete')}">${icon('trash')}</button>
+                  </td>` : ''}
                 </tr>`).join('')}
             </tbody>
           </table>
@@ -8970,19 +9004,99 @@
     }
 
     let lastEntries = [];
+    let flexibleTimeEntry = false;
     async function loadHistory() {
       const el = document.getElementById('timesheetHistory');
       try {
         const { entries } = await api('/time-entries');
         lastEntries = entries;
         el.className = '';
-        el.innerHTML = entriesTableHtml(entries, false);
+        el.innerHTML = entriesTableHtml(entries, false, flexibleTimeEntry);
         renderPayEstimate(entries);
+        el.querySelectorAll('.timesheetEditBtn').forEach((btn) => {
+          btn.addEventListener('click', () => startManualEdit(btn.dataset.id, btn.dataset.clockIn, btn.dataset.clockOut, btn.dataset.notes));
+        });
+        el.querySelectorAll('.timesheetDeleteBtn').forEach((btn) => {
+          btn.addEventListener('click', async () => {
+            if (!confirm(t('confirm_delete_time_entry'))) return;
+            try {
+              await api(`/time-entries/${btn.dataset.id}`, { method: 'DELETE' });
+              showToast(t('toast_time_entry_deleted'), 'success');
+              loadHistory();
+            } catch (err) {
+              showToast(err.message, 'error');
+            }
+          });
+        });
       } catch (err) {
         el.className = '';
         el.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
       }
     }
+
+    function dbDatetimeToParts(dbValue) {
+      const [datePart, timePart] = dbValue.split(' ');
+      const utc = new Date(`${datePart}T${timePart}Z`);
+      const pad = (n) => String(n).padStart(2, '0');
+      return {
+        date: `${utc.getFullYear()}-${pad(utc.getMonth() + 1)}-${pad(utc.getDate())}`,
+        time: `${pad(utc.getHours())}:${pad(utc.getMinutes())}`,
+      };
+    }
+
+    function partsToDbDatetime(dateStr, timeStr) {
+      const local = new Date(`${dateStr}T${timeStr}:00`);
+      return local.toISOString().slice(0, 19).replace('T', ' ');
+    }
+
+    let editingEntryId = null;
+    function startManualEdit(id, clockIn, clockOut, notes) {
+      editingEntryId = id;
+      const inParts = dbDatetimeToParts(clockIn);
+      const outParts = dbDatetimeToParts(clockOut);
+      document.getElementById('manualDate').value = inParts.date;
+      document.getElementById('manualStart').value = inParts.time;
+      document.getElementById('manualEnd').value = outParts.time;
+      document.getElementById('manualNotes').value = notes || '';
+      document.getElementById('timesheetManualSubmitBtn').textContent = t('btn_save');
+      document.getElementById('timesheetManualCancelBtn').hidden = false;
+      document.getElementById('timesheetManualCard').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function resetManualForm() {
+      editingEntryId = null;
+      document.getElementById('timesheetManualForm').reset();
+      document.getElementById('timesheetManualSubmitBtn').textContent = t('btn_add_entry');
+      document.getElementById('timesheetManualCancelBtn').hidden = true;
+      document.getElementById('timesheetManualError').textContent = '';
+    }
+
+    document.getElementById('timesheetManualCancelBtn').addEventListener('click', resetManualForm);
+
+    guardForm(document.getElementById('timesheetManualForm'), async () => {
+      const errEl = document.getElementById('timesheetManualError');
+      errEl.textContent = '';
+      const dateVal = document.getElementById('manualDate').value;
+      const startVal = document.getElementById('manualStart').value;
+      const endVal = document.getElementById('manualEnd').value;
+      const notes = document.getElementById('manualNotes').value;
+      if (!dateVal || !startVal || !endVal) return;
+      const clockIn = partsToDbDatetime(dateVal, startVal);
+      const clockOut = partsToDbDatetime(dateVal, endVal);
+      try {
+        if (editingEntryId) {
+          await api(`/time-entries/${editingEntryId}`, { method: 'PATCH', body: { clockIn, clockOut, notes } });
+          showToast(t('toast_time_entry_updated'), 'success');
+        } else {
+          await api('/time-entries/manual', { method: 'POST', body: { clockIn, clockOut, notes } });
+          showToast(t('toast_time_entry_added'), 'success');
+        }
+        resetManualForm();
+        loadHistory();
+      } catch (err) {
+        errEl.textContent = err.message;
+      }
+    });
 
     const wageInput = document.getElementById('timesheetWageInput');
     try { wageInput.value = localStorage.getItem('ticketing_hourly_wage') || ''; } catch {}
@@ -9168,7 +9282,11 @@
     loadLeaveMine();
 
     loadStatus();
-    loadHistory();
+    api('/settings').then(({ flexibleTimeEntry: flag }) => {
+      flexibleTimeEntry = flag;
+      document.getElementById('timesheetManualCard').hidden = !flag;
+      loadHistory();
+    }).catch(() => loadHistory());
     loadTeam();
   }
 
@@ -9395,6 +9513,12 @@
             <span class="hint">${t('logo_hint')}</span>
           </div>
           <p class="error-text" id="orgLogoError"></p>
+          <div class="divider"></div>
+          <label class="checkbox-field">
+            <input type="checkbox" id="flexibleTimeEntryToggle" />
+            ${t('flexible_time_entry_label')}
+          </label>
+          <p class="hint">${t('flexible_time_entry_hint')}</p>
         </div>
         <div class="card admin-grid-full">
           <h3 class="section-title" style="margin-top:0">${icon('mail')} ${t('invite_email_title')}</h3>
@@ -9469,13 +9593,25 @@
     if (isAdmin) {
       const orgLogoPreview = document.getElementById('orgLogoPreview');
       const orgLogoRemoveBtn = document.getElementById('orgLogoRemoveBtn');
-      api('/settings').then(({ orgName, orgLogo }) => {
+      api('/settings').then(({ orgName, orgLogo, flexibleTimeEntry }) => {
         document.getElementById('orgName').value = orgName;
         if (orgLogo) {
           orgLogoPreview.src = orgLogo;
           orgLogoRemoveBtn.hidden = false;
         }
+        document.getElementById('flexibleTimeEntryToggle').checked = !!flexibleTimeEntry;
       }).catch(() => {});
+
+      document.getElementById('flexibleTimeEntryToggle').addEventListener('change', async (e) => {
+        const enabled = e.target.checked;
+        try {
+          await api('/settings/flexible-time-entry', { method: 'PATCH', body: { enabled } });
+          showToast(enabled ? t('toast_flexible_time_entry_enabled') : t('toast_flexible_time_entry_disabled'), 'success');
+        } catch (err) {
+          e.target.checked = !enabled;
+          showToast(err.message, 'error');
+        }
+      });
 
       document.getElementById('orgLogoInput').addEventListener('change', async (e) => {
         const file = e.target.files[0];
