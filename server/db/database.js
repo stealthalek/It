@@ -5,30 +5,53 @@ const { createClient } = require('@libsql/client');
 
 const usingTurso = Boolean(process.env.TURSO_DATABASE_URL);
 
+const dataDir = path.join(__dirname, '..', '..', 'data');
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true });
+}
+
 let url = process.env.TURSO_DATABASE_URL;
+let syncUrl;
 if (!usingTurso) {
-  const dataDir = path.join(__dirname, '..', '..', 'data');
-  if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
-  }
   url = `file:${path.join(dataDir, 'ticketing.db')}`;
+} else {
+  syncUrl = url;
+  url = `file:${path.join(dataDir, 'replica.db')}`;
 }
 
 const client = createClient({
   url,
+  syncUrl,
   authToken: process.env.TURSO_AUTH_TOKEN,
+  syncInterval: usingTurso ? 60 : undefined,
 });
 
+let replicaDirty = false;
+let replicaSyncInFlight = null;
+
+async function ensureReplicaFresh() {
+  if (!usingTurso) return;
+  if (replicaDirty && !replicaSyncInFlight) {
+    replicaDirty = false;
+    replicaSyncInFlight = client.sync().catch(() => {}).finally(() => { replicaSyncInFlight = null; });
+  }
+  if (replicaSyncInFlight) await replicaSyncInFlight;
+}
+
 async function run(sql, args = []) {
-  return client.execute({ sql, args });
+  const result = await client.execute({ sql, args });
+  if (usingTurso) replicaDirty = true;
+  return result;
 }
 
 async function get(sql, args = []) {
+  await ensureReplicaFresh();
   const result = await client.execute({ sql, args });
   return result.rows[0] || null;
 }
 
 async function all(sql, args = []) {
+  await ensureReplicaFresh();
   const result = await client.execute({ sql, args });
   return result.rows;
 }
@@ -1318,13 +1341,20 @@ async function seedDefaultContent() {
 }
 
 async function initDb() {
+  if (usingTurso) {
+    try {
+      await client.sync();
+    } catch (err) {
+      console.error('Sincronizzazione iniziale della replica locale fallita, riprovo alla prossima query:', err.message);
+    }
+  }
   await setupSchema();
   await migrate();
   await seedDefaultAdmin();
   await seedAppSettings();
   await seedDefaultCompany();
   await seedDefaultContent();
-  console.log(usingTurso ? 'Database: Turso (persistente)' : `Database: file locale (${url})`);
+  console.log(usingTurso ? 'Database: Turso con replica locale embedded' : `Database: file locale (${url})`);
 }
 
 module.exports = { client, run, get, all, initDb, usingTurso };
