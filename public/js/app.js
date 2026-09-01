@@ -503,6 +503,7 @@
       chart_volume_by_group: 'Volume ticket per gruppo', chart_avg_resolution: 'Tempo medio di risoluzione (ore) per gruppo',
       chart_sla_compliance: 'SLA rispettata per gruppo (%)', chart_load_by_agent: 'Carico ticket per agente',
       chart_csat: 'Soddisfazione media per gruppo (su 5)', no_ratings_yet: 'Nessuna valutazione ancora.', report_col_rating: 'Valutazione',
+      chart_ticket_trend: 'Andamento ticket nel tempo', trend_series_created: 'Creati', trend_series_resolved: 'Risolti',
       no_data: 'Nessun dato.', no_resolved_yet: 'Nessun ticket risolto ancora.',
       no_group_sla_configured: 'Nessun gruppo con SLA configurata.', no_assigned_tickets: 'Nessun ticket assegnato.',
       no_group_label: 'Senza gruppo',
@@ -942,6 +943,7 @@
       chart_volume_by_group: 'Ticket volume by group', chart_avg_resolution: 'Average resolution time (hours) by group',
       chart_sla_compliance: 'SLA compliance by group (%)', chart_load_by_agent: 'Ticket load by agent',
       chart_csat: 'Average satisfaction by group (out of 5)', no_ratings_yet: 'No ratings yet.', report_col_rating: 'Rating',
+      chart_ticket_trend: 'Ticket trend over time', trend_series_created: 'Created', trend_series_resolved: 'Resolved',
       no_data: 'No data.', no_resolved_yet: 'No resolved tickets yet.',
       no_group_sla_configured: 'No group with SLA configured.', no_assigned_tickets: 'No assigned tickets.',
       no_group_label: 'No group',
@@ -2439,6 +2441,81 @@
             </div>`;
         }).join('')}
       </div>`;
+  }
+
+  function lineChart(buckets, seriesDefs) {
+    if (!buckets.length) return `<p class="hint">${t('no_data_available')}</p>`;
+    const width = 720;
+    const height = 220;
+    const padding = 32;
+    const maxVal = Math.max(1, ...buckets.flatMap((b) => seriesDefs.map((s) => b.values[s.key] || 0)));
+    const stepX = buckets.length > 1 ? (width - padding * 2) / (buckets.length - 1) : 0;
+    const scaleY = (v) => height - padding - (v / maxVal) * (height - padding * 2);
+    const linesHtml = seriesDefs.map((s) => {
+      const points = buckets.map((b, i) => `${padding + i * stepX},${scaleY(b.values[s.key] || 0)}`).join(' ');
+      const dots = buckets.map((b, i) => `<circle cx="${padding + i * stepX}" cy="${scaleY(b.values[s.key] || 0)}" r="2.5" fill="${s.color}"><title>${escapeHtml(s.label)} · ${escapeHtml(b.label)}: ${b.values[s.key] || 0}</title></circle>`).join('');
+      return `<polyline points="${points}" fill="none" stroke="${s.color}" stroke-width="2" />${dots}`;
+    }).join('');
+    const labelStep = Math.max(1, Math.ceil(buckets.length / 12));
+    const xLabels = buckets.map((b, i) => (i % labelStep !== 0 && i !== buckets.length - 1) ? '' : `<text x="${padding + i * stepX}" y="${height - 8}" font-size="9" text-anchor="middle" fill="var(--muted)">${escapeHtml(b.label)}</text>`).join('');
+    return `
+      <div class="line-chart-wrap">
+        <svg viewBox="0 0 ${width} ${height}" class="line-chart-svg" role="img" aria-label="${seriesDefs.map((s) => s.label).join(', ')}">
+          <line x1="${padding}" y1="${height - padding}" x2="${width - padding}" y2="${height - padding}" stroke="var(--border)" />
+          ${linesHtml}
+          ${xLabels}
+        </svg>
+        ${seriesDefs.length > 1 ? `
+        <div class="line-chart-legend">
+          ${seriesDefs.map((s) => `<span class="line-chart-legend-item"><span class="line-chart-swatch" style="background:${s.color}"></span>${escapeHtml(s.label)}</span>`).join('')}
+        </div>` : ''}
+      </div>`;
+  }
+
+  function dateBucketGranularity(spanDays) {
+    if (spanDays <= 45) return 'day';
+    if (spanDays <= 210) return 'week';
+    return 'month';
+  }
+
+  function dateBucketKey(date, granularity) {
+    if (granularity === 'day') return date.toISOString().slice(0, 10);
+    if (granularity === 'week') {
+      const monday = new Date(date);
+      const dow = (monday.getUTCDay() + 6) % 7;
+      monday.setUTCDate(monday.getUTCDate() - dow);
+      return monday.toISOString().slice(0, 10);
+    }
+    return date.toISOString().slice(0, 7);
+  }
+
+  function enumerateDateBuckets(minDate, maxDate, granularity) {
+    const keys = [];
+    const cur = new Date(Date.UTC(minDate.getUTCFullYear(), minDate.getUTCMonth(), minDate.getUTCDate()));
+    if (granularity === 'week') {
+      const dow = (cur.getUTCDay() + 6) % 7;
+      cur.setUTCDate(cur.getUTCDate() - dow);
+    } else if (granularity === 'month') {
+      cur.setUTCDate(1);
+    }
+    let guard = 0;
+    while (cur <= maxDate && guard < 400) {
+      keys.push(dateBucketKey(cur, granularity));
+      if (granularity === 'day') cur.setUTCDate(cur.getUTCDate() + 1);
+      else if (granularity === 'week') cur.setUTCDate(cur.getUTCDate() + 7);
+      else cur.setUTCMonth(cur.getUTCMonth() + 1);
+      guard += 1;
+    }
+    return keys;
+  }
+
+  function formatBucketLabel(key, granularity) {
+    if (granularity === 'month') {
+      const [y, m] = key.split('-');
+      return `${m}/${y}`;
+    }
+    const [, m, d] = key.split('-');
+    return `${d}/${m}`;
   }
 
   function wireChartInteractions(container, onRowClick) {
@@ -9295,8 +9372,41 @@
       const agentRows = [...agentCounts.entries()].sort((a, b) => b[1].value - a[1].value)
         .map(([key, { label, value }]) => ({ key, label, value, color: 'var(--primary)' }));
 
+      const trendDates = [];
+      tickets.forEach((tk) => {
+        trendDates.push(new Date(tk.created_at.replace(' ', 'T') + 'Z'));
+        if (tk.resolved_at) trendDates.push(new Date(tk.resolved_at.replace(' ', 'T') + 'Z'));
+      });
+      let trendChartHtml = `<p class="hint">${t('no_data')}</p>`;
+      if (trendDates.length) {
+        const minDate = new Date(Math.min(...trendDates));
+        const maxDate = new Date(Math.max(...trendDates));
+        const spanDays = Math.max(1, Math.round((maxDate - minDate) / 86400000));
+        const granularity = dateBucketGranularity(spanDays);
+        const bucketKeys = enumerateDateBuckets(minDate, maxDate, granularity);
+        const createdCounts = new Map();
+        const resolvedCounts = new Map();
+        tickets.forEach((tk) => {
+          const createdKey = dateBucketKey(new Date(tk.created_at.replace(' ', 'T') + 'Z'), granularity);
+          createdCounts.set(createdKey, (createdCounts.get(createdKey) || 0) + 1);
+          if (tk.resolved_at) {
+            const resolvedKey = dateBucketKey(new Date(tk.resolved_at.replace(' ', 'T') + 'Z'), granularity);
+            resolvedCounts.set(resolvedKey, (resolvedCounts.get(resolvedKey) || 0) + 1);
+          }
+        });
+        const trendBuckets = bucketKeys.map((key) => ({
+          label: formatBucketLabel(key, granularity),
+          values: { created: createdCounts.get(key) || 0, resolved: resolvedCounts.get(key) || 0 },
+        }));
+        trendChartHtml = lineChart(trendBuckets, [
+          { key: 'created', label: t('trend_series_created'), color: 'var(--primary)' },
+          { key: 'resolved', label: t('trend_series_resolved'), color: 'var(--success)' },
+        ]);
+      }
+
       chartsEl.className = 'charts-row';
       chartsEl.innerHTML = `
+        <div class="card chart-card chart-card-wide"><h3 class="section-title" style="margin-top:0">${t('chart_ticket_trend')}</h3>${trendChartHtml}</div>
         <div class="card chart-card"><h3 class="section-title" style="margin-top:0">${t('chart_volume_by_group')}</h3><div id="reportChartVolume"></div></div>
         <div class="card chart-card"><h3 class="section-title" style="margin-top:0">${t('chart_avg_resolution')}</h3><div id="reportChartAvg"></div></div>
         <div class="card chart-card"><h3 class="section-title" style="margin-top:0">${t('chart_sla_compliance')}</h3><div id="reportChartSla"></div></div>
