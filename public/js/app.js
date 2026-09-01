@@ -750,6 +750,8 @@
       perm_users_manage: 'Gestire persone (creare, modificare, bloccare, eliminare)', perm_groups_manage: 'Gestire gruppi e organigramma',
       announcements_hint: 'Comunicazioni ufficiali dalla tua azienda.', btn_new_announcement: 'Nuovo annuncio',
       field_announcement_title: 'Titolo', field_announcement_body: 'Testo dell\'annuncio', announcement_pinned_label: 'Metti in evidenza (in cima alla bacheca)',
+      format_bold: 'Grassetto', format_italic: 'Corsivo', format_heading: 'Titolo', format_list: 'Elenco puntato', format_link: 'Link',
+      announcement_format_hint: 'Grassetto **così**, corsivo *così*, # per un titolo, - per un elenco, [testo](url) per un link',
       announcement_targets_label: 'Destinatari', announcement_targets_hint: 'Scegli gruppi e/o persone specifiche a cui inviare la notifica. Lascia vuoto per inviarla a tutta l\'azienda.',
       announcement_files_title: 'File allegati', dropzone_hint: 'Trascina qui i file o clicca per selezionarli',
       btn_pin: 'Metti in evidenza', btn_unpin: 'Rimuovi dall\'evidenza', btn_edit: 'Modifica',
@@ -1172,6 +1174,8 @@
       perm_users_manage: 'Manage people (create, edit, block, delete)', perm_groups_manage: 'Manage groups and org chart',
       announcements_hint: 'Official communications from your company.', btn_new_announcement: 'New announcement',
       field_announcement_title: 'Title', field_announcement_body: 'Announcement text', announcement_pinned_label: 'Pin to top of the board',
+      format_bold: 'Bold', format_italic: 'Italic', format_heading: 'Heading', format_list: 'Bullet list', format_link: 'Link',
+      announcement_format_hint: 'Bold **like this**, italic *like this*, # for a heading, - for a list, [text](url) for a link',
       announcement_targets_label: 'Recipients', announcement_targets_hint: 'Choose specific groups and/or people to notify. Leave empty to send it to the whole company.',
       announcement_files_title: 'Attached files', dropzone_hint: 'Drag files here or click to select',
       btn_pin: 'Pin', btn_unpin: 'Unpin', btn_edit: 'Edit',
@@ -7344,6 +7348,53 @@
     refreshAnnouncementsNavDot();
   }
 
+  function formatAnnouncementBody(raw) {
+    const escaped = escapeHtml(raw);
+    function inline(text) {
+      let out = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+|mailto:[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+      out = out.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+      out = out.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+      return out;
+    }
+    const blocks = [];
+    let listBuffer = [];
+    let paragraphBuffer = [];
+    function flushList() {
+      if (listBuffer.length) {
+        blocks.push(`<ul>${listBuffer.map((li) => `<li>${li}</li>`).join('')}</ul>`);
+        listBuffer = [];
+      }
+    }
+    function flushParagraph() {
+      if (paragraphBuffer.length) {
+        blocks.push(`<p>${paragraphBuffer.join('<br>')}</p>`);
+        paragraphBuffer = [];
+      }
+    }
+    escaped.split('\n').forEach((line) => {
+      const headingMatch = /^(#{1,3})\s+(.*)$/.exec(line);
+      const listMatch = /^-\s+(.*)$/.exec(line);
+      if (headingMatch) {
+        flushParagraph();
+        flushList();
+        const level = headingMatch[1].length + 3;
+        blocks.push(`<h${level}>${inline(headingMatch[2])}</h${level}>`);
+      } else if (listMatch) {
+        flushParagraph();
+        listBuffer.push(inline(listMatch[1]));
+      } else if (line.trim()) {
+        flushList();
+        paragraphBuffer.push(inline(line));
+      } else {
+        flushParagraph();
+        flushList();
+      }
+    });
+    flushParagraph();
+    flushList();
+    return blocks.filter(Boolean).join('') || '<p></p>';
+  }
+
   async function renderAnnouncementDetail(id) {
     appEl.innerHTML = `<div class="card spinner-row">${t('loading')}</div>`;
     let announcement;
@@ -7366,7 +7417,7 @@
         <a href="#/announcements" class="btn btn-ghost btn-sm">${icon('arrowLeft')} ${t('back_to_list')}</a>
       </div>
       <div class="card">
-        <p class="announcement-body">${escapeHtml(announcement.body).replace(/\n/g, '<br>')}</p>
+        <div class="announcement-body">${formatAnnouncementBody(announcement.body)}</div>
         ${canManageAnnouncements() ? `
           <div class="announcement-admin-actions">
             <button type="button" class="btn btn-ghost btn-sm" id="announcementPinBtn">${announcement.pinned ? t('btn_unpin') : t('btn_pin')}</button>
@@ -7512,6 +7563,14 @@
           </div>
           <div class="field">
             <label for="announcementBody">${t('field_announcement_body')}</label>
+            <div class="announcement-format-toolbar">
+              <button type="button" class="btn btn-ghost btn-sm" data-format="bold" title="${t('format_bold')}"><strong>B</strong></button>
+              <button type="button" class="btn btn-ghost btn-sm" data-format="italic" title="${t('format_italic')}"><em>I</em></button>
+              <button type="button" class="btn btn-ghost btn-sm" data-format="heading" title="${t('format_heading')}">H</button>
+              <button type="button" class="btn btn-ghost btn-sm" data-format="list" title="${t('format_list')}">${icon('grip')}</button>
+              <button type="button" class="btn btn-ghost btn-sm" data-format="link" title="${t('format_link')}">${icon('globe')}</button>
+              <span class="hint">${t('announcement_format_hint')}</span>
+            </div>
             <textarea id="announcementBody" rows="8" required>${existing ? escapeHtml(existing.body) : ''}</textarea>
           </div>
           <label class="checkbox-field">
@@ -7548,6 +7607,37 @@
           </div>
         </form>
       </div>`;
+
+    const bodyTextarea = document.getElementById('announcementBody');
+    document.querySelectorAll('.announcement-format-toolbar [data-format]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const start = bodyTextarea.selectionStart;
+        const end = bodyTextarea.selectionEnd;
+        const selected = bodyTextarea.value.slice(start, end);
+        const format = btn.dataset.format;
+        let insertText = selected;
+        let cursorOffset = 0;
+        if (format === 'bold') {
+          insertText = `**${selected || t('format_bold')}**`;
+          cursorOffset = selected ? insertText.length : 2;
+        } else if (format === 'italic') {
+          insertText = `*${selected || t('format_italic')}*`;
+          cursorOffset = selected ? insertText.length : 1;
+        } else if (format === 'heading') {
+          insertText = `# ${selected || t('format_heading')}`;
+          cursorOffset = insertText.length;
+        } else if (format === 'list') {
+          insertText = (selected || t('format_list')).split('\n').map((line) => `- ${line}`).join('\n');
+          cursorOffset = insertText.length;
+        } else if (format === 'link') {
+          insertText = `[${selected || t('format_link')}](https://)`;
+          cursorOffset = insertText.length;
+        }
+        bodyTextarea.value = bodyTextarea.value.slice(0, start) + insertText + bodyTextarea.value.slice(end);
+        bodyTextarea.focus();
+        bodyTextarea.setSelectionRange(start + cursorOffset, start + cursorOffset);
+      });
+    });
 
     const userSearch = document.getElementById('announcementUserSearch');
     const userSelect = document.getElementById('announcementTargetUsers');

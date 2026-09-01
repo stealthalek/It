@@ -716,7 +716,14 @@ body:not(.role-customer):not(.role-agent):not(.role-admin) .nav-toggle { display
 .announcement-card.announcement-pinned { border-color: var(--primary); }
 .announcement-unread { border-left: 3px solid var(--primary); }
 .announcement-preview { margin: 0.5rem 0 0.35rem; color: var(--muted); }
-.announcement-body { white-space: pre-wrap; line-height: 1.6; }
+.announcement-body { line-height: 1.6; }
+.announcement-body p { margin: 0 0 0.85rem; }
+.announcement-body p:last-child { margin-bottom: 0; }
+.announcement-body h4, .announcement-body h5, .announcement-body h6 { margin: 1rem 0 0.5rem; }
+.announcement-body h4:first-child, .announcement-body h5:first-child, .announcement-body h6:first-child { margin-top: 0; }
+.announcement-body ul { margin: 0 0 0.85rem 1.2rem; padding: 0; }
+.announcement-body a { color: var(--primary); text-decoration: underline; }
+.announcement-format-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; margin-bottom: 0.4rem; }
 .announcement-admin-actions { display: flex; gap: 0.6rem; margin-top: 1.25rem; padding-top: 1.1rem; border-top: 1px solid var(--border); }
 
 .leave-card { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.4rem; }
