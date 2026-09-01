@@ -666,6 +666,11 @@ body:not(.role-customer):not(.role-agent):not(.role-admin) .nav-toggle { display
 .announcement-body { white-space: pre-wrap; line-height: 1.6; }
 .announcement-admin-actions { display: flex; gap: 0.6rem; margin-top: 1.25rem; padding-top: 1.1rem; border-top: 1px solid var(--border); }
 
+.leave-card { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.4rem; }
+.leave-card-main h3 { margin: 0; font-size: 1rem; }
+.leave-card-main p { margin: 0.15rem 0 0; }
+.leave-card-side { display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem; }
+
 .directory-card { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.4rem; }
 .directory-card-main h3 { margin: 0; font-size: 1rem; }
 .directory-card-main p { margin: 0.15rem 0 0; }
@@ -1777,6 +1782,8 @@ body.col-resizing-active { cursor: col-resize !important; user-select: none; }
 .badge-completed { background: var(--success-soft); color: var(--success-text); }
 .badge-cancelled { background: var(--surface-alt); color: var(--muted); border: 1px solid var(--border); }
 .badge-pending { background: var(--surface-alt); color: var(--muted); border: 1px solid var(--border); }
+.badge-approved { background: var(--success-soft); color: var(--success-text); }
+.badge-rejected { background: var(--danger-soft); color: var(--danger); }
 .badge-done { background: var(--success-soft); color: var(--success-text); }
 .badge-skipped { background: var(--surface-alt); color: var(--muted); border: 1px solid var(--border); }
 .clickable-row { cursor: pointer; }
