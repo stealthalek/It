@@ -568,6 +568,7 @@
       field_group_name: 'Nome del team', toast_group_name_updated: 'Nome del team aggiornato',
       toast_group_deleted: 'Gruppo eliminato', toast_group_created: 'Gruppo creato', toast_default_team_updated: 'Team predefinito aggiornato',
       org_drop_root_hint: 'Trascina qui un gruppo per renderlo di primo livello', toast_group_reparented: 'Gruppo riorganizzato',
+      toast_member_moved: 'Persona spostata di team', org_member_drag_hint: 'Trascina su un altro team per spostare la persona', org_no_members: 'Nessuna persona in questo team',
       assign_to_me_btn: 'Assegna a me', toast_ticket_assigned_to_you: 'Ticket assegnato a te',
       group_by_team_label: 'Raggruppa per team',
       widgets_section_title: 'Cruscotto di gestione', widgets_customize_btn: 'Personalizza',
@@ -992,6 +993,7 @@
       field_group_name: 'Team name', toast_group_name_updated: 'Team name updated',
       toast_group_deleted: 'Group deleted', toast_group_created: 'Group created', toast_default_team_updated: 'Default team updated',
       org_drop_root_hint: 'Drag a group here to make it top-level', toast_group_reparented: 'Group reorganized',
+      toast_member_moved: 'Person moved to another team', org_member_drag_hint: 'Drag onto another team to move this person', org_no_members: 'No one in this team yet',
       assign_to_me_btn: 'Assign to me', toast_ticket_assigned_to_you: 'Ticket assigned to you',
       group_by_team_label: 'Group by team',
       widgets_section_title: 'Management dashboard', widgets_customize_btn: 'Customize',
@@ -5340,9 +5342,10 @@
           staffUsersCache.map((u) => `<option value="${u.id}" ${String(u.id) === String(selectedId) ? 'selected' : ''}>${escapeHtml(u.name)}</option>`).join('');
       }
 
-      function renderOrgNode(node, statsById) {
+      function renderOrgNode(node, statsById, membersByGroup) {
         const stats = statsById.get(node.id) || { open: 0, breached: 0 };
         const hasChildren = node.children.length > 0;
+        const members = membersByGroup.get(node.id) || [];
         return `
           <div class="org-branch">
             <div class="org-node" draggable="true" data-group-id="${node.id}" data-group-name="${escapeHtml(node.name)}" title="${t('org_node_hint')}">
@@ -5359,6 +5362,17 @@
                 <span class="org-node-badge ${stats.breached > 0 ? 'org-node-badge-danger' : 'org-node-badge-ok'}">${stats.open} ${t('org_open_tickets')}</span>
                 ${stats.breached > 0 ? `<span class="org-node-badge org-node-badge-danger">${stats.breached} ${t('org_sla_breach')}</span>` : ''}
               </div>
+              <details class="org-node-members">
+                <summary>${icon('users', 'badge-icon')} ${t('orgchart_view_members')}</summary>
+                <div class="org-node-members-body">
+                  <p class="hint">${t('org_member_drag_hint')}</p>
+                  <div class="org-member-chips">
+                    ${members.length ? members.map((m) => `
+                      <span class="org-member-chip" draggable="true" data-user-id="${m.id}" data-origin-group="${node.id}" title="${escapeHtml(m.name)}">${icon('userCircle', 'badge-icon')}${escapeHtml(m.name)}</span>
+                    `).join('') : `<span class="hint">${t('org_no_members')}</span>`}
+                  </div>
+                </div>
+              </details>
               <details class="org-node-settings">
                 <summary>${icon('settings', 'badge-icon')} ${t('org_settings_toggle')}</summary>
                 <div class="org-node-settings-body">
@@ -5379,7 +5393,7 @@
                 </div>
               </details>
             </div>
-            ${hasChildren ? `<div class="org-children">${node.children.map((child) => renderOrgNode(child, statsById)).join('')}</div>` : ''}
+            ${hasChildren ? `<div class="org-children">${node.children.map((child) => renderOrgNode(child, statsById, membersByGroup)).join('')}</div>` : ''}
           </div>`;
       }
 
@@ -5403,11 +5417,18 @@
             if (tk.sla_status === 'breached') entry.breached += 1;
             statsById.set(tk.group_id, entry);
           });
+          const membersByGroup = new Map();
+          users.forEach((u) => {
+            if (!u.group_id) return;
+            if (!membersByGroup.has(u.group_id)) membersByGroup.set(u.group_id, []);
+            membersByGroup.get(u.group_id).push({ id: u.id, name: u.name });
+          });
+          membersByGroup.forEach((list) => list.sort((a, b) => a.name.localeCompare(b.name)));
           const tree = buildGroupTree(groups);
           listEl.className = '';
           listEl.innerHTML = tree.length ? `
             <div id="orgRootDrop" class="org-root-drop">${t('org_drop_root_hint')}</div>
-            <div class="org-chart">${tree.map((node) => renderOrgNode(node, statsById)).join('')}</div>` : `<p class="hint">${t('no_groups_hint')}</p>`;
+            <div class="org-chart">${tree.map((node) => renderOrgNode(node, statsById, membersByGroup)).join('')}</div>` : `<p class="hint">${t('no_groups_hint')}</p>`;
 
           listEl.querySelectorAll('.org-node').forEach((nodeEl) => {
             nodeEl.addEventListener('click', (e) => {
@@ -5436,6 +5457,8 @@
           });
 
           let draggedGroupId = null;
+          let draggedUserId = null;
+          let draggedUserOriginGroup = null;
           async function reparentGroup(sourceId, parentId) {
             try {
               await api(`/groups/${sourceId}`, { method: 'PATCH', body: { parentId } });
@@ -5446,6 +5469,32 @@
               showToast(err.message, 'error');
             }
           }
+          async function reassignMember(userId, groupId) {
+            try {
+              await api(`/users/${userId}/group`, { method: 'PATCH', body: { groupId } });
+              showToast(t('toast_member_moved'), 'success');
+              loadGroups();
+            } catch (err) {
+              showToast(err.message, 'error');
+            }
+          }
+          listEl.querySelectorAll('.org-member-chip').forEach((chip) => {
+            chip.addEventListener('dragstart', (e) => {
+              e.stopPropagation();
+              draggedUserId = chip.dataset.userId;
+              draggedUserOriginGroup = chip.dataset.originGroup;
+              chip.classList.add('dragging');
+              e.dataTransfer.effectAllowed = 'move';
+              e.dataTransfer.setData('text/plain', `user:${draggedUserId}`);
+            });
+            chip.addEventListener('dragend', (e) => {
+              e.stopPropagation();
+              chip.classList.remove('dragging');
+              listEl.querySelectorAll('.drop-target').forEach((el) => el.classList.remove('drop-target'));
+              draggedUserId = null;
+              draggedUserOriginGroup = null;
+            });
+          });
           listEl.querySelectorAll('.org-node').forEach((nodeEl) => {
             nodeEl.addEventListener('dragstart', (e) => {
               draggedGroupId = nodeEl.dataset.groupId;
@@ -5459,6 +5508,13 @@
               draggedGroupId = null;
             });
             nodeEl.addEventListener('dragover', (e) => {
+              if (draggedUserId) {
+                if (draggedUserOriginGroup === nodeEl.dataset.groupId) return;
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                nodeEl.classList.add('drop-target');
+                return;
+              }
               if (!draggedGroupId || draggedGroupId === nodeEl.dataset.groupId) return;
               e.preventDefault();
               e.dataTransfer.dropEffect = 'move';
@@ -5468,8 +5524,16 @@
             nodeEl.addEventListener('drop', (e) => {
               e.preventDefault();
               nodeEl.classList.remove('drop-target');
-              const sourceId = draggedGroupId;
               const targetId = nodeEl.dataset.groupId;
+              if (draggedUserId) {
+                const uid = draggedUserId;
+                if (draggedUserOriginGroup === targetId) return;
+                draggedUserId = null;
+                draggedUserOriginGroup = null;
+                reassignMember(uid, Number(targetId));
+                return;
+              }
+              const sourceId = draggedGroupId;
               if (!sourceId || sourceId === targetId) return;
               reparentGroup(sourceId, Number(targetId));
             });
@@ -5478,7 +5542,7 @@
           const rootDrop = document.getElementById('orgRootDrop');
           if (rootDrop) {
             rootDrop.addEventListener('dragover', (e) => {
-              if (!draggedGroupId) return;
+              if (!draggedGroupId && !draggedUserId) return;
               e.preventDefault();
               e.dataTransfer.dropEffect = 'move';
               rootDrop.classList.add('drop-target');
@@ -5487,6 +5551,13 @@
             rootDrop.addEventListener('drop', (e) => {
               e.preventDefault();
               rootDrop.classList.remove('drop-target');
+              if (draggedUserId) {
+                const uid = draggedUserId;
+                draggedUserId = null;
+                draggedUserOriginGroup = null;
+                reassignMember(uid, null);
+                return;
+              }
               const sourceId = draggedGroupId;
               if (!sourceId) return;
               reparentGroup(sourceId, null);

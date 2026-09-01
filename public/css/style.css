@@ -2540,6 +2540,37 @@ body.col-resizing-active { cursor: col-resize !important; user-select: none; }
 }
 .org-node-badge-ok { background: var(--success-soft); color: var(--success); }
 .org-node-badge-danger { background: var(--danger-soft); color: var(--danger); }
+.org-node-members { margin-top: 0.4rem; }
+.org-node-members > summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--primary);
+  padding: 0.25rem 0;
+}
+.org-node-members > summary::-webkit-details-marker { display: none; }
+.org-node-members-body { padding-top: 0.4rem; border-top: 1px dashed var(--border); margin-top: 0.2rem; }
+.org-node-members-body .hint { font-size: 0.68rem; margin: 0 0 0.4rem; }
+.org-member-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.org-member-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--text);
+  cursor: grab;
+}
+.org-member-chip:active { cursor: grabbing; }
+.org-member-chip.dragging { opacity: 0.4; }
 .org-node-settings { margin-top: 0.4rem; }
 .org-node-settings > summary {
   cursor: pointer;
