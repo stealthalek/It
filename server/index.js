@@ -33,6 +33,7 @@ const assetLetterRoutes = require('./routes/asset-letters');
 const companyRoutes = require('./routes/companies');
 const timeEntryRoutes = require('./routes/time-entries');
 const announcementRoutes = require('./routes/announcements');
+const leaveRequestRoutes = require('./routes/leave-requests');
 const { loadHolidays } = require('./sla');
 const { recordRequest } = require('./lib/requestStats');
 
@@ -100,6 +101,7 @@ app.use('/api/asset-letters', assetLetterRoutes);
 app.use('/api/companies', companyRoutes);
 app.use('/api/time-entries', timeEntryRoutes);
 app.use('/api/announcements', announcementRoutes);
+app.use('/api/leave-requests', leaveRequestRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() });
