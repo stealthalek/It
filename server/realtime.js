@@ -121,4 +121,22 @@ function broadcastNotification(userId, notification) {
   io.to(`user:${userId}`).emit('notification:new', notification);
 }
 
-module.exports = { initRealtime, broadcastActivityItem, broadcastTicketUpdate, broadcastNotification, getOnlineUsers };
+function broadcastDirectMessage(userId, message) {
+  if (!io) return;
+  io.to(`user:${userId}`).emit('message:new', message);
+}
+
+function broadcastDirectMessageEdit(userId, message) {
+  if (!io) return;
+  io.to(`user:${userId}`).emit('message:edited', message);
+}
+
+function broadcastDirectMessageDelete(userId, payload) {
+  if (!io) return;
+  io.to(`user:${userId}`).emit('message:deleted', payload);
+}
+
+module.exports = {
+  initRealtime, broadcastActivityItem, broadcastTicketUpdate, broadcastNotification, getOnlineUsers,
+  broadcastDirectMessage, broadcastDirectMessageEdit, broadcastDirectMessageDelete,
+};

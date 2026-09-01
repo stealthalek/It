@@ -5,6 +5,7 @@ const { notifyUser } = require('./notifications');
 const { formatTicketNumber } = require('./lib/ticketNumber');
 
 const AUTO_CLOSE_HOURS = 72;
+const MESSAGE_TTL_DAYS = 14;
 const CHECK_INTERVAL_MS = 10 * 60 * 1000;
 
 async function autoCloseResolvedTickets() {
@@ -84,13 +85,19 @@ async function checkSlaWarnings() {
   }
 }
 
+async function purgeExpiredMessages() {
+  await db.run("DELETE FROM direct_messages WHERE created_at <= datetime('now', ?)", [`-${MESSAGE_TTL_DAYS} days`]);
+}
+
 function startAutoCloseScheduler() {
   autoCloseResolvedTickets().catch((err) => console.error('Auto-chiusura ticket fallita:', err.message));
   checkSlaWarnings().catch((err) => console.error('Verifica SLA fallita:', err.message));
+  purgeExpiredMessages().catch((err) => console.error('Pulizia messaggi diretti fallita:', err.message));
   setInterval(() => {
     autoCloseResolvedTickets().catch((err) => console.error('Auto-chiusura ticket fallita:', err.message));
     checkSlaWarnings().catch((err) => console.error('Verifica SLA fallita:', err.message));
+    purgeExpiredMessages().catch((err) => console.error('Pulizia messaggi diretti fallita:', err.message));
   }, CHECK_INTERVAL_MS);
 }
 
-module.exports = { startAutoCloseScheduler, autoCloseResolvedTickets, checkSlaWarnings };
+module.exports = { startAutoCloseScheduler, autoCloseResolvedTickets, checkSlaWarnings, purgeExpiredMessages };

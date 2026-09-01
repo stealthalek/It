@@ -326,6 +326,19 @@ async function setupSchema() {
         company_id INTEGER REFERENCES companies(id) ON DELETE SET NULL,
         created_at TEXT NOT NULL DEFAULT (datetime('now'))
       )`,
+      `CREATE TABLE IF NOT EXISTS direct_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        sender_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        recipient_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        body TEXT NOT NULL,
+        company_id INTEGER REFERENCES companies(id) ON DELETE SET NULL,
+        read_at TEXT,
+        edited_at TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`,
+      'CREATE INDEX IF NOT EXISTS idx_direct_messages_sender_id ON direct_messages(sender_id)',
+      'CREATE INDEX IF NOT EXISTS idx_direct_messages_recipient_id ON direct_messages(recipient_id)',
+      'CREATE INDEX IF NOT EXISTS idx_direct_messages_created_at ON direct_messages(created_at)',
       'CREATE INDEX IF NOT EXISTS idx_announcements_company_id ON announcements(company_id)',
       'CREATE INDEX IF NOT EXISTS idx_announcements_pinned_created ON announcements(pinned, created_at)',
       'CREATE INDEX IF NOT EXISTS idx_announcement_reads_user_id ON announcement_reads(user_id)',
