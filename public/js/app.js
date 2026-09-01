@@ -149,6 +149,7 @@
     activity: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
     trash: '<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
     arrowLeft: '<line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>',
+    arrowRight: '<line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>',
     settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
     plug: '<path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v3a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8z"/>',
     incident: '<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
@@ -415,6 +416,8 @@
       bulk_delete_btn: 'Elimina selezionati', toast_bulk_deleted: 'Ticket eliminati',
       confirm_bulk_delete_tickets_prefix: 'Eliminare definitivamente', confirm_bulk_delete_tickets_suffix: ' ticket selezionati? L\'operazione non è reversibile.',
       filter_all_roles: 'Tutti i ruoli', filter_all_groups: 'Tutti i gruppi',
+      page_prev: 'Precedente', page_next: 'Successivo',
+      page_indicator_prefix: 'Pagina', page_indicator_of: 'di', page_indicator_results: 'risultati',
       bulk_user_role_placeholder: 'Cambia ruolo...', bulk_user_group_placeholder: 'Assegna a gruppo...',
       toast_bulk_user_updated: 'Utenti aggiornati', toast_bulk_users_deleted: 'Utenti eliminati',
       confirm_bulk_delete_users_prefix: 'Eliminare definitivamente', confirm_bulk_delete_users_suffix: ' utenti selezionati? L\'operazione non è reversibile.',
@@ -809,6 +812,8 @@
       bulk_delete_btn: 'Delete selected', toast_bulk_deleted: 'Tickets deleted',
       confirm_bulk_delete_tickets_prefix: 'Permanently delete', confirm_bulk_delete_tickets_suffix: ' selected tickets? This cannot be undone.',
       filter_all_roles: 'All roles', filter_all_groups: 'All groups',
+      page_prev: 'Previous', page_next: 'Next',
+      page_indicator_prefix: 'Page', page_indicator_of: 'of', page_indicator_results: 'results',
       bulk_user_role_placeholder: 'Change role...', bulk_user_group_placeholder: 'Assign to group...',
       toast_bulk_user_updated: 'Users updated', toast_bulk_users_deleted: 'Users deleted',
       confirm_bulk_delete_users_prefix: 'Permanently delete', confirm_bulk_delete_users_suffix: ' selected users? This cannot be undone.',
@@ -6214,30 +6219,15 @@
       loadHolidays();
     }
 
-    let allUsersCache = [];
     let allGroupsCache = [];
-    async function loadUsersTable() {
-      const wrap = document.getElementById('usersWrap');
-      wrap.className = 'card spinner-row';
-      wrap.textContent = t('loading');
-      try {
-        const [{ users }, groupsRes] = await Promise.all([
-          api('/users'),
-          isAdmin ? api('/groups').catch(() => ({ groups: [] })) : Promise.resolve({ groups: [] }),
-        ]);
-        allUsersCache = users;
-        allGroupsCache = groupsRes.groups || [];
-        renderUsersTable();
-      } catch (err) {
-        wrap.className = '';
-        wrap.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
-      }
-    }
+    const usersPageState = { page: 1, pageSize: 50, total: 0 };
+    const selectedUserIds = new Set();
 
-    function renderUsersTable() {
+    async function initUsersTable() {
       const wrap = document.getElementById('usersWrap');
       wrap.className = 'card';
-      const selectedUserIds = new Set();
+      const groupsRes = isAdmin ? await api('/groups').catch(() => ({ groups: [] })) : { groups: [] };
+      allGroupsCache = groupsRes.groups || [];
       wrap.innerHTML = `
         <div class="filters" style="margin-bottom:1rem">
           <div class="field" style="max-width:320px">
@@ -6278,11 +6268,23 @@
             <thead><tr>${isAdmin ? `<th><input type="checkbox" id="userSelectAllBox" /></th>` : ''}<th>${t('th_name')}</th><th>${t('th_email')}</th><th>${t('th_role')}</th><th>${t('th_group')}</th><th>${t('th_status')}</th><th>${t('th_registered')}</th></tr></thead>
             <tbody id="usersTableBody"></tbody>
           </table>
+        </div>
+        <div class="pagination-bar">
+          <button type="button" id="usersPagePrev" class="btn btn-ghost btn-sm">${icon('arrowLeft', 'badge-icon')} ${t('page_prev')}</button>
+          <span id="usersPageInfo" class="hint"></span>
+          <button type="button" id="usersPageNext" class="btn btn-ghost btn-sm">${t('page_next')} ${icon('arrowRight', 'badge-icon')}</button>
         </div>`;
 
       const userBulkBar = document.getElementById('userBulkBar');
       const userBulkCount = document.getElementById('userBulkCount');
       const userSelectAllBox = document.getElementById('userSelectAllBox');
+      const searchInput = document.getElementById('userSearchInput');
+      const statusSelect = document.getElementById('userStatusFilter');
+      const roleSelect = document.getElementById('userRoleFilter');
+      const groupSelect = document.getElementById('userGroupFilter');
+      const pagePrevBtn = document.getElementById('usersPagePrev');
+      const pageNextBtn = document.getElementById('usersPageNext');
+      const pageInfoEl = document.getElementById('usersPageInfo');
 
       function updateUserBulkBar() {
         if (!userBulkBar) return;
@@ -6290,6 +6292,7 @@
         userBulkCount.textContent = `${t('bulk_selected_count')} ${selectedUserIds.size}`;
       }
 
+      let currentPageUsers = [];
       function wireUserCheckboxes() {
         const tbody = document.getElementById('usersTableBody');
         tbody.querySelectorAll('.userSelectBox').forEach((box) => {
@@ -6300,9 +6303,13 @@
             updateUserBulkBar();
           });
         });
+        if (userSelectAllBox) {
+          userSelectAllBox.checked = currentPageUsers.length > 0 && currentPageUsers.every((u) => u.id === state.user.id || selectedUserIds.has(u.id));
+        }
       }
 
       function renderRows(users) {
+        currentPageUsers = users;
         const tbody = document.getElementById('usersTableBody');
         tbody.innerHTML = users.length ? users.map((u) => `
           <tr class="user-row" data-user-id="${u.id}" tabindex="0" role="link">
@@ -6321,42 +6328,73 @@
           });
         });
         wireUserCheckboxes();
-        if (userSelectAllBox) {
-          userSelectAllBox.checked = users.length > 0 && users.every((u) => u.id === state.user.id || selectedUserIds.has(u.id));
+      }
+
+      function updatePaginationBar() {
+        const totalPages = Math.max(1, Math.ceil(usersPageState.total / usersPageState.pageSize));
+        pageInfoEl.textContent = `${t('page_indicator_prefix')} ${usersPageState.page} ${t('page_indicator_of')} ${totalPages} · ${usersPageState.total} ${t('page_indicator_results')}`;
+        pagePrevBtn.disabled = usersPageState.page <= 1;
+        pageNextBtn.disabled = usersPageState.page >= totalPages;
+      }
+
+      async function loadUsersTable() {
+        const tbody = document.getElementById('usersTableBody');
+        tbody.innerHTML = `<tr><td colspan="${isAdmin ? 7 : 6}"><p class="hint">${t('loading')}</p></td></tr>`;
+        const params = new URLSearchParams();
+        if (searchInput.value.trim()) params.set('q', searchInput.value.trim());
+        if (statusSelect.value) params.set('status', statusSelect.value);
+        if (roleSelect.value) params.set('role', roleSelect.value);
+        if (groupSelect && groupSelect.value) params.set('groupId', groupSelect.value);
+        params.set('page', usersPageState.page);
+        params.set('pageSize', usersPageState.pageSize);
+        try {
+          let { users, total } = await api(`/users?${params.toString()}`);
+          const totalPages = Math.max(1, Math.ceil(total / usersPageState.pageSize));
+          if (usersPageState.page > totalPages) {
+            usersPageState.page = totalPages;
+            params.set('page', usersPageState.page);
+            ({ users, total } = await api(`/users?${params.toString()}`));
+          }
+          usersPageState.total = total;
+          renderRows(users);
+          updatePaginationBar();
+          updateUserBulkBar();
+        } catch (err) {
+          tbody.innerHTML = `<tr><td colspan="${isAdmin ? 7 : 6}"><p class="error-text">${escapeHtml(err.message)}</p></td></tr>`;
         }
       }
 
-      let lastFiltered = allUsersCache;
-      function applyFilters() {
-        const q = searchInput.value.trim().toLowerCase();
-        const statusFilter = statusSelect.value;
-        const roleFilter = roleSelect.value;
-        const groupFilter = groupSelect ? groupSelect.value : '';
-        let filtered = allUsersCache;
-        if (q) filtered = filtered.filter((u) => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
-        if (statusFilter === 'active') filtered = filtered.filter((u) => !u.is_blocked);
-        else if (statusFilter === 'blocked') filtered = filtered.filter((u) => u.is_blocked);
-        if (roleFilter) filtered = filtered.filter((u) => u.role === roleFilter);
-        if (groupFilter) filtered = filtered.filter((u) => u.group_id === Number(groupFilter));
-        lastFiltered = filtered;
-        renderRows(filtered);
+      let debounceTimer;
+      function onFilterChange() {
+        usersPageState.page = 1;
+        loadUsersTable();
       }
+      searchInput.addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(onFilterChange, 300);
+      });
+      statusSelect.addEventListener('change', onFilterChange);
+      roleSelect.addEventListener('change', onFilterChange);
+      if (groupSelect) groupSelect.addEventListener('change', onFilterChange);
 
-      const searchInput = document.getElementById('userSearchInput');
-      const statusSelect = document.getElementById('userStatusFilter');
-      const roleSelect = document.getElementById('userRoleFilter');
-      const groupSelect = document.getElementById('userGroupFilter');
-      searchInput.addEventListener('input', applyFilters);
-      statusSelect.addEventListener('change', applyFilters);
-      roleSelect.addEventListener('change', applyFilters);
-      if (groupSelect) groupSelect.addEventListener('change', applyFilters);
+      pagePrevBtn.addEventListener('click', () => {
+        if (usersPageState.page <= 1) return;
+        usersPageState.page -= 1;
+        loadUsersTable();
+      });
+      pageNextBtn.addEventListener('click', () => {
+        const totalPages = Math.max(1, Math.ceil(usersPageState.total / usersPageState.pageSize));
+        if (usersPageState.page >= totalPages) return;
+        usersPageState.page += 1;
+        loadUsersTable();
+      });
 
       if (userSelectAllBox) {
         userSelectAllBox.addEventListener('change', () => {
           if (userSelectAllBox.checked) {
-            lastFiltered.forEach((u) => { if (u.id !== state.user.id) selectedUserIds.add(u.id); });
+            currentPageUsers.forEach((u) => { if (u.id !== state.user.id) selectedUserIds.add(u.id); });
           } else {
-            lastFiltered.forEach((u) => selectedUserIds.delete(u.id));
+            currentPageUsers.forEach((u) => selectedUserIds.delete(u.id));
           }
           wireUserCheckboxes();
           updateUserBulkBar();
@@ -6422,10 +6460,10 @@
         });
       }
 
-      applyFilters();
+      loadUsersTable();
     }
 
-    loadUsersTable();
+    initUsersTable();
   }
 
   async function renderUserDetail(id) {

@@ -48,7 +48,34 @@ router.get(
       conditions.push('u.company_id = ?');
       params.push(Number(req.query.companyId));
     }
+    if (req.query.q && req.query.q.trim()) {
+      conditions.push('(u.name LIKE ? OR u.email LIKE ?)');
+      params.push(`%${req.query.q.trim()}%`, `%${req.query.q.trim()}%`);
+    }
+    if (req.query.status === 'active') {
+      conditions.push('u.is_blocked = 0');
+    } else if (req.query.status === 'blocked') {
+      conditions.push('u.is_blocked = 1');
+    }
+    if (req.query.role && ROLES.includes(req.query.role)) {
+      conditions.push('u.role = ?');
+      params.push(req.query.role);
+    }
+    if (req.query.groupId && /^\d+$/.test(req.query.groupId)) {
+      conditions.push('u.group_id = ?');
+      params.push(Number(req.query.groupId));
+    }
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    if (req.query.page) {
+      const page = Math.max(1, Number(req.query.page) || 1);
+      const pageSize = Math.min(200, Math.max(1, Number(req.query.pageSize) || 50));
+      const offset = (page - 1) * pageSize;
+      const totalRow = await db.get(`SELECT COUNT(*) AS n FROM users u ${where}`, params);
+      const users = await db.all(`${USER_SELECT} ${where} ORDER BY u.name ASC LIMIT ? OFFSET ?`, [...params, pageSize, offset]);
+      return res.json({ users, total: totalRow.n, page, pageSize });
+    }
+
     const users = await db.all(`${USER_SELECT} ${where} ORDER BY u.name ASC LIMIT 5000`, params);
     res.json({ users });
   })
