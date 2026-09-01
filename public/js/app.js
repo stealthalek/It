@@ -343,6 +343,7 @@
   const TRANSLATIONS = {
     it: {
       nav_dashboard: 'Ticket', nav_new: 'Nuovo ticket', nav_search: 'Ricerca', nav_announcements: 'Bacheca', nav_directory: 'Rubrica', nav_messages: 'Messaggi',
+      nav_section_work: 'Lavoro', nav_section_team: 'Team', nav_section_tools: 'Strumenti',
       directory_hint: 'Trova un collega per nome, ruolo o team.',
       send_message_btn: 'Messaggio', messages_inbox_hint: 'Le tue conversazioni dirette con i colleghi.',
       messages_you_prefix: 'Tu:', no_messages_yet: 'Nessun messaggio.',
@@ -743,6 +744,7 @@
     },
     en: {
       nav_dashboard: 'Tickets', nav_new: 'New ticket', nav_search: 'Search', nav_announcements: 'Announcements', nav_directory: 'Directory', nav_messages: 'Messages',
+      nav_section_work: 'Work', nav_section_team: 'Team', nav_section_tools: 'Tools',
       directory_hint: 'Find a colleague by name, role, or team.',
       send_message_btn: 'Message', messages_inbox_hint: 'Your direct conversations with colleagues.',
       messages_you_prefix: 'You:', no_messages_yet: 'No messages yet.',
@@ -1166,15 +1168,31 @@
     assets: 'monitor', onboarding: 'userCircle', timesheet: 'clock', orgchart: 'globe', report: 'activity', admin: 'shield', profile: 'userCircle',
   };
 
+  const NAV_SECTION_KEY = { work: 'nav_section_work', team: 'nav_section_team', tools: 'nav_section_tools' };
+
   function applyChromeTranslations() {
     document.querySelectorAll('.main-nav a[data-nav]').forEach((a) => {
       const key = NAV_KEY_BY_ROUTE[a.dataset.nav];
       const iconName = NAV_ICON_BY_ROUTE[a.dataset.nav];
       if (key) a.innerHTML = `${icon(iconName, 'nav-icon')}<span class="nav-label">${t(key)}</span><span class="nav-dot" hidden></span>`;
     });
+    document.querySelectorAll('.nav-section-label[data-nav-section]').forEach((el) => {
+      const key = NAV_SECTION_KEY[el.dataset.navSection];
+      if (key) el.textContent = t(key);
+    });
     logoutBtn.innerHTML = `${icon('logout')} <span class="nav-label">${t('logout')}</span>`;
     refreshAnnouncementsNavDot();
     refreshMessagesNavDot();
+    updateNavSectionVisibility();
+  }
+
+  function updateNavSectionVisibility() {
+    document.querySelectorAll('.main-nav [data-nav-section]').forEach((label) => {
+      const group = label.dataset.navSection;
+      const links = document.querySelectorAll(`.main-nav a[data-nav-group="${group}"]`);
+      const anyVisible = Array.from(links).some((a) => getComputedStyle(a).display !== 'none');
+      label.hidden = !anyVisible;
+    });
   }
 
   async function refreshAnnouncementsNavDot() {
@@ -1355,6 +1373,7 @@
       teardownSidebarStatusPolling();
       if (sidebarSystemStatus) sidebarSystemStatus.hidden = true;
     }
+    updateNavSectionVisibility();
   }
 
   function getMotionPref() {

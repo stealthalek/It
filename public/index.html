@@ -33,19 +33,23 @@
       <button id="sidebarCollapseBtn" class="sidebar-collapse-btn" type="button" title="Comprimi menu" aria-label="Comprimi menu"></button>
     </div>
     <nav id="mainNav" class="main-nav">
-      <a href="#/dashboard" data-nav="dashboard" class="logged-in-only"></a>
-      <a href="#/new" data-nav="new" class="logged-in-only"></a>
-      <a href="#/announcements" data-nav="announcements" class="logged-in-only"></a>
-      <a href="#/directory" data-nav="directory" class="logged-in-only"></a>
-      <a href="#/messages" data-nav="messages" class="logged-in-only"></a>
-      <a href="#/onboarding" data-nav="onboarding" class="onboarding-nav"></a>
-      <a href="#/timesheet" data-nav="timesheet" class="logged-in-only"></a>
-      <a href="#/orgchart" data-nav="orgchart" class="logged-in-only"></a>
-      <a href="#/search" data-nav="search" class="staff-only"></a>
-      <a href="#/assets" data-nav="assets" class="staff-only"></a>
-      <a href="#/report" data-nav="report" class="insights-nav"></a>
-      <a href="#/admin" data-nav="admin" class="staff-only"></a>
-      <a href="#/profile" data-nav="profile" class="logged-in-only"></a>
+      <div class="nav-section-label" data-nav-section="work"></div>
+      <a href="#/dashboard" data-nav="dashboard" class="logged-in-only" data-nav-group="work"></a>
+      <a href="#/new" data-nav="new" class="logged-in-only" data-nav-group="work"></a>
+      <a href="#/announcements" data-nav="announcements" class="logged-in-only" data-nav-group="work"></a>
+      <div class="nav-section-label" data-nav-section="team"></div>
+      <a href="#/directory" data-nav="directory" class="logged-in-only" data-nav-group="team"></a>
+      <a href="#/messages" data-nav="messages" class="logged-in-only" data-nav-group="team"></a>
+      <a href="#/orgchart" data-nav="orgchart" class="logged-in-only" data-nav-group="team"></a>
+      <a href="#/onboarding" data-nav="onboarding" class="onboarding-nav" data-nav-group="team"></a>
+      <div class="nav-section-label" data-nav-section="tools"></div>
+      <a href="#/timesheet" data-nav="timesheet" class="logged-in-only" data-nav-group="tools"></a>
+      <a href="#/search" data-nav="search" class="staff-only" data-nav-group="tools"></a>
+      <a href="#/assets" data-nav="assets" class="staff-only" data-nav-group="tools"></a>
+      <a href="#/report" data-nav="report" class="insights-nav" data-nav-group="tools"></a>
+      <div class="nav-section-divider" data-nav-section="account"></div>
+      <a href="#/admin" data-nav="admin" class="staff-only" data-nav-group="account"></a>
+      <a href="#/profile" data-nav="profile" class="logged-in-only" data-nav-group="account"></a>
     </nav>
     <a id="sidebarSystemStatus" href="#/admin" class="sidebar-system-status" hidden>
       <span class="sidebar-status-dot"></span>
