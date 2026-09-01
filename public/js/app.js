@@ -273,6 +273,34 @@
     showToast._t = setTimeout(() => { toastEl.className = 'toast'; }, duration);
   }
 
+  function showMessagePopup(message) {
+    const stack = document.getElementById('messagePopupStack');
+    if (!stack) return;
+    const el = document.createElement('div');
+    el.className = 'message-popup';
+    el.innerHTML = `
+      <div class="message-popup-icon">${icon('mail')}</div>
+      <div class="message-popup-body">
+        <strong class="message-popup-sender"></strong>
+        <p class="message-popup-text"></p>
+      </div>
+      <button type="button" class="message-popup-close" aria-label="${t('close_btn')}">${icon('x')}</button>`;
+    el.querySelector('.message-popup-sender').textContent = message.sender_name || '';
+    el.querySelector('.message-popup-text').textContent = message.body || '';
+    function dismiss() {
+      el.classList.remove('show');
+      setTimeout(() => el.remove(), 250);
+    }
+    el.addEventListener('click', (e) => {
+      if (e.target.closest('.message-popup-close')) { dismiss(); return; }
+      location.hash = `#/messages/${message.sender_id}`;
+      dismiss();
+    });
+    stack.appendChild(el);
+    requestAnimationFrame(() => el.classList.add('show'));
+    setTimeout(dismiss, 6000);
+  }
+
   function guardForm(form, handler) {
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -291,8 +319,15 @@
 
   const TRANSLATIONS = {
     it: {
-      nav_dashboard: 'Ticket', nav_new: 'Nuovo ticket', nav_search: 'Ricerca', nav_announcements: 'Bacheca', nav_directory: 'Rubrica',
+      nav_dashboard: 'Ticket', nav_new: 'Nuovo ticket', nav_search: 'Ricerca', nav_announcements: 'Bacheca', nav_directory: 'Rubrica', nav_messages: 'Messaggi',
       directory_hint: 'Trova un collega per nome, ruolo o team.',
+      send_message_btn: 'Messaggio', messages_inbox_hint: 'Le tue conversazioni dirette con i colleghi.',
+      messages_you_prefix: 'Tu:', no_messages_yet: 'Nessun messaggio.',
+      message_compose_placeholder: 'Scrivi un messaggio...', message_send_btn: 'Invia',
+      message_ttl_hint: 'I messaggi vengono eliminati automaticamente dopo 14 giorni per non appesantire il server.',
+      message_edited_label: 'modificato', message_edit_btn: 'Modifica messaggio', message_delete_btn: 'Elimina messaggio',
+      message_edit_prompt: 'Modifica il messaggio', confirm_delete_message: 'Eliminare questo messaggio?',
+      close_btn: 'Chiudi',
       leave_requests_hint: 'Richiedi ferie o permessi e tieni traccia delle tue richieste.',
       leave_new_request_title: 'Nuova richiesta', leave_field_type: 'Tipo', leave_field_start: 'Dal', leave_field_end: 'Al', leave_field_note: 'Motivo (facoltativo)',
       leave_submit_btn: 'Invia richiesta', leave_type_vacation: 'Ferie', leave_type_permit: 'Permesso',
@@ -663,8 +698,15 @@
       admin_block_drag_hint: 'Trascina per riordinare',
     },
     en: {
-      nav_dashboard: 'Tickets', nav_new: 'New ticket', nav_search: 'Search', nav_announcements: 'Announcements', nav_directory: 'Directory',
+      nav_dashboard: 'Tickets', nav_new: 'New ticket', nav_search: 'Search', nav_announcements: 'Announcements', nav_directory: 'Directory', nav_messages: 'Messages',
       directory_hint: 'Find a colleague by name, role, or team.',
+      send_message_btn: 'Message', messages_inbox_hint: 'Your direct conversations with colleagues.',
+      messages_you_prefix: 'You:', no_messages_yet: 'No messages yet.',
+      message_compose_placeholder: 'Write a message...', message_send_btn: 'Send',
+      message_ttl_hint: 'Messages are automatically deleted after 14 days to keep the server light.',
+      message_edited_label: 'edited', message_edit_btn: 'Edit message', message_delete_btn: 'Delete message',
+      message_edit_prompt: 'Edit the message', confirm_delete_message: 'Delete this message?',
+      close_btn: 'Close',
       leave_requests_hint: 'Request vacation or personal leave and track your requests.',
       leave_new_request_title: 'New request', leave_field_type: 'Type', leave_field_start: 'From', leave_field_end: 'To', leave_field_note: 'Reason (optional)',
       leave_submit_btn: 'Submit request', leave_type_vacation: 'Vacation', leave_type_permit: 'Personal leave',
@@ -1051,11 +1093,11 @@
   }
 
   const NAV_KEY_BY_ROUTE = {
-    dashboard: 'nav_dashboard', new: 'nav_new', search: 'nav_search', announcements: 'nav_announcements', directory: 'nav_directory',
+    dashboard: 'nav_dashboard', new: 'nav_new', search: 'nav_search', announcements: 'nav_announcements', directory: 'nav_directory', messages: 'nav_messages',
     assets: 'nav_assets', onboarding: 'nav_onboarding', timesheet: 'nav_timesheet', orgchart: 'nav_orgchart', report: 'nav_insights', admin: 'nav_admin', profile: 'nav_profile',
   };
   const NAV_ICON_BY_ROUTE = {
-    dashboard: 'ticket', new: 'plus', search: 'inbox', announcements: 'megaphone', directory: 'users',
+    dashboard: 'ticket', new: 'plus', search: 'inbox', announcements: 'megaphone', directory: 'users', messages: 'mail',
     assets: 'monitor', onboarding: 'userCircle', timesheet: 'clock', orgchart: 'globe', report: 'activity', admin: 'shield', profile: 'userCircle',
   };
 
@@ -1067,6 +1109,7 @@
     });
     logoutBtn.innerHTML = `${icon('logout')} <span class="nav-label">${t('logout')}</span>`;
     refreshAnnouncementsNavDot();
+    refreshMessagesNavDot();
   }
 
   async function refreshAnnouncementsNavDot() {
@@ -1074,6 +1117,15 @@
     if (!dot || !state.user) return;
     try {
       const { unreadCount } = await api('/announcements/unread-count');
+      dot.hidden = !unreadCount;
+    } catch {}
+  }
+
+  async function refreshMessagesNavDot() {
+    const dot = document.querySelector('.main-nav a[data-nav="messages"] .nav-dot');
+    if (!dot || !state.user) return;
+    try {
+      const { unreadCount } = await api('/messages/unread-count');
       dot.hidden = !unreadCount;
     } catch {}
   }
@@ -1696,6 +1748,17 @@
         showToast(notification.message, '');
         showDesktopNotification(notification);
       });
+      socket.on('message:new', (message) => {
+        showMessagePopup(message);
+        refreshMessagesNavDot();
+        if (location.hash === `#/messages/${message.sender_id}`) route();
+      });
+      socket.on('message:edited', (message) => {
+        if (location.hash === `#/messages/${message.sender_id}`) route();
+      });
+      socket.on('message:deleted', (payload) => {
+        if (location.hash === `#/messages/${payload.senderId}`) route();
+      });
       notifSocket = socket;
     } catch {}
   }
@@ -1820,6 +1883,7 @@
         case 'new': return renderNewTicket();
         case 'announcements': return renderAnnouncements(param);
         case 'directory': return renderDirectory();
+        case 'messages': return renderMessages(param);
         case 'ticket': return renderTicketDetail(param);
         case 'admin': return renderAdmin();
         case 'users': return renderUserDetail(param);
@@ -7036,6 +7100,7 @@
           <div class="directory-card-contact">
             <a href="mailto:${escapeHtml(p.email)}" class="hint">${icon('mail', 'badge-icon')} ${escapeHtml(p.email)}</a>
             ${p.manager_name ? `<span class="hint">${icon('userCircle', 'badge-icon')} ${t('field_manager')}: ${escapeHtml(p.manager_name)}</span>` : ''}
+            ${p.id !== state.user.id ? `<a href="#/messages/${p.id}" class="btn btn-ghost btn-sm">${icon('mail', 'badge-icon')} ${t('send_message_btn')}</a>` : ''}
           </div>
         </div>`).join('') : `<p class="hint">${t('no_people_found')}</p>`;
     }
@@ -7043,6 +7108,138 @@
     document.getElementById('directorySearch').addEventListener('input', render);
     groupFilter.addEventListener('change', render);
     render();
+  }
+
+  async function renderMessages(userId) {
+    if (userId) return renderMessageThread(Number(userId));
+    return renderMessagesInbox();
+  }
+
+  async function renderMessagesInbox() {
+    appEl.innerHTML = `
+      <div class="view-header">
+        <div>
+          <h1>${icon('mail')} ${t('nav_messages')}</h1>
+          <p class="hint">${t('messages_inbox_hint')}</p>
+        </div>
+      </div>
+      <div id="messagesInboxWrap" class="card-list spinner-row">${t('loading')}</div>`;
+
+    const wrap = document.getElementById('messagesInboxWrap');
+    try {
+      const { conversations } = await api('/messages/conversations');
+      wrap.className = 'card-list';
+      wrap.innerHTML = conversations.length ? conversations.map((c) => `
+        <a href="#/messages/${c.user_id}" class="card directory-card ${c.unread_count ? 'announcement-unread' : ''}">
+          <div class="directory-card-main">
+            <h3>${escapeHtml(c.user_name)}</h3>
+            <p class="hint">${c.last_sender_id === state.user.id ? `${t('messages_you_prefix')} ` : ''}${escapeHtml(c.last_body.slice(0, 90))}</p>
+          </div>
+          <div class="directory-card-contact">
+            <span class="hint">${formatDate(c.last_created_at)}</span>
+            ${c.unread_count ? `<span class="role-tag">${c.unread_count}</span>` : ''}
+          </div>
+        </a>`).join('') : `<p class="hint">${t('no_messages_yet')}</p>`;
+    } catch (err) {
+      wrap.className = '';
+      wrap.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
+    }
+  }
+
+  async function renderMessageThread(userId) {
+    appEl.innerHTML = `
+      <div class="view-header">
+        <h1>${icon('mail')} ${t('loading')}</h1>
+        <a class="btn btn-ghost" href="#/messages">${icon('arrowLeft')} ${t('back_to_list')}</a>
+      </div>
+      <div id="messageThreadWrap" class="card spinner-row">${t('loading')}</div>`;
+
+    let messages, otherUser;
+    try {
+      const data = await api(`/messages/thread/${userId}`);
+      messages = data.messages;
+      otherUser = data.otherUser;
+    } catch (err) {
+      document.getElementById('messageThreadWrap').innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
+      return;
+    }
+    refreshMessagesNavDot();
+
+    appEl.innerHTML = `
+      <div class="view-header">
+        <h1>${icon('mail')} ${escapeHtml(otherUser.name)}</h1>
+        <a class="btn btn-ghost" href="#/messages">${icon('arrowLeft')} ${t('back_to_list')}</a>
+      </div>
+      <div id="messageThreadWrap" class="card message-thread"></div>
+      <form id="messageComposeForm" class="message-compose">
+        <textarea id="messageComposeInput" placeholder="${t('message_compose_placeholder')}" maxlength="2000" required></textarea>
+        <button type="submit" class="btn btn-sm">${t('message_send_btn')}</button>
+      </form>
+      <p class="hint">${t('message_ttl_hint')}</p>`;
+
+    const threadWrap = document.getElementById('messageThreadWrap');
+
+    function messageBubbleHtml(m) {
+      const mine = m.sender_id === state.user.id;
+      return `
+        <div class="message-bubble ${mine ? 'message-bubble-mine' : ''}" data-id="${m.id}">
+          <p class="message-bubble-body"></p>
+          <span class="hint message-bubble-meta">${formatDate(m.created_at)}${m.edited_at ? ` · ${t('message_edited_label')}` : ''}</span>
+          ${mine ? `
+          <div class="message-bubble-actions">
+            <button type="button" class="icon-btn messageEditBtn" data-id="${m.id}" title="${t('message_edit_btn')}">${icon('edit')}</button>
+            <button type="button" class="icon-btn messageDeleteBtn" data-id="${m.id}" title="${t('message_delete_btn')}">${icon('trash')}</button>
+          </div>` : ''}
+        </div>`;
+    }
+
+    function renderThread(list) {
+      threadWrap.innerHTML = list.length ? list.map(messageBubbleHtml).join('') : `<p class="hint">${t('no_messages_yet')}</p>`;
+      threadWrap.querySelectorAll('.message-bubble').forEach((el, i) => {
+        el.querySelector('.message-bubble-body').textContent = list[i].body;
+      });
+      wireThreadActions();
+      threadWrap.scrollTop = threadWrap.scrollHeight;
+    }
+
+    function wireThreadActions() {
+      threadWrap.querySelectorAll('.messageDeleteBtn').forEach((btn) => btn.addEventListener('click', async () => {
+        if (!confirm(t('confirm_delete_message'))) return;
+        try {
+          await api(`/messages/${btn.dataset.id}`, { method: 'DELETE' });
+          messages = messages.filter((m) => m.id !== Number(btn.dataset.id));
+          renderThread(messages);
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      }));
+      threadWrap.querySelectorAll('.messageEditBtn').forEach((btn) => btn.addEventListener('click', () => {
+        const m = messages.find((mm) => mm.id === Number(btn.dataset.id));
+        if (!m) return;
+        const nextBody = prompt(t('message_edit_prompt'), m.body);
+        if (nextBody === null || !nextBody.trim()) return;
+        api(`/messages/${m.id}`, { method: 'PATCH', body: { body: nextBody.trim() } }).then(({ message }) => {
+          Object.assign(m, message);
+          renderThread(messages);
+        }).catch((err) => showToast(err.message, 'error'));
+      }));
+    }
+
+    renderThread(messages);
+
+    document.getElementById('messageComposeForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const input = document.getElementById('messageComposeInput');
+      if (!input.value.trim()) return;
+      try {
+        const { message } = await api('/messages', { method: 'POST', body: { recipientId: userId, body: input.value.trim() } });
+        messages.push(message);
+        renderThread(messages);
+        input.value = '';
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
   }
 
   function leaveStatusLabels() {
