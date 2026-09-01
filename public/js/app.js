@@ -519,6 +519,7 @@
       org_open_tickets: 'aperti', org_sla_breach: 'in ritardo', org_node_hint: 'Clic per vedere i ticket del team',
       org_member_count: 'persone', org_no_manager: 'Nessun responsabile', org_toggle_branch: 'Espandi/comprimi ramo',
       org_settings_toggle: 'Impostazioni team', org_expand_all: 'Espandi tutto', org_collapse_all: 'Comprimi tutto',
+      org_settings_group_identity: 'Identità', org_settings_group_sla: 'SLA e orario',
       admin_create_staff_title: 'Crea account staff', admin_group_optional_label: 'Gruppo di assegnazione (opzionale)',
       admin_group_hint: 'I membri dello stesso gruppo si vedono a vicenda nell\'assegnazione dei ticket',
       account_locale_label: 'Lingua account', account_locale_hint: 'Le email inviate a questo account useranno questa lingua',
@@ -920,6 +921,7 @@
       org_open_tickets: 'open', org_sla_breach: 'overdue', org_node_hint: 'Click to see the team\'s tickets',
       org_member_count: 'people', org_no_manager: 'No manager', org_toggle_branch: 'Expand/collapse branch',
       org_settings_toggle: 'Team settings', org_expand_all: 'Expand all', org_collapse_all: 'Collapse all',
+      org_settings_group_identity: 'Identity', org_settings_group_sla: 'SLA & hours',
       admin_create_staff_title: 'Create staff account', admin_group_optional_label: 'Assignment group (optional)',
       admin_group_hint: 'Members of the same group can see each other for ticket assignment',
       account_locale_label: 'Account language', account_locale_hint: 'Emails sent to this account will use this language',
@@ -5214,14 +5216,20 @@
               <details class="org-node-settings">
                 <summary>${icon('settings', 'badge-icon')} ${t('org_settings_toggle')}</summary>
                 <div class="org-node-settings-body">
+                  <span class="org-node-settings-label">${t('org_settings_group_identity')}</span>
                   <label>${t('field_group_name')} <input type="text" class="groupNameInput" data-group-id="${node.id}" value="${escapeHtml(node.name)}" /></label>
                   <label>${t('field_manager')} <select class="managerInput" data-group-id="${node.id}">${staffOptionsHtml(node.manager_id)}</select></label>
-                  <label>${t('field_response_hours')} <input type="number" min="1" class="slaInput" data-group-id="${node.id}" data-field="slaResponseHours" value="${node.sla_response_hours ?? ''}" /></label>
-                  <label>${t('field_resolve_hours')} <input type="number" min="1" class="slaInput" data-group-id="${node.id}" data-field="slaResolveHours" value="${node.sla_resolve_hours ?? ''}" /></label>
-                  <label>${t('shift_from_label')} <input type="number" min="0" max="24" class="workHourInput" data-group-id="${node.id}" data-field="workStartHour" value="${node.work_start_hour ?? 9}" /></label>
-                  <label>${t('shift_to_label')} <input type="number" min="0" max="24" class="workHourInput" data-group-id="${node.id}" data-field="workEndHour" value="${node.work_end_hour ?? 18}" /></label>
                   <label>${t('field_group_display_name')} <input type="text" class="displayNameInput" data-group-id="${node.id}" value="${escapeHtml(node.display_name || '')}" placeholder="${t('field_group_display_name_placeholder')}" /></label>
                   <p class="hint">${t('field_group_display_name_hint')}</p>
+                  <span class="org-node-settings-label">${t('org_settings_group_sla')}</span>
+                  <div class="org-node-settings-row">
+                    <label>${t('field_response_hours')} <input type="number" min="1" class="slaInput" data-group-id="${node.id}" data-field="slaResponseHours" value="${node.sla_response_hours ?? ''}" /></label>
+                    <label>${t('field_resolve_hours')} <input type="number" min="1" class="slaInput" data-group-id="${node.id}" data-field="slaResolveHours" value="${node.sla_resolve_hours ?? ''}" /></label>
+                  </div>
+                  <div class="org-node-settings-row">
+                    <label>${t('shift_from_label')} <input type="number" min="0" max="24" class="workHourInput" data-group-id="${node.id}" data-field="workStartHour" value="${node.work_start_hour ?? 9}" /></label>
+                    <label>${t('shift_to_label')} <input type="number" min="0" max="24" class="workHourInput" data-group-id="${node.id}" data-field="workEndHour" value="${node.work_end_hour ?? 18}" /></label>
+                  </div>
                 </div>
               </details>
             </div>

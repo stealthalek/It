@@ -2499,7 +2499,17 @@ body.col-resizing-active { cursor: col-resize !important; user-select: none; }
   padding: 0.25rem 0;
 }
 .org-node-settings > summary::-webkit-details-marker { display: none; }
-.org-node-settings-body { display: flex; flex-direction: column; gap: 0.4rem; padding-top: 0.4rem; border-top: 1px dashed var(--border); margin-top: 0.2rem; }
+.org-node-settings-body { display: flex; flex-direction: column; gap: 0.5rem; padding-top: 0.5rem; border-top: 1px dashed var(--border); margin-top: 0.2rem; }
+.org-node-settings-label {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: 0.15rem;
+}
+.org-node-settings-label:first-child { margin-top: 0; }
+.org-node-settings-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
 .orgchart-members { margin-top: 0.4rem; }
 .orgchart-members > summary {
   cursor: pointer;
@@ -2530,23 +2540,23 @@ body.col-resizing-active { cursor: col-resize !important; user-select: none; }
 }
 .org-node-settings-body label {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.3rem;
   font-size: 0.72rem;
   color: var(--muted);
   font-weight: 600;
 }
 .org-node-settings-body input, .org-node-settings-body select {
-  width: 8rem;
-  padding: 0.3rem 0.4rem;
+  width: 100%;
+  padding: 0.35rem 0.5rem;
   border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--bg);
   color: var(--text);
   font-size: 0.8rem;
 }
-.org-node-settings-body input[type="number"] { width: 3.4rem; text-align: center; }
+.org-node-settings-body input[type="number"] { text-align: left; }
 .org-node-settings-body .hint { font-size: 0.68rem; margin: -0.15rem 0 0; }
 .org-children {
   position: relative;
