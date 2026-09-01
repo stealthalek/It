@@ -376,6 +376,8 @@
       viewas_banner_text: 'Stai vedendo la piattaforma come', viewas_readonly_suffix: 'sola lettura', viewas_exit: 'Esci dalla modalità',
       bulk_assign_placeholder: 'Assegna a...', bulk_status_placeholder: 'Cambia stato...', bulk_clear_selection: 'Deseleziona',
       bulk_selected_count: 'Selezionati:', toast_bulk_assigned: 'Ticket assegnati', toast_bulk_status_updated: 'Stato aggiornato sui ticket selezionati',
+      bulk_delete_btn: 'Elimina selezionati', toast_bulk_deleted: 'Ticket eliminati',
+      confirm_bulk_delete_tickets_prefix: 'Eliminare definitivamente', confirm_bulk_delete_tickets_suffix: ' ticket selezionati? L\'operazione non è reversibile.',
       bulk_assignment_placeholder: 'Cambia assegnazione...', bulk_tag_prefix_placeholder: 'es. ITA-', bulk_apply_prefix: 'Applica prefisso',
       toast_bulk_asset_updated: 'Asset selezionati aggiornati', toast_bulk_prefix_applied: 'Prefisso applicato agli asset selezionati',
       add_tag_placeholder: 'Aggiungi etichetta e premi invio',
@@ -740,6 +742,8 @@
       viewas_banner_text: "You're viewing the platform as", viewas_readonly_suffix: 'read-only', viewas_exit: 'Exit this mode',
       bulk_assign_placeholder: 'Assign to...', bulk_status_placeholder: 'Change status...', bulk_clear_selection: 'Clear selection',
       bulk_selected_count: 'Selected:', toast_bulk_assigned: 'Tickets assigned', toast_bulk_status_updated: 'Status updated on selected tickets',
+      bulk_delete_btn: 'Delete selected', toast_bulk_deleted: 'Tickets deleted',
+      confirm_bulk_delete_tickets_prefix: 'Permanently delete', confirm_bulk_delete_tickets_suffix: ' selected tickets? This cannot be undone.',
       bulk_assignment_placeholder: 'Change assignment...', bulk_tag_prefix_placeholder: 'e.g. ITA-', bulk_apply_prefix: 'Apply prefix',
       toast_bulk_asset_updated: 'Selected assets updated', toast_bulk_prefix_applied: 'Prefix applied to selected assets',
       add_tag_placeholder: 'Add a tag and press enter',
@@ -2316,6 +2320,7 @@
           <option value="">${t('bulk_status_placeholder')}</option>
           ${Object.entries(statusLabels()).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
         </select>
+        ${state.user.role === 'admin' ? `<button type="button" id="bulkDeleteBtn" class="btn btn-outline-danger btn-sm">${icon('trash')} ${t('bulk_delete_btn')}</button>` : ''}
         <button type="button" id="bulkClearBtn" class="btn btn-ghost btn-sm">${t('bulk_clear_selection')}</button>
       </div>` : ''}
       <div id="ticketList" class="skeleton-grid">
@@ -2517,6 +2522,22 @@
           showToast(t('toast_bulk_status_updated'), 'success');
           selected.clear();
           bulkStatusSel.value = '';
+          load();
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      });
+    }
+
+    const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+    if (bulkDeleteBtn) {
+      bulkDeleteBtn.addEventListener('click', async () => {
+        if (!selected.size) return;
+        if (!confirm(`${t('confirm_bulk_delete_tickets_prefix')} ${selected.size}${t('confirm_bulk_delete_tickets_suffix')}`)) return;
+        try {
+          await Promise.all([...selected].map((id) => api(`/tickets/${id}`, { method: 'DELETE' })));
+          showToast(t('toast_bulk_deleted'), 'success');
+          selected.clear();
           load();
         } catch (err) {
           showToast(err.message, 'error');
