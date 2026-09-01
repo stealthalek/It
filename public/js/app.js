@@ -579,6 +579,9 @@
       toast_group_display_name_updated: 'Nome visualizzato aggiornato',
       field_group_name: 'Nome del team', toast_group_name_updated: 'Nome del team aggiornato',
       toast_group_deleted: 'Gruppo eliminato', toast_group_created: 'Gruppo creato', toast_default_team_updated: 'Team predefinito aggiornato',
+      confirm_delete_user: 'Eliminare questo account?', toast_user_deleted: 'Account eliminato', delete_user_title: 'Elimina account',
+      admin_delegate_hint: 'Accesso delegato: puoi gestire persone e/o gruppi in base ai permessi che ti sono stati assegnati.',
+      admin_delegate_new_user_role_hint: 'Il nuovo account viene creato con ruolo Agente.',
       org_drop_root_hint: 'Trascina qui un gruppo per renderlo di primo livello', toast_group_reparented: 'Gruppo riorganizzato',
       toast_member_moved: 'Persona spostata di team', org_member_drag_hint: 'Trascina su un altro team per spostare la persona', org_no_members: 'Nessuna persona in questo team',
       assign_to_me_btn: 'Assegna a me', toast_ticket_assigned_to_you: 'Ticket assegnato a te',
@@ -1015,6 +1018,9 @@
       toast_group_display_name_updated: 'Display name updated',
       field_group_name: 'Team name', toast_group_name_updated: 'Team name updated',
       toast_group_deleted: 'Group deleted', toast_group_created: 'Group created', toast_default_team_updated: 'Default team updated',
+      confirm_delete_user: 'Delete this account?', toast_user_deleted: 'Account deleted', delete_user_title: 'Delete account',
+      admin_delegate_hint: 'Delegated access: you can manage people and/or groups based on the permissions granted to you.',
+      admin_delegate_new_user_role_hint: 'The new account is created with the Agent role.',
       org_drop_root_hint: 'Drag a group here to make it top-level', toast_group_reparented: 'Group reorganized',
       toast_member_moved: 'Person moved to another team', org_member_drag_hint: 'Drag onto another team to move this person', org_no_members: 'No one in this team yet',
       assign_to_me_btn: 'Assign to me', toast_ticket_assigned_to_you: 'Ticket assigned to you',
@@ -4720,12 +4726,253 @@
     });
   }
 
+  function hasUsersManage() {
+    return !!(state.user && Array.isArray(state.user.permissions) && state.user.permissions.includes('users_manage'));
+  }
+  function hasGroupsManage() {
+    return !!(state.user && Array.isArray(state.user.permissions) && state.user.permissions.includes('groups_manage'));
+  }
+
+  async function renderAdminDelegate() {
+    const canUsers = hasUsersManage();
+    const canGroups = hasGroupsManage();
+    appEl.innerHTML = `
+      <div class="view-header">
+        <h1>${icon('shield')} ${t('admin_title')}</h1>
+        <p class="hint">${t('admin_delegate_hint')}</p>
+      </div>
+      ${canUsers ? `
+      <div class="card" style="margin-bottom:1.25rem">
+        <h3 class="section-title" style="margin-top:0">${icon('plus')} ${t('admin_create_staff_title')}</h3>
+        <form id="delegateNewUserForm" class="form-grid" style="max-width:none">
+          <div class="field"><label for="delegateNewName">${t('field_name')}</label><input id="delegateNewName" required /></div>
+          <div class="field"><label for="delegateNewEmail">Email</label><input id="delegateNewEmail" type="email" required /></div>
+          <div class="field"><label for="delegateNewGroup">${t('admin_group_optional_label')}</label><select id="delegateNewGroup"><option value="">${t('no_group_option')}</option></select></div>
+          <p class="hint">${t('admin_delegate_new_user_role_hint')}</p>
+          <p class="error-text" id="delegateNewUserError"></p>
+          <div><button class="btn btn-sm" type="submit">${t('btn_create_account')}</button></div>
+        </form>
+        <div id="delegateTempPasswordBox"></div>
+      </div>
+      <div class="card" style="margin-bottom:1.25rem">
+        <h3 class="section-title" style="margin-top:0">${icon('users')} ${t('admin_section_users')}</h3>
+        <div id="delegateUsersList" class="spinner-row">${t('loading')}</div>
+      </div>` : ''}
+      ${canGroups ? `
+      <div class="card" style="margin-bottom:1.25rem">
+        <h3 class="section-title" style="margin-top:0">${icon('plus')} ${t('btn_create_group')}</h3>
+        <form id="delegateNewGroupForm" style="display:flex;flex-wrap:wrap;gap:0.6rem;align-items:flex-end;margin:0.75rem 0">
+          <div class="field" style="flex:1 1 12rem"><label for="delegateGroupName">${t('field_group_name')}</label><input id="delegateGroupName" required /></div>
+          <div class="field" style="flex:1 1 12rem"><label for="delegateGroupParent">${t('field_parent_group')}</label><select id="delegateGroupParent"><option value="">${t('option_no_parent')}</option></select></div>
+          <div class="field" style="flex:1 1 12rem"><label for="delegateGroupManager">${t('field_manager')}</label><select id="delegateGroupManager"><option value="">${t('option_none')}</option></select></div>
+          <button class="btn btn-sm" type="submit">${t('btn_create_group')}</button>
+        </form>
+        <p class="error-text" id="delegateNewGroupError"></p>
+        <div id="delegateGroupsList" class="spinner-row">${t('loading')}</div>
+      </div>` : ''}
+    `;
+
+    let staffUsersCache = [];
+    let groupOptionsCache = [];
+
+    async function loadStaffOptions() {
+      const { users } = await api('/users').catch(() => ({ users: [] }));
+      staffUsersCache = users.filter((u) => u.role === 'agent' || u.role === 'admin');
+      const managerSelects = [document.getElementById('delegateGroupManager')].filter(Boolean);
+      managerSelects.forEach((sel) => {
+        sel.innerHTML = `<option value="">${t('option_none')}</option>` +
+          staffUsersCache.map((u) => `<option value="${u.id}">${escapeHtml(u.name)}</option>`).join('');
+      });
+    }
+
+    async function loadDelegateGroups() {
+      const { groups } = await api('/groups').catch(() => ({ groups: [] }));
+      groupOptionsCache = groups;
+      const groupSelects = [document.getElementById('delegateNewGroup'), document.getElementById('delegateGroupParent')].filter(Boolean);
+      groupSelects.forEach((sel) => {
+        sel.innerHTML = (sel.id === 'delegateNewGroup' ? `<option value="">${t('no_group_option')}</option>` : `<option value="">${t('option_no_parent')}</option>`) +
+          groupOptionsHtml(groups, '', null).replace(/<option value="">.*?<\/option>/, '');
+      });
+      if (canGroups) renderDelegateGroupsList(groups);
+    }
+
+    function renderDelegateGroupsList(groups) {
+      const listEl = document.getElementById('delegateGroupsList');
+      if (!listEl) return;
+      const flat = flattenGroupTree(buildGroupTree(groups));
+      listEl.className = '';
+      listEl.innerHTML = flat.length ? `
+        <div class="table-scroll">
+          <table class="users-table">
+            <thead><tr><th>${t('field_group_name')}</th><th>${t('field_manager')}</th><th>${t('org_member_count')}</th><th></th></tr></thead>
+            <tbody>
+              ${flat.map((g) => `
+                <tr>
+                  <td>${'—'.repeat(g.depth)} ${escapeHtml(g.name)}</td>
+                  <td>${g.manager_name ? escapeHtml(g.manager_name) : '—'}</td>
+                  <td>${g.member_count || 0}</td>
+                  <td><button type="button" class="icon-btn deleteDelegateGroupBtn" data-id="${g.id}" title="${t('delete_group_title')}">${icon('trash')}</button></td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>` : `<p class="hint">${t('no_groups_hint')}</p>`;
+      listEl.querySelectorAll('.deleteDelegateGroupBtn').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          if (!confirm(t('confirm_delete_group'))) return;
+          try {
+            await api(`/groups/${btn.dataset.id}`, { method: 'DELETE' });
+            showToast(t('toast_group_deleted'), 'success');
+            loadDelegateGroups();
+          } catch (err) {
+            showToast(err.message, 'error');
+          }
+        });
+      });
+    }
+
+    async function loadDelegateUsers() {
+      const listEl = document.getElementById('delegateUsersList');
+      if (!listEl) return;
+      listEl.className = 'spinner-row';
+      listEl.textContent = t('loading');
+      try {
+        const { users } = await api('/users');
+        listEl.className = '';
+        listEl.innerHTML = `
+          <div class="table-scroll">
+            <table class="users-table">
+              <thead><tr><th>${t('th_name')}</th><th>${t('th_email')}</th><th>${t('th_role')}</th><th>${t('th_group')}</th><th>${t('th_status')}</th><th></th></tr></thead>
+              <tbody>
+                ${users.map((u) => `
+                  <tr>
+                    <td>${escapeHtml(u.name)}</td>
+                    <td>${escapeHtml(u.email)}</td>
+                    <td><span class="role-tag">${roleLabels()[u.role] || u.role}</span></td>
+                    <td><select class="delegateUserGroupSel" data-id="${u.id}" ${u.role === 'admin' ? 'disabled' : ''}>${groupOptionsHtml(groupOptionsCache, u.group_id, t('no_group_option'))}</select></td>
+                    <td>${u.is_blocked ? `<span class="role-tag role-tag-danger">${t('blocked_badge')}</span>` : ''}</td>
+                    <td>
+                      ${u.id !== state.user.id ? `
+                      <button type="button" class="btn btn-ghost btn-sm delegateBlockBtn" data-id="${u.id}" data-blocked="${u.is_blocked ? '1' : '0'}">${u.is_blocked ? t('btn_unblock_account') : t('btn_block_account')}</button>
+                      <button type="button" class="icon-btn delegateDeleteUserBtn" data-id="${u.id}" title="${t('delete_user_title')}">${icon('trash')}</button>` : ''}
+                    </td>
+                  </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>`;
+        listEl.querySelectorAll('.delegateUserGroupSel').forEach((sel) => {
+          sel.addEventListener('change', async () => {
+            try {
+              await api(`/users/${sel.dataset.id}/group`, { method: 'PATCH', body: { groupId: sel.value || null } });
+              showToast(t('toast_group_updated'), 'success');
+            } catch (err) {
+              showToast(err.message, 'error');
+              loadDelegateUsers();
+            }
+          });
+        });
+        listEl.querySelectorAll('.delegateBlockBtn').forEach((btn) => {
+          btn.addEventListener('click', async () => {
+            const nowBlocked = btn.dataset.blocked !== '1';
+            try {
+              await api(`/users/${btn.dataset.id}/block`, { method: 'PATCH', body: { blocked: nowBlocked } });
+              showToast(nowBlocked ? t('toast_account_blocked') : t('toast_account_unblocked'), 'success');
+              loadDelegateUsers();
+            } catch (err) {
+              showToast(err.message, 'error');
+            }
+          });
+        });
+        listEl.querySelectorAll('.delegateDeleteUserBtn').forEach((btn) => {
+          btn.addEventListener('click', async () => {
+            if (!confirm(t('confirm_delete_user'))) return;
+            try {
+              await api(`/users/${btn.dataset.id}`, { method: 'DELETE' });
+              showToast(t('toast_user_deleted'), 'success');
+              loadDelegateUsers();
+            } catch (err) {
+              showToast(err.message, 'error');
+            }
+          });
+        });
+      } catch (err) {
+        listEl.className = '';
+        listEl.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
+      }
+    }
+
+    const newUserForm = document.getElementById('delegateNewUserForm');
+    if (newUserForm) {
+      guardForm(newUserForm, async () => {
+        const errEl = document.getElementById('delegateNewUserError');
+        errEl.textContent = '';
+        try {
+          const { user, tempPassword } = await api('/users', {
+            method: 'POST',
+            body: {
+              name: document.getElementById('delegateNewName').value,
+              email: document.getElementById('delegateNewEmail').value,
+              role: 'agent',
+              groupId: document.getElementById('delegateNewGroup').value || null,
+            },
+          });
+          document.getElementById('delegateTempPasswordBox').innerHTML = `
+            <div class="divider"></div>
+            <p class="success-text">${t('account_created_for')} ${escapeHtml(user.name)}.</p>
+            <p class="hint">${t('temp_password_hint')}</p>
+            <p class="card" style="font-family:monospace;font-size:1rem;padding:0.6rem 0.9rem;display:inline-flex;align-items:center;gap:0.6rem">
+              ${escapeHtml(tempPassword)}
+              <button type="button" id="delegateCopyTempPwBtn" class="icon-btn" title="${t('btn_copy')}">${icon('copy', 'badge-icon')}</button>
+            </p>`;
+          document.getElementById('delegateCopyTempPwBtn').addEventListener('click', async () => {
+            try { await navigator.clipboard.writeText(tempPassword); showToast(t('toast_copied'), 'success'); }
+            catch { showToast(t('toast_copy_failed'), 'error'); }
+          });
+          newUserForm.reset();
+          showToast(t('toast_staff_created'), 'success');
+          loadDelegateUsers();
+        } catch (err) {
+          errEl.textContent = err.message;
+        }
+      });
+    }
+
+    const newGroupForm = document.getElementById('delegateNewGroupForm');
+    if (newGroupForm) {
+      guardForm(newGroupForm, async () => {
+        const errEl = document.getElementById('delegateNewGroupError');
+        errEl.textContent = '';
+        try {
+          await api('/groups', {
+            method: 'POST',
+            body: {
+              name: document.getElementById('delegateGroupName').value,
+              parentId: document.getElementById('delegateGroupParent').value || null,
+              managerId: document.getElementById('delegateGroupManager').value || null,
+            },
+          });
+          newGroupForm.reset();
+          showToast(t('toast_group_created'), 'success');
+          loadDelegateGroups();
+        } catch (err) {
+          errEl.textContent = err.message;
+        }
+      });
+    }
+
+    await loadStaffOptions();
+    await loadDelegateGroups();
+    if (canUsers) loadDelegateUsers();
+  }
+
   async function renderAdmin() {
     if (!isStaff()) {
       appEl.innerHTML = `<div class="card"><p class="error-text">Accesso non consentito.</p></div>`;
       return;
     }
     const isAdmin = state.user.role === 'admin';
+    if (!isAdmin && (hasUsersManage() || hasGroupsManage())) {
+      return renderAdminDelegate();
+    }
     const ADMIN_SECTIONS = [
       { key: 'overview', icon: 'grid', label: t('admin_section_overview') },
       { key: 'users', icon: 'users', label: t('admin_section_users') },

@@ -116,6 +116,9 @@ router.post(
     if (!['agent', 'admin'].includes(role)) {
       return res.status(400).json({ error: 'Ruolo non valido: usa agent o admin' });
     }
+    if (role === 'admin' && !(req.user.role === 'admin' || req.user.is_super_admin)) {
+      return res.status(403).json({ error: 'Permessi insufficienti per creare un account admin' });
+    }
 
     const existing = await db.get('SELECT id FROM users WHERE email = ?', [email.toLowerCase()]);
     if (existing) {
