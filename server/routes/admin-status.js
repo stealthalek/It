@@ -1,10 +1,12 @@
 const express = require('express');
 const os = require('os');
 const db = require('../db/database');
+const storage = require('../storage');
 const { authenticate, requireRole } = require('../middleware/auth');
 const asyncHandler = require('../middleware/asyncHandler');
 const { getStats, getEventLoopLagMs } = require('../lib/requestStats');
 const { getOnlineUsers } = require('../realtime');
+const { MESSAGE_TTL_DAYS, READ_NOTIFICATION_TTL_DAYS, AUDIT_LOG_TTL_DAYS } = require('../scheduler');
 
 const router = express.Router();
 router.use(authenticate);
@@ -40,6 +42,21 @@ async function getStorageStats() {
   return { rowCounts, attachmentBytes: attachmentRow.bytes, dbSizeBytes };
 }
 
+function getDataGovernance() {
+  return {
+    database: { provider: db.usingTurso ? 'turso' : 'local', persistent: db.usingTurso, pointInTimeRecovery: db.usingTurso },
+    attachmentStorage: {
+      external: storage.enabled,
+      endpointHost: storage.enabled ? new URL(process.env.S3_ENDPOINT).host : null,
+    },
+    retentionDays: {
+      directMessages: MESSAGE_TTL_DAYS,
+      readNotifications: READ_NOTIFICATION_TTL_DAYS,
+      auditLog: AUDIT_LOG_TTL_DAYS,
+    },
+  };
+}
+
 router.get(
   '/',
   asyncHandler(async (req, res) => {
@@ -68,6 +85,7 @@ router.get(
       eventLoopLagMs: getEventLoopLagMs(),
       onlineUsers: getOnlineUsers(),
       storage: await getStorageStats(),
+      dataGovernance: getDataGovernance(),
     });
   })
 );

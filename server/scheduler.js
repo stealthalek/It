@@ -118,4 +118,5 @@ function startAutoCloseScheduler() {
 module.exports = {
   startAutoCloseScheduler, autoCloseResolvedTickets, checkSlaWarnings, purgeExpiredMessages,
   purgeOldNotifications, purgeOldAuditLog,
+  MESSAGE_TTL_DAYS, READ_NOTIFICATION_TTL_DAYS, AUDIT_LOG_TTL_DAYS,
 };
