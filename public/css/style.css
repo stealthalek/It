@@ -666,6 +666,14 @@ body:not(.role-customer):not(.role-agent):not(.role-admin) .nav-toggle { display
 .announcement-body { white-space: pre-wrap; line-height: 1.6; }
 .announcement-admin-actions { display: flex; gap: 0.6rem; margin-top: 1.25rem; padding-top: 1.1rem; border-top: 1px solid var(--border); }
 
+.directory-card { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.4rem; }
+.directory-card-main h3 { margin: 0; font-size: 1rem; }
+.directory-card-main p { margin: 0.15rem 0 0; }
+.directory-card-contact { display: flex; flex-direction: column; align-items: flex-end; gap: 0.25rem; text-align: right; }
+.directory-card-contact a { color: var(--muted); text-decoration: none; display: flex; align-items: center; gap: 0.35rem; }
+.directory-card-contact a:hover { color: var(--primary); }
+.directory-card-contact span { display: flex; align-items: center; gap: 0.35rem; }
+
 .impersonate-role-section { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); }
 .impersonate-role-section > label { display: block; font-weight: 600; margin-bottom: 0.5rem; }
 .impersonate-role-buttons { display: flex; gap: 0.5rem; flex-wrap: wrap; }

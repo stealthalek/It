@@ -291,7 +291,8 @@
 
   const TRANSLATIONS = {
     it: {
-      nav_dashboard: 'Ticket', nav_new: 'Nuovo ticket', nav_search: 'Ricerca', nav_announcements: 'Bacheca',
+      nav_dashboard: 'Ticket', nav_new: 'Nuovo ticket', nav_search: 'Ricerca', nav_announcements: 'Bacheca', nav_directory: 'Rubrica',
+      directory_hint: 'Trova un collega per nome, ruolo o team.',
       nav_assets: 'Asset', nav_onboarding: 'Onboarding', nav_timesheet: 'Timbratura', nav_report: 'Report', nav_audit: 'Audit', nav_admin: 'Amministrazione', nav_profile: 'Profilo', logout: 'Esci',
       login_title: 'Accedi', login_hint: 'Entra nella piattaforma di ticketing.', login_email: 'Email', login_password: 'Password',
       login_submit: 'Accedi', login_no_account: 'Non hai un account?', login_register_link: 'Registrati',
@@ -645,7 +646,8 @@
       admin_block_drag_hint: 'Trascina per riordinare',
     },
     en: {
-      nav_dashboard: 'Tickets', nav_new: 'New ticket', nav_search: 'Search', nav_announcements: 'Announcements',
+      nav_dashboard: 'Tickets', nav_new: 'New ticket', nav_search: 'Search', nav_announcements: 'Announcements', nav_directory: 'Directory',
+      directory_hint: 'Find a colleague by name, role, or team.',
       nav_assets: 'Assets', nav_onboarding: 'Onboarding', nav_timesheet: 'Time clock', nav_report: 'Report', nav_audit: 'Audit', nav_admin: 'Administration', nav_profile: 'Profile', logout: 'Log out',
       login_title: 'Sign in', login_hint: 'Enter the ticketing platform.', login_email: 'Email', login_password: 'Password',
       login_submit: 'Sign in', login_no_account: "Don't have an account?", login_register_link: 'Register',
@@ -1015,11 +1017,11 @@
   }
 
   const NAV_KEY_BY_ROUTE = {
-    dashboard: 'nav_dashboard', new: 'nav_new', search: 'nav_search', announcements: 'nav_announcements',
+    dashboard: 'nav_dashboard', new: 'nav_new', search: 'nav_search', announcements: 'nav_announcements', directory: 'nav_directory',
     assets: 'nav_assets', onboarding: 'nav_onboarding', timesheet: 'nav_timesheet', orgchart: 'nav_orgchart', report: 'nav_insights', admin: 'nav_admin', profile: 'nav_profile',
   };
   const NAV_ICON_BY_ROUTE = {
-    dashboard: 'ticket', new: 'plus', search: 'inbox', announcements: 'megaphone',
+    dashboard: 'ticket', new: 'plus', search: 'inbox', announcements: 'megaphone', directory: 'users',
     assets: 'monitor', onboarding: 'userCircle', timesheet: 'clock', orgchart: 'globe', report: 'activity', admin: 'shield', profile: 'userCircle',
   };
 
@@ -1783,6 +1785,7 @@
         case 'dashboard': return renderDashboard();
         case 'new': return renderNewTicket();
         case 'announcements': return renderAnnouncements(param);
+        case 'directory': return renderDirectory();
         case 'ticket': return renderTicketDetail(param);
         case 'admin': return renderAdmin();
         case 'users': return renderUserDetail(param);
@@ -6777,6 +6780,63 @@
         errEl.textContent = err.message;
       }
     });
+  }
+
+  async function renderDirectory() {
+    appEl.innerHTML = `
+      <div class="view-header">
+        <div>
+          <h1>${icon('users')} ${t('nav_directory')}</h1>
+          <p class="hint">${t('directory_hint')}</p>
+        </div>
+      </div>
+      <div class="filters">
+        <input id="directorySearch" type="search" placeholder="${t('search_person_placeholder')}" />
+        <select id="directoryGroupFilter"></select>
+      </div>
+      <div id="directoryWrap" class="card spinner-row">${t('loading')}</div>`;
+
+    let people = [];
+    let groups = [];
+    try {
+      [people, groups] = await Promise.all([
+        api('/users').then((r) => r.users),
+        api('/groups').then((r) => r.groups).catch(() => []),
+      ]);
+    } catch (err) {
+      document.getElementById('directoryWrap').innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
+      return;
+    }
+
+    const groupFilter = document.getElementById('directoryGroupFilter');
+    groupFilter.innerHTML = groupOptionsHtml(groups, '', t('all_groups_option'));
+
+    function render() {
+      const wrap = document.getElementById('directoryWrap');
+      const q = document.getElementById('directorySearch').value.trim().toLowerCase();
+      const groupId = groupFilter.value ? Number(groupFilter.value) : null;
+      const filtered = people.filter((p) => {
+        const matchesQuery = !q || p.name.toLowerCase().includes(q) || p.email.toLowerCase().includes(q);
+        const matchesGroup = !groupId || p.group_id === groupId;
+        return matchesQuery && matchesGroup;
+      });
+      wrap.className = 'card-list';
+      wrap.innerHTML = filtered.length ? filtered.map((p) => `
+        <div class="card directory-card">
+          <div class="directory-card-main">
+            <h3>${escapeHtml(p.name)}</h3>
+            <p class="hint">${roleLabels()[p.role] || p.role}${groupLabel(p) ? ` · ${escapeHtml(groupLabel(p))}` : ''}</p>
+          </div>
+          <div class="directory-card-contact">
+            <a href="mailto:${escapeHtml(p.email)}" class="hint">${icon('mail', 'badge-icon')} ${escapeHtml(p.email)}</a>
+            ${p.manager_name ? `<span class="hint">${icon('userCircle', 'badge-icon')} ${t('field_manager')}: ${escapeHtml(p.manager_name)}</span>` : ''}
+          </div>
+        </div>`).join('') : `<p class="hint">${t('no_people_found')}</p>`;
+    }
+
+    document.getElementById('directorySearch').addEventListener('input', render);
+    groupFilter.addEventListener('change', render);
+    render();
   }
 
   async function renderOnboarding(param) {
