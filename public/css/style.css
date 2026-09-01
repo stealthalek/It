@@ -579,7 +579,7 @@ body:not(.role-customer):not(.role-agent):not(.role-admin) .nav-toggle { display
 }
 
 .app-main {
-  max-width: 1320px;
+  max-width: 1900px;
   padding: 1.5rem calc(1.25rem + env(safe-area-inset-right)) calc(3.5rem + env(safe-area-inset-bottom)) calc(1.25rem + env(safe-area-inset-left));
 }
 
