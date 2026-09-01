@@ -718,12 +718,13 @@ body:not(.role-customer):not(.role-agent):not(.role-admin) .nav-toggle { display
 }
 
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-@media (max-width: 640px) { .field-row { grid-template-columns: 1fr; } }
+@media (max-width: 720px) { .field-row { grid-template-columns: 1fr; } }
 
 .field { display: flex; flex-direction: column; gap: 0.35rem; }
 .field[hidden] { display: none; }
 .field label { font-weight: 600; font-size: 0.9rem; }
 .field input, .field textarea {
+  width: 100%;
   padding: 0.65rem 0.75rem;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -914,7 +915,7 @@ body:not(.role-customer):not(.role-agent):not(.role-admin) .nav-toggle { display
 .user-profile-grid {
   display: grid;
   gap: 1.25rem;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
 }
 .user-profile-head {
   grid-column: 1 / -1;
