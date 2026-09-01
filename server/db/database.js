@@ -920,6 +920,15 @@ async function migrate() {
     await run('ALTER TABLE holidays ADD COLUMN company_id INTEGER REFERENCES companies(id) ON DELETE SET NULL');
   }
   await run('CREATE INDEX IF NOT EXISTS idx_holidays_company_id ON holidays(company_id)');
+
+  const settingsCols2 = await all('PRAGMA table_info(app_settings)');
+  if (!settingsCols2.some((c) => c.name === 'flexible_time_entry')) {
+    await run('ALTER TABLE app_settings ADD COLUMN flexible_time_entry INTEGER NOT NULL DEFAULT 0');
+  }
+  const companyCols = await all('PRAGMA table_info(companies)');
+  if (companyCols.length && !companyCols.some((c) => c.name === 'flexible_time_entry')) {
+    await run('ALTER TABLE companies ADD COLUMN flexible_time_entry INTEGER NOT NULL DEFAULT 0');
+  }
 }
 
 async function seedDefaultCompany() {

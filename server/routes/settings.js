@@ -56,9 +56,10 @@ const DEFAULT_INVITE_TEMPLATES = {
 router.get(
   '/',
   asyncHandler(async (req, res) => {
-    const row = await db.get('SELECT org_name, org_logo FROM app_settings WHERE id = 1');
+    const row = await db.get('SELECT org_name, org_logo, flexible_time_entry FROM app_settings WHERE id = 1');
     let orgName = (row && row.org_name) || 'Ticketing';
     let orgLogo = (row && row.org_logo) || null;
+    let flexibleTimeEntry = !!(row && row.flexible_time_entry);
 
     const header = req.headers.authorization || '';
     const token = header.startsWith('Bearer ') ? header.slice(7) : null;
@@ -68,9 +69,10 @@ router.get(
         const user = await db.get('SELECT group_id, company_id FROM users WHERE id = ?', [payload.sub]);
         if (user) {
           if (user.company_id) {
-            const company = await db.get('SELECT display_name, logo FROM companies WHERE id = ?', [user.company_id]);
+            const company = await db.get('SELECT display_name, logo, flexible_time_entry FROM companies WHERE id = ?', [user.company_id]);
             if (company && company.display_name) orgName = company.display_name;
             if (company && company.logo) orgLogo = company.logo;
+            if (company) flexibleTimeEntry = !!company.flexible_time_entry;
           }
           if (user.group_id) {
             const groupDisplayName = await resolveGroupDisplayName(user.group_id);
@@ -80,7 +82,7 @@ router.get(
       } catch {}
     }
 
-    res.json({ orgName, orgLogo });
+    res.json({ orgName, orgLogo, flexibleTimeEntry });
   })
 );
 
@@ -124,6 +126,22 @@ router.patch(
     }
     logAudit(req.user.id, 'settings', null, `Nome organizzazione aggiornato a "${orgName.trim()}"`).catch(() => {});
     res.json({ orgName: orgName.trim() });
+  })
+);
+
+router.patch(
+  '/flexible-time-entry',
+  authenticate,
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const enabled = !!(req.body || {}).enabled;
+    if (req.user.is_super_admin && !req.user.company_id) {
+      await db.run('UPDATE app_settings SET flexible_time_entry = ? WHERE id = 1', [enabled ? 1 : 0]);
+    } else if (req.user.company_id) {
+      await db.run('UPDATE companies SET flexible_time_entry = ? WHERE id = ?', [enabled ? 1 : 0, req.user.company_id]);
+    }
+    logAudit(req.user.id, 'settings', null, `Timbratura manuale flessibile ${enabled ? 'attivata' : 'disattivata'}`).catch(() => {});
+    res.json({ flexibleTimeEntry: enabled });
   })
 );
 
