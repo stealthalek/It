@@ -7862,9 +7862,9 @@
         <div class="message-bubble ${mine ? 'message-bubble-mine' : ''}" data-id="${m.id}">
           <p class="message-bubble-body"></p>
           <span class="hint message-bubble-meta">${formatDate(m.created_at)}${m.edited_at ? ` · ${t('message_edited_label')}` : ''}</span>
-          ${mine && !impersonatingId ? `
+          ${!impersonatingId ? `
           <div class="message-bubble-actions">
-            <button type="button" class="icon-btn messageEditBtn" data-id="${m.id}" title="${t('message_edit_btn')}">${icon('edit')}</button>
+            ${mine ? `<button type="button" class="icon-btn messageEditBtn" data-id="${m.id}" title="${t('message_edit_btn')}">${icon('edit')}</button>` : ''}
             <button type="button" class="icon-btn messageDeleteBtn" data-id="${m.id}" title="${t('message_delete_btn')}">${icon('trash')}</button>
           </div>` : ''}
         </div>`;

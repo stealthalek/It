@@ -135,11 +135,12 @@ router.delete(
   '/:id',
   asyncHandler(async (req, res) => {
     const existing = await db.get('SELECT * FROM direct_messages WHERE id = ?', [req.params.id]);
-    if (!existing || existing.sender_id !== req.user.id) {
+    if (!existing || (existing.sender_id !== req.user.id && existing.recipient_id !== req.user.id)) {
       return res.status(404).json({ error: 'Messaggio non trovato' });
     }
     await db.run('DELETE FROM direct_messages WHERE id = ?', [req.params.id]);
-    realtime.broadcastDirectMessageDelete(existing.recipient_id, { id: existing.id, senderId: existing.sender_id });
+    const otherUserId = existing.sender_id === req.user.id ? existing.recipient_id : existing.sender_id;
+    realtime.broadcastDirectMessageDelete(otherUserId, { id: existing.id, senderId: existing.sender_id });
     res.status(204).end();
   })
 );
