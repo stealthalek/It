@@ -378,6 +378,10 @@
       bulk_selected_count: 'Selezionati:', toast_bulk_assigned: 'Ticket assegnati', toast_bulk_status_updated: 'Stato aggiornato sui ticket selezionati',
       bulk_delete_btn: 'Elimina selezionati', toast_bulk_deleted: 'Ticket eliminati',
       confirm_bulk_delete_tickets_prefix: 'Eliminare definitivamente', confirm_bulk_delete_tickets_suffix: ' ticket selezionati? L\'operazione non è reversibile.',
+      filter_all_roles: 'Tutti i ruoli', filter_all_groups: 'Tutti i gruppi',
+      bulk_user_role_placeholder: 'Cambia ruolo...', bulk_user_group_placeholder: 'Assegna a gruppo...',
+      toast_bulk_user_updated: 'Utenti aggiornati', toast_bulk_users_deleted: 'Utenti eliminati',
+      confirm_bulk_delete_users_prefix: 'Eliminare definitivamente', confirm_bulk_delete_users_suffix: ' utenti selezionati? L\'operazione non è reversibile.',
       bulk_assignment_placeholder: 'Cambia assegnazione...', bulk_tag_prefix_placeholder: 'es. ITA-', bulk_apply_prefix: 'Applica prefisso',
       toast_bulk_asset_updated: 'Asset selezionati aggiornati', toast_bulk_prefix_applied: 'Prefisso applicato agli asset selezionati',
       add_tag_placeholder: 'Aggiungi etichetta e premi invio',
@@ -744,6 +748,10 @@
       bulk_selected_count: 'Selected:', toast_bulk_assigned: 'Tickets assigned', toast_bulk_status_updated: 'Status updated on selected tickets',
       bulk_delete_btn: 'Delete selected', toast_bulk_deleted: 'Tickets deleted',
       confirm_bulk_delete_tickets_prefix: 'Permanently delete', confirm_bulk_delete_tickets_suffix: ' selected tickets? This cannot be undone.',
+      filter_all_roles: 'All roles', filter_all_groups: 'All groups',
+      bulk_user_role_placeholder: 'Change role...', bulk_user_group_placeholder: 'Assign to group...',
+      toast_bulk_user_updated: 'Users updated', toast_bulk_users_deleted: 'Users deleted',
+      confirm_bulk_delete_users_prefix: 'Permanently delete', confirm_bulk_delete_users_suffix: ' selected users? This cannot be undone.',
       bulk_assignment_placeholder: 'Change assignment...', bulk_tag_prefix_placeholder: 'e.g. ITA-', bulk_apply_prefix: 'Apply prefix',
       toast_bulk_asset_updated: 'Selected assets updated', toast_bulk_prefix_applied: 'Prefix applied to selected assets',
       add_tag_placeholder: 'Add a tag and press enter',
@@ -6064,13 +6072,18 @@
     }
 
     let allUsersCache = [];
+    let allGroupsCache = [];
     async function loadUsersTable() {
       const wrap = document.getElementById('usersWrap');
       wrap.className = 'card spinner-row';
       wrap.textContent = t('loading');
       try {
-        const { users } = await api('/users');
+        const [{ users }, groupsRes] = await Promise.all([
+          api('/users'),
+          isAdmin ? api('/groups').catch(() => ({ groups: [] })) : Promise.resolve({ groups: [] }),
+        ]);
         allUsersCache = users;
+        allGroupsCache = groupsRes.groups || [];
         renderUsersTable();
       } catch (err) {
         wrap.className = '';
@@ -6081,6 +6094,7 @@
     function renderUsersTable() {
       const wrap = document.getElementById('usersWrap');
       wrap.className = 'card';
+      const selectedUserIds = new Set();
       wrap.innerHTML = `
         <div class="filters" style="margin-bottom:1rem">
           <div class="field" style="max-width:320px">
@@ -6092,47 +6106,179 @@
             <option value="active">${t('filter_active_users')}</option>
             <option value="blocked">${t('filter_blocked_users')}</option>
           </select>
+          <select id="userRoleFilter">
+            <option value="">${t('filter_all_roles')}</option>
+            ${Object.entries(roleLabels()).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
+          </select>
+          ${isAdmin ? `<select id="userGroupFilter">
+            <option value="">${t('filter_all_groups')}</option>
+            ${groupOptionsHtml(allGroupsCache, '', null)}
+          </select>` : ''}
         </div>
+        ${isAdmin ? `
+        <div id="userBulkBar" class="bulk-action-bar" hidden>
+          <span id="userBulkCount" class="hint"></span>
+          <select id="userBulkRoleSel">
+            <option value="">${t('bulk_user_role_placeholder')}</option>
+            ${Object.entries(roleLabels()).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
+          </select>
+          <select id="userBulkGroupSel">
+            <option value="">${t('bulk_user_group_placeholder')}</option>
+            <option value="__none__">${t('no_group_option')}</option>
+            ${groupOptionsHtml(allGroupsCache, '', null)}
+          </select>
+          <button type="button" id="userBulkDeleteBtn" class="btn btn-outline-danger btn-sm">${icon('trash')} ${t('bulk_delete_btn')}</button>
+          <button type="button" id="userBulkClearBtn" class="btn btn-ghost btn-sm">${t('bulk_clear_selection')}</button>
+        </div>` : ''}
         <div class="table-scroll">
           <table class="users-table">
-            <thead><tr><th>${t('th_name')}</th><th>${t('th_email')}</th><th>${t('th_role')}</th><th>${t('th_group')}</th><th>${t('th_status')}</th><th>${t('th_registered')}</th></tr></thead>
+            <thead><tr>${isAdmin ? `<th><input type="checkbox" id="userSelectAllBox" /></th>` : ''}<th>${t('th_name')}</th><th>${t('th_email')}</th><th>${t('th_role')}</th><th>${t('th_group')}</th><th>${t('th_status')}</th><th>${t('th_registered')}</th></tr></thead>
             <tbody id="usersTableBody"></tbody>
           </table>
         </div>`;
+
+      const userBulkBar = document.getElementById('userBulkBar');
+      const userBulkCount = document.getElementById('userBulkCount');
+      const userSelectAllBox = document.getElementById('userSelectAllBox');
+
+      function updateUserBulkBar() {
+        if (!userBulkBar) return;
+        userBulkBar.hidden = selectedUserIds.size === 0;
+        userBulkCount.textContent = `${t('bulk_selected_count')} ${selectedUserIds.size}`;
+      }
+
+      function wireUserCheckboxes() {
+        const tbody = document.getElementById('usersTableBody');
+        tbody.querySelectorAll('.userSelectBox').forEach((box) => {
+          box.checked = selectedUserIds.has(Number(box.dataset.id));
+          box.addEventListener('change', () => {
+            const id = Number(box.dataset.id);
+            if (box.checked) selectedUserIds.add(id); else selectedUserIds.delete(id);
+            updateUserBulkBar();
+          });
+        });
+      }
 
       function renderRows(users) {
         const tbody = document.getElementById('usersTableBody');
         tbody.innerHTML = users.length ? users.map((u) => `
           <tr class="user-row" data-user-id="${u.id}" tabindex="0" role="link">
+            ${isAdmin ? `<td onclick="event.stopPropagation()">${u.id !== state.user.id ? `<input type="checkbox" class="userSelectBox" data-id="${u.id}" />` : ''}</td>` : ''}
             <td>${escapeHtml(u.name)}</td>
             <td>${escapeHtml(u.email)}</td>
             <td><span class="role-tag">${roleLabels()[u.role] || u.role}</span> ${u.role_label_it ? `<span class="role-tag" style="background:${u.role_color}22;color:${u.role_color};border-color:${u.role_color}44">${escapeHtml(state.user.locale === 'en' ? u.role_label_en : u.role_label_it)}</span>` : ''} ${u.is_external ? `<span class="role-tag role-tag-external">${t('external_badge')}</span>` : ''}</td>
             <td>${escapeHtml(groupLabel(u) || '—')}</td>
             <td>${u.is_blocked ? `<span class="role-tag role-tag-danger">${t('blocked_badge')}</span>` : ''}</td>
             <td>${formatDate(u.created_at)}</td>
-          </tr>`).join('') : `<tr><td colspan="6"><p class="hint">${t('no_people_found')}</p></td></tr>`;
+          </tr>`).join('') : `<tr><td colspan="${isAdmin ? 7 : 6}"><p class="hint">${t('no_people_found')}</p></td></tr>`;
         tbody.querySelectorAll('.user-row').forEach((row) => {
           row.addEventListener('click', () => { location.hash = `#/users/${row.dataset.userId}`; });
           row.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') location.hash = `#/users/${row.dataset.userId}`;
           });
         });
+        wireUserCheckboxes();
+        if (userSelectAllBox) {
+          userSelectAllBox.checked = users.length > 0 && users.every((u) => u.id === state.user.id || selectedUserIds.has(u.id));
+        }
       }
 
+      let lastFiltered = allUsersCache;
       function applyFilters() {
         const q = searchInput.value.trim().toLowerCase();
         const statusFilter = statusSelect.value;
+        const roleFilter = roleSelect.value;
+        const groupFilter = groupSelect ? groupSelect.value : '';
         let filtered = allUsersCache;
         if (q) filtered = filtered.filter((u) => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
         if (statusFilter === 'active') filtered = filtered.filter((u) => !u.is_blocked);
         else if (statusFilter === 'blocked') filtered = filtered.filter((u) => u.is_blocked);
+        if (roleFilter) filtered = filtered.filter((u) => u.role === roleFilter);
+        if (groupFilter) filtered = filtered.filter((u) => u.group_id === Number(groupFilter));
+        lastFiltered = filtered;
         renderRows(filtered);
       }
 
       const searchInput = document.getElementById('userSearchInput');
       const statusSelect = document.getElementById('userStatusFilter');
+      const roleSelect = document.getElementById('userRoleFilter');
+      const groupSelect = document.getElementById('userGroupFilter');
       searchInput.addEventListener('input', applyFilters);
       statusSelect.addEventListener('change', applyFilters);
+      roleSelect.addEventListener('change', applyFilters);
+      if (groupSelect) groupSelect.addEventListener('change', applyFilters);
+
+      if (userSelectAllBox) {
+        userSelectAllBox.addEventListener('change', () => {
+          if (userSelectAllBox.checked) {
+            lastFiltered.forEach((u) => { if (u.id !== state.user.id) selectedUserIds.add(u.id); });
+          } else {
+            lastFiltered.forEach((u) => selectedUserIds.delete(u.id));
+          }
+          wireUserCheckboxes();
+          updateUserBulkBar();
+        });
+      }
+
+      const userBulkClearBtn = document.getElementById('userBulkClearBtn');
+      if (userBulkClearBtn) {
+        userBulkClearBtn.addEventListener('click', () => {
+          selectedUserIds.clear();
+          wireUserCheckboxes();
+          updateUserBulkBar();
+        });
+      }
+
+      const userBulkRoleSel = document.getElementById('userBulkRoleSel');
+      if (userBulkRoleSel) {
+        userBulkRoleSel.addEventListener('change', async () => {
+          if (!userBulkRoleSel.value || !selectedUserIds.size) return;
+          const role = userBulkRoleSel.value;
+          try {
+            await Promise.all([...selectedUserIds].map((id) => api(`/users/${id}/role`, { method: 'PATCH', body: { role } })));
+            showToast(t('toast_bulk_user_updated'), 'success');
+            selectedUserIds.clear();
+            userBulkRoleSel.value = '';
+            loadUsersTable();
+          } catch (err) {
+            showToast(err.message, 'error');
+          }
+        });
+      }
+
+      const userBulkGroupSel = document.getElementById('userBulkGroupSel');
+      if (userBulkGroupSel) {
+        userBulkGroupSel.addEventListener('change', async () => {
+          if (!userBulkGroupSel.value || !selectedUserIds.size) return;
+          const groupId = userBulkGroupSel.value === '__none__' ? null : Number(userBulkGroupSel.value);
+          try {
+            await Promise.all([...selectedUserIds].map((id) => api(`/users/${id}/group`, { method: 'PATCH', body: { groupId } })));
+            showToast(t('toast_bulk_user_updated'), 'success');
+            selectedUserIds.clear();
+            userBulkGroupSel.value = '';
+            loadUsersTable();
+          } catch (err) {
+            showToast(err.message, 'error');
+          }
+        });
+      }
+
+      const userBulkDeleteBtn = document.getElementById('userBulkDeleteBtn');
+      if (userBulkDeleteBtn) {
+        userBulkDeleteBtn.addEventListener('click', async () => {
+          if (!selectedUserIds.size) return;
+          if (!confirm(`${t('confirm_bulk_delete_users_prefix')} ${selectedUserIds.size}${t('confirm_bulk_delete_users_suffix')}`)) return;
+          try {
+            await Promise.all([...selectedUserIds].map((id) => api(`/users/${id}`, { method: 'DELETE' })));
+            showToast(t('toast_bulk_users_deleted'), 'success');
+            selectedUserIds.clear();
+            loadUsersTable();
+          } catch (err) {
+            showToast(err.message, 'error');
+          }
+        });
+      }
+
       applyFilters();
     }
 
