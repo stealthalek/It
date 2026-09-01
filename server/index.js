@@ -35,6 +35,7 @@ const timeEntryRoutes = require('./routes/time-entries');
 const announcementRoutes = require('./routes/announcements');
 const leaveRequestRoutes = require('./routes/leave-requests');
 const messageRoutes = require('./routes/messages');
+const roomRoutes = require('./routes/rooms');
 const { loadHolidays } = require('./sla');
 const { recordRequest } = require('./lib/requestStats');
 
@@ -120,6 +121,7 @@ app.use('/api/time-entries', timeEntryRoutes);
 app.use('/api/announcements', announcementRoutes);
 app.use('/api/leave-requests', leaveRequestRoutes);
 app.use('/api/messages', messageRoutes);
+app.use('/api/rooms', roomRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() });
