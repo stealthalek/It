@@ -1,10 +1,27 @@
 const db = require('./db/database');
 
-let holidaySet = new Set();
+let globalHolidays = new Set();
+let holidaysByCompany = new Map();
 
 async function loadHolidays() {
-  const rows = await db.all('SELECT date FROM holidays');
-  holidaySet = new Set(rows.map((r) => r.date));
+  const rows = await db.all('SELECT date, company_id FROM holidays');
+  const nextGlobal = new Set();
+  const nextByCompany = new Map();
+  rows.forEach((r) => {
+    if (r.company_id == null) {
+      nextGlobal.add(r.date);
+    } else {
+      if (!nextByCompany.has(r.company_id)) nextByCompany.set(r.company_id, new Set());
+      nextByCompany.get(r.company_id).add(r.date);
+    }
+  });
+  globalHolidays = nextGlobal;
+  holidaysByCompany = nextByCompany;
+}
+
+function isHoliday(date, companyId) {
+  if (globalHolidays.has(date)) return true;
+  return !!(companyId && holidaysByCompany.get(companyId)?.has(date));
 }
 
 function dateKey(ms) {
@@ -13,9 +30,9 @@ function dateKey(ms) {
 
 const MS_PER_DAY = 24 * 3600 * 1000;
 
-function isBusinessDay(dayMs) {
+function isBusinessDay(dayMs, companyId) {
   const dow = new Date(dayMs).getUTCDay();
-  return dow >= 1 && dow <= 5 && !holidaySet.has(dateKey(dayMs));
+  return dow >= 1 && dow <= 5 && !isHoliday(dateKey(dayMs), companyId);
 }
 
 function countWeekdays(fromDayMs, toDayMsInclusive) {
@@ -32,11 +49,15 @@ function countWeekdays(fromDayMs, toDayMsInclusive) {
   return weekdayCount;
 }
 
-function countHolidaysInRange(fromDayMs, toDayMsInclusive) {
+function countHolidaysInRange(fromDayMs, toDayMsInclusive, companyId) {
   const fromKey = dateKey(fromDayMs);
   const toKey = dateKey(toDayMsInclusive);
+  const dates = new Set(globalHolidays);
+  if (companyId && holidaysByCompany.has(companyId)) {
+    holidaysByCompany.get(companyId).forEach((d) => dates.add(d));
+  }
   let count = 0;
-  for (const h of holidaySet) {
+  for (const h of dates) {
     if (h >= fromKey && h <= toKey) {
       const dow = new Date(`${h}T00:00:00Z`).getUTCDay();
       if (dow >= 1 && dow <= 5) count++;
@@ -45,7 +66,7 @@ function countHolidaysInRange(fromDayMs, toDayMsInclusive) {
   return count;
 }
 
-function businessMillisBetween(startMs, endMs, startHour, endHour) {
+function businessMillisBetween(startMs, endMs, startHour, endHour, companyId) {
   if (endMs <= startMs || endHour <= startHour) return 0;
   const dayLenMs = (endHour - startHour) * 3600 * 1000;
 
@@ -58,7 +79,7 @@ function businessMillisBetween(startMs, endMs, startHour, endHour) {
   const lastDayMs = lastDay.getTime();
 
   if (firstDayMs === lastDayMs) {
-    if (!isBusinessDay(firstDayMs)) return 0;
+    if (!isBusinessDay(firstDayMs, companyId)) return 0;
     const windowStart = firstDayMs + startHour * 3600 * 1000;
     const windowEnd = firstDayMs + endHour * 3600 * 1000;
     const overlapStart = Math.max(windowStart, startMs);
@@ -68,7 +89,7 @@ function businessMillisBetween(startMs, endMs, startHour, endHour) {
 
   let total = 0;
 
-  if (isBusinessDay(firstDayMs)) {
+  if (isBusinessDay(firstDayMs, companyId)) {
     const windowStart = firstDayMs + startHour * 3600 * 1000;
     const windowEnd = firstDayMs + endHour * 3600 * 1000;
     const overlapStart = Math.max(windowStart, startMs);
@@ -76,7 +97,7 @@ function businessMillisBetween(startMs, endMs, startHour, endHour) {
     if (overlapEnd > overlapStart) total += overlapEnd - overlapStart;
   }
 
-  if (isBusinessDay(lastDayMs)) {
+  if (isBusinessDay(lastDayMs, companyId)) {
     const windowStart = lastDayMs + startHour * 3600 * 1000;
     const windowEnd = lastDayMs + endHour * 3600 * 1000;
     const overlapStart = Math.max(windowStart, lastDayMs);
@@ -88,7 +109,7 @@ function businessMillisBetween(startMs, endMs, startHour, endHour) {
   const middleToMs = lastDayMs - MS_PER_DAY;
   if (middleToMs >= middleFromMs) {
     const weekdays = countWeekdays(middleFromMs, middleToMs);
-    const holidays = countHolidaysInRange(middleFromMs, middleToMs);
+    const holidays = countHolidaysInRange(middleFromMs, middleToMs, companyId);
     total += Math.max(0, weekdays - holidays) * dayLenMs;
   }
 
@@ -99,7 +120,7 @@ function pausedMillisSoFar(ticket, workStart, workEnd) {
   let paused = ticket.sla_paused_ms || 0;
   if (ticket.status === 'waiting_customer' && ticket.waiting_since) {
     const since = new Date(ticket.waiting_since.replace(' ', 'T') + 'Z').getTime();
-    paused += businessMillisBetween(since, Date.now(), workStart, workEnd);
+    paused += businessMillisBetween(since, Date.now(), workStart, workEnd, ticket.company_id);
   }
   return paused;
 }
@@ -113,10 +134,10 @@ function computeSlaStatus(ticket) {
   if (ticket.status === 'resolved' || ticket.status === 'closed') {
     if (!ticket.resolved_at) return null;
     const resolved = new Date(ticket.resolved_at.replace(' ', 'T') + 'Z').getTime();
-    const elapsed = businessMillisBetween(created, resolved, workStart, workEnd) - (ticket.sla_paused_ms || 0);
+    const elapsed = businessMillisBetween(created, resolved, workStart, workEnd, ticket.company_id) - (ticket.sla_paused_ms || 0);
     return elapsed > resolveMs ? 'breached' : 'on_track';
   }
-  const elapsed = Math.max(0, businessMillisBetween(created, Date.now(), workStart, workEnd) - pausedMillisSoFar(ticket, workStart, workEnd));
+  const elapsed = Math.max(0, businessMillisBetween(created, Date.now(), workStart, workEnd, ticket.company_id) - pausedMillisSoFar(ticket, workStart, workEnd));
   const ratio = elapsed / resolveMs;
   if (ratio >= 1) return 'breached';
   if (ratio >= 0.75) return 'at_risk';
@@ -130,7 +151,7 @@ function computeSlaRemaining(ticket) {
   const workEnd = ticket.work_end_hour ?? 18;
   const created = new Date(ticket.created_at.replace(' ', 'T') + 'Z').getTime();
   const resolveMs = ticket.sla_resolve_hours * 3600 * 1000;
-  const elapsed = Math.max(0, businessMillisBetween(created, Date.now(), workStart, workEnd) - pausedMillisSoFar(ticket, workStart, workEnd));
+  const elapsed = Math.max(0, businessMillisBetween(created, Date.now(), workStart, workEnd, ticket.company_id) - pausedMillisSoFar(ticket, workStart, workEnd));
   return resolveMs - elapsed;
 }
 
@@ -144,12 +165,12 @@ function computeResponseSlaStatus(ticket) {
   const respondedAt = ticket.first_response_at || (['resolved', 'closed'].includes(ticket.status) ? ticket.resolved_at : null);
   if (respondedAt) {
     const responded = new Date(respondedAt.replace(' ', 'T') + 'Z').getTime();
-    const elapsed = businessMillisBetween(created, responded, workStart, workEnd);
+    const elapsed = businessMillisBetween(created, responded, workStart, workEnd, ticket.company_id);
     return elapsed > responseMs ? 'breached' : 'on_track';
   }
   if (['resolved', 'closed'].includes(ticket.status)) return null;
 
-  const elapsed = businessMillisBetween(created, Date.now(), workStart, workEnd);
+  const elapsed = businessMillisBetween(created, Date.now(), workStart, workEnd, ticket.company_id);
   const ratio = elapsed / responseMs;
   if (ratio >= 1) return 'breached';
   if (ratio >= 0.75) return 'at_risk';

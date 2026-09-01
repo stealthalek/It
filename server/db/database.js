@@ -829,6 +829,29 @@ async function migrate() {
     await run('ALTER TABLE ticket_templates ADD COLUMN company_id INTEGER REFERENCES companies(id) ON DELETE SET NULL');
   }
   await run('CREATE INDEX IF NOT EXISTS idx_ticket_templates_company_id ON ticket_templates(company_id)');
+
+  const holidaysTable = await get("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'holidays'");
+  if (holidaysTable && holidaysTable.sql && holidaysTable.sql.includes('date TEXT NOT NULL UNIQUE')) {
+    await run('PRAGMA foreign_keys = OFF');
+    await run(`CREATE TABLE holidays_new (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      date TEXT NOT NULL,
+      name TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      company_id INTEGER REFERENCES companies(id) ON DELETE SET NULL,
+      UNIQUE(date, company_id)
+    )`);
+    await run(`INSERT INTO holidays_new (id, date, name, created_at)
+      SELECT id, date, name, created_at FROM holidays`);
+    await run('DROP TABLE holidays');
+    await run('ALTER TABLE holidays_new RENAME TO holidays');
+    await run('PRAGMA foreign_keys = ON');
+  }
+  const holidayCols = await all('PRAGMA table_info(holidays)');
+  if (holidayCols.length && !holidayCols.some((c) => c.name === 'company_id')) {
+    await run('ALTER TABLE holidays ADD COLUMN company_id INTEGER REFERENCES companies(id) ON DELETE SET NULL');
+  }
+  await run('CREATE INDEX IF NOT EXISTS idx_holidays_company_id ON holidays(company_id)');
 }
 
 async function seedDefaultCompany() {
