@@ -1702,6 +1702,7 @@
   }
 
   async function route() {
+    hideChartTooltip();
     const hash = location.hash.replace(/^#\//, '') || 'dashboard';
     const [page, param] = hash.split('/');
 
@@ -2094,6 +2095,61 @@
         e.preventDefault();
         onRowClick(el.dataset.key);
       });
+    });
+    wireChartTooltips(container);
+  }
+
+  let chartTooltipEl = null;
+  function getChartTooltip() {
+    if (!chartTooltipEl) {
+      chartTooltipEl = document.createElement('div');
+      chartTooltipEl.className = 'chart-tooltip';
+      document.body.appendChild(chartTooltipEl);
+    }
+    return chartTooltipEl;
+  }
+
+  function positionChartTooltip(el) {
+    const tip = getChartTooltip();
+    const rect = el.getBoundingClientRect();
+    tip.style.left = `${rect.left + rect.width / 2}px`;
+    tip.style.top = `${rect.top}px`;
+  }
+
+  function showChartTooltip(el, text) {
+    if (!text) return;
+    const tip = getChartTooltip();
+    tip.textContent = text;
+    positionChartTooltip(el);
+    tip.classList.add('visible');
+  }
+
+  function hideChartTooltip() {
+    if (chartTooltipEl) chartTooltipEl.classList.remove('visible');
+  }
+
+  function chartTooltipText(el) {
+    if (el.classList.contains('donut-segment')) return el.querySelector('title')?.textContent || '';
+    if (el.classList.contains('donut-legend-item')) {
+      const label = el.querySelector('.donut-legend-label')?.textContent || '';
+      const value = el.querySelector('.donut-legend-value')?.textContent || '';
+      return label && value ? `${label}: ${value}` : '';
+    }
+    if (el.classList.contains('bar-row')) {
+      const label = el.querySelector('.bar-label')?.textContent || '';
+      const value = el.querySelector('.bar-value')?.textContent || '';
+      return label && value ? `${label}: ${value}` : '';
+    }
+    return '';
+  }
+
+  function wireChartTooltips(container) {
+    container.querySelectorAll('.donut-segment, .donut-legend-item, .bar-row').forEach((el) => {
+      el.addEventListener('mouseenter', () => showChartTooltip(el, chartTooltipText(el)));
+      el.addEventListener('mousemove', () => positionChartTooltip(el));
+      el.addEventListener('mouseleave', hideChartTooltip);
+      el.addEventListener('focus', () => showChartTooltip(el, chartTooltipText(el)));
+      el.addEventListener('blur', hideChartTooltip);
     });
   }
 
@@ -2682,15 +2738,20 @@
           setFilter(currentChartDim, key);
           listEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
+      } else {
+        wireChartTooltips(chartsEl.querySelector('.chart-card-wide'));
       }
 
       chartsEl.querySelectorAll('.chart-card[data-dim]').forEach((card) => {
         const dim = card.dataset.dim;
-        if (!filterableDims.includes(dim)) return;
-        wireChartInteractions(card, (key) => {
-          setFilter(dim, key);
-          listEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        });
+        if (filterableDims.includes(dim)) {
+          wireChartInteractions(card, (key) => {
+            setFilter(dim, key);
+            listEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          });
+        } else {
+          wireChartTooltips(card);
+        }
       });
       chartsEl.querySelectorAll('.chart-card[data-dim] .donut-color-input').forEach((input) => {
         input.addEventListener('click', (e) => e.stopPropagation());
@@ -7296,6 +7357,7 @@
         container.innerHTML = barChart(rows, total, { ...(opts.barOpts || {}), onSelect: selectable });
       }
       if (selectable) wireChartInteractions(container, opts.onRowClick);
+      else wireChartTooltips(container);
     }
 
     function passesDateFilter(tk) {

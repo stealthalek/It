@@ -1277,14 +1277,16 @@ body:not(.role-customer):not(.role-agent):not(.role-admin) .nav-toggle { display
   flex-shrink: 0;
 }
 .donut-svg { width: 100%; height: 100%; transform: rotate(-90deg); overflow: visible; }
-.donut-ring-bg { fill: none; stroke: var(--border); stroke-width: 4; }
+.donut-ring-bg { fill: none; stroke: var(--border); stroke-width: 5.2; }
 .donut-segment {
   fill: none;
-  stroke-width: 4;
-  transition: stroke-width 0.15s ease, opacity 0.15s ease;
+  stroke-width: 5.2;
+  stroke-linecap: round;
+  transition: stroke-width 0.15s ease, opacity 0.15s ease, filter 0.15s ease;
 }
 .donut-segment.selectable { cursor: pointer; }
-.donut-segment.selectable:hover, .donut-segment.selectable:focus-visible { stroke-width: 5.6; outline: none; }
+.donut-segment:hover, .donut-segment:focus-visible { filter: brightness(1.1); outline: none; }
+.donut-segment.selectable:hover, .donut-segment.selectable:focus-visible { stroke-width: 6.8; }
 .donut-center {
   position: absolute;
   inset: 1.65rem;
@@ -1328,6 +1330,33 @@ body:not(.role-customer):not(.role-agent):not(.role-admin) .nav-toggle { display
 .donut-color-input::-moz-color-swatch { border: none; border-radius: 50%; }
 .donut-legend-label { flex: 1; color: var(--text); }
 .donut-legend-value { color: var(--muted); font-weight: 600; white-space: nowrap; }
+
+.chart-tooltip {
+  position: fixed;
+  z-index: 500;
+  pointer-events: none;
+  background: var(--text);
+  color: var(--surface);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.4rem 0.65rem;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  opacity: 0;
+  transform: translate(-50%, -6px);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+  white-space: nowrap;
+}
+.chart-tooltip.visible { opacity: 1; transform: translate(-50%, -12px); }
+.chart-tooltip::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--text);
+}
 
 .live-dot {
   width: 8px;
@@ -1378,8 +1407,10 @@ body:not(.role-customer):not(.role-agent):not(.role-admin) .nav-toggle { display
   height: 100%;
   min-width: 4px;
   border-radius: 999px;
-  transition: width 0.3s ease;
+  transition: width 0.3s ease, filter 0.15s ease;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
+.bar-row:hover .bar-fill { filter: brightness(1.08); }
 .bar-value { font-size: 0.85rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .bar-pct { font-weight: 500; color: var(--muted); }
 
