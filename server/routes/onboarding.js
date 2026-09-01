@@ -1,5 +1,8 @@
 const express = require('express');
+const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const db = require('../db/database');
+const mailer = require('../mailer');
 const { authenticate } = require('../middleware/auth');
 const { requirePermission } = require('../lib/permissions');
 const asyncHandler = require('../middleware/asyncHandler');
@@ -7,6 +10,34 @@ const { logAudit } = require('../audit');
 const { notifyUser } = require('../notifications');
 const { formatTicketNumber } = require('../lib/ticketNumber');
 const { createAssignmentLetter } = require('../lib/assetLetters');
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+async function autoCreateEmployeeAccount(requestId) {
+  const request = await db.get('SELECT * FROM onboarding_requests WHERE id = ?', [requestId]);
+  if (!request || request.employee_user_id || !request.employee_email) return;
+  const email = request.employee_email.trim().toLowerCase();
+  if (!EMAIL_RE.test(email)) return;
+
+  const existing = await db.get('SELECT id FROM users WHERE email = ?', [email]);
+  if (existing) {
+    await db.run('UPDATE onboarding_requests SET employee_user_id = ? WHERE id = ?', [existing.id, requestId]);
+    return;
+  }
+
+  const requester = await db.get('SELECT company_id FROM users WHERE id = ?', [request.requested_by]);
+  const tempPassword = crypto.randomBytes(6).toString('base64url');
+  const hash = bcrypt.hashSync(tempPassword, 10);
+  const info = await db.run(
+    'INSERT INTO users (name, email, password, role, company_id) VALUES (?, ?, ?, ?, ?)',
+    [request.employee_name, email, hash, 'customer', requester ? requester.company_id : null]
+  );
+  const userId = Number(info.lastInsertRowid);
+  await db.run('UPDATE onboarding_requests SET employee_user_id = ? WHERE id = ?', [userId, requestId]);
+  const user = await db.get('SELECT id, name, email, locale FROM users WHERE id = ?', [userId]);
+  mailer.sendInvite(user, tempPassword).catch((err) => console.error('Invio email di invito fallito:', err.message));
+  logAudit(request.requested_by, 'user', userId, `Account "${user.name}" creato automaticamente al completamento dell'onboarding`).catch(() => {});
+}
 
 const router = express.Router();
 router.use(authenticate);
@@ -564,6 +595,9 @@ async function syncRequestStatus(requestId) {
   }
   if (nextStatus !== request.status) {
     await db.run("UPDATE onboarding_requests SET status = ?, updated_at = datetime('now') WHERE id = ?", [nextStatus, requestId]);
+    if (nextStatus === 'completed') {
+      autoCreateEmployeeAccount(requestId).catch((err) => console.error('Creazione automatica account onboarding fallita:', err.message));
+    }
   }
 }
 
