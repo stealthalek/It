@@ -11,6 +11,7 @@ const ALL_PERMISSIONS = [
   'announcements_manage',
   'users_manage',
   'groups_manage',
+  'rooms_manage',
 ];
 
 function resolvePermissions(user) {

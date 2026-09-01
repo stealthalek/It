@@ -186,6 +186,7 @@
     moon: '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>',
     building: '<rect x="4" y="2" width="16" height="20" rx="1"/><line x1="9" y1="6" x2="9" y2="6.01"/><line x1="15" y1="6" x2="15" y2="6.01"/><line x1="9" y1="10" x2="9" y2="10.01"/><line x1="15" y1="10" x2="15" y2="10.01"/><line x1="9" y1="14" x2="9" y2="14.01"/><line x1="15" y1="14" x2="15" y2="14.01"/><line x1="9" y1="22" x2="9" y2="18"/><line x1="15" y1="22" x2="15" y2="18"/>',
     clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+    calendar: '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
   };
 
   const CATEGORY_ICON_CHOICES = ['ticket', 'wifi', 'globe', 'printer', 'mail', 'monitor', 'server', 'phone', 'grid', 'lock', 'shield', 'users', 'laptop', 'tablet', 'package', 'bulb', 'flame', 'truck', 'megaphone'];
@@ -369,6 +370,17 @@
       toast_leave_request_created: 'Richiesta inviata', toast_leave_request_cancelled: 'Richiesta ritirata',
       toast_leave_request_approved: 'Richiesta approvata', toast_leave_request_rejected: 'Richiesta respinta',
       confirm_cancel_leave_request: 'Ritirare questa richiesta?',
+      nav_rooms: 'Sale riunioni', rooms_hint: 'Prenota una sala riunioni e consulta le prenotazioni del giorno.',
+      rooms_new_booking_title: 'Nuova prenotazione', rooms_field_room: 'Sala', rooms_field_title: 'Titolo riunione',
+      rooms_field_start: 'Inizio', rooms_field_end: 'Fine', rooms_book_btn: 'Prenota',
+      rooms_bookings_for: 'Prenotazioni', rooms_no_bookings: 'Nessuna prenotazione per questa sala.',
+      rooms_cancel_btn: 'Annulla', rooms_no_rooms: 'Nessuna sala configurata.', rooms_capacity_label: 'posti',
+      rooms_manage_title: 'Gestisci sale', rooms_field_room_name: 'Nome sala', rooms_field_location: 'Posizione (facoltativo)',
+      rooms_field_capacity: 'Capienza (facoltativo)', rooms_add_room_btn: 'Aggiungi sala',
+      toast_room_booked: 'Sala prenotata', toast_room_booking_cancelled: 'Prenotazione annullata',
+      toast_room_created: 'Sala creata', toast_room_deleted: 'Sala eliminata',
+      confirm_cancel_room_booking: 'Annullare questa prenotazione?', confirm_delete_room: 'Eliminare questa sala? Le prenotazioni collegate verranno rimosse.',
+      delete_room_title: 'Elimina sala', rooms_col_name: 'Sala', rooms_col_location: 'Posizione', rooms_col_capacity: 'Capienza',
       nav_assets: 'Asset', nav_onboarding: 'Onboarding', nav_timesheet: 'Orari', nav_report: 'Report', nav_audit: 'Audit', nav_admin: 'Amministrazione', nav_profile: 'Profilo', logout: 'Esci',
       login_title: 'Accedi', login_hint: 'Entra nella piattaforma di ticketing.', login_email: 'Email', login_password: 'Password',
       login_submit: 'Accedi', login_no_account: 'Non hai un account?', login_register_link: 'Registrati',
@@ -794,6 +806,17 @@
       toast_leave_request_created: 'Request submitted', toast_leave_request_cancelled: 'Request withdrawn',
       toast_leave_request_approved: 'Request approved', toast_leave_request_rejected: 'Request rejected',
       confirm_cancel_leave_request: 'Withdraw this request?',
+      nav_rooms: 'Meeting rooms', rooms_hint: 'Book a meeting room and check the day\'s bookings.',
+      rooms_new_booking_title: 'New booking', rooms_field_room: 'Room', rooms_field_title: 'Meeting title',
+      rooms_field_start: 'Start', rooms_field_end: 'End', rooms_book_btn: 'Book',
+      rooms_bookings_for: 'Bookings', rooms_no_bookings: 'No bookings for this room.',
+      rooms_cancel_btn: 'Cancel', rooms_no_rooms: 'No rooms configured.', rooms_capacity_label: 'seats',
+      rooms_manage_title: 'Manage rooms', rooms_field_room_name: 'Room name', rooms_field_location: 'Location (optional)',
+      rooms_field_capacity: 'Capacity (optional)', rooms_add_room_btn: 'Add room',
+      toast_room_booked: 'Room booked', toast_room_booking_cancelled: 'Booking cancelled',
+      toast_room_created: 'Room created', toast_room_deleted: 'Room deleted',
+      confirm_cancel_room_booking: 'Cancel this booking?', confirm_delete_room: 'Delete this room? Linked bookings will be removed.',
+      delete_room_title: 'Delete room', rooms_col_name: 'Room', rooms_col_location: 'Location', rooms_col_capacity: 'Capacity',
       nav_assets: 'Assets', nav_onboarding: 'Onboarding', nav_timesheet: 'Hours', nav_report: 'Report', nav_audit: 'Audit', nav_admin: 'Administration', nav_profile: 'Profile', logout: 'Log out',
       login_title: 'Sign in', login_hint: 'Enter the ticketing platform.', login_email: 'Email', login_password: 'Password',
       login_submit: 'Sign in', login_no_account: "Don't have an account?", login_register_link: 'Register',
@@ -1213,11 +1236,11 @@
 
   const NAV_KEY_BY_ROUTE = {
     dashboard: 'nav_dashboard', new: 'nav_new', search: 'nav_search', announcements: 'nav_announcements', directory: 'nav_directory', messages: 'nav_messages',
-    assets: 'nav_assets', onboarding: 'nav_onboarding', timesheet: 'nav_timesheet', orgchart: 'nav_orgchart', report: 'nav_insights', admin: 'nav_admin', profile: 'nav_profile',
+    assets: 'nav_assets', onboarding: 'nav_onboarding', timesheet: 'nav_timesheet', orgchart: 'nav_orgchart', rooms: 'nav_rooms', report: 'nav_insights', admin: 'nav_admin', profile: 'nav_profile',
   };
   const NAV_ICON_BY_ROUTE = {
     dashboard: 'ticket', new: 'plus', search: 'inbox', announcements: 'megaphone', directory: 'users', messages: 'mail',
-    assets: 'monitor', onboarding: 'userCircle', timesheet: 'clock', orgchart: 'globe', report: 'activity', admin: 'shield', profile: 'userCircle',
+    assets: 'monitor', onboarding: 'userCircle', timesheet: 'clock', orgchart: 'globe', rooms: 'calendar', report: 'activity', admin: 'shield', profile: 'userCircle',
   };
 
   const NAV_SECTION_KEY = { work: 'nav_section_work', team: 'nav_section_team', tools: 'nav_section_tools' };
@@ -2085,6 +2108,7 @@
         case 'onboarding': return renderOnboarding(param);
         case 'timesheet': return renderTimesheet();
         case 'orgchart': return renderOrgChartPublic();
+        case 'rooms': return renderRooms();
         case 'search': return renderSearch();
         case 'report': return renderInsights('report');
         case 'audit': return renderInsights('audit');
@@ -9878,6 +9902,191 @@
       loadHistory();
     }).catch(() => loadHistory());
     loadTeam();
+  }
+
+  function canManageRooms() {
+    return !!(state.user && (state.user.role === 'admin' || state.user.is_super_admin || (Array.isArray(state.user.permissions) && state.user.permissions.includes('rooms_manage'))));
+  }
+
+  async function renderRooms() {
+    appEl.innerHTML = `
+      <div class="view-header">
+        <h1>${icon('calendar')} ${t('nav_rooms')}</h1>
+        <p class="hint">${t('rooms_hint')}</p>
+      </div>
+      <div class="two-col">
+        <div class="card">
+          <h3 class="section-title" style="margin-top:0">${icon('plus')} ${t('rooms_new_booking_title')}</h3>
+          <form id="newBookingForm" class="form-grid" style="max-width:none">
+            <div class="field"><label for="bookingRoom">${t('rooms_field_room')}</label><select id="bookingRoom" required></select></div>
+            <div class="field"><label for="bookingTitle">${t('rooms_field_title')}</label><input id="bookingTitle" required maxlength="200" /></div>
+            <div class="field-row">
+              <div class="field"><label for="bookingStart">${t('rooms_field_start')}</label><input id="bookingStart" type="datetime-local" required /></div>
+              <div class="field"><label for="bookingEnd">${t('rooms_field_end')}</label><input id="bookingEnd" type="datetime-local" required /></div>
+            </div>
+            <p class="error-text" id="bookingError"></p>
+            <div><button class="btn btn-sm" type="submit">${t('rooms_book_btn')}</button></div>
+          </form>
+        </div>
+        <div class="card">
+          <h3 class="section-title" style="margin-top:0">${icon('inbox')} ${t('rooms_bookings_for')}</h3>
+          <div id="bookingsList" class="spinner-row">${t('loading')}</div>
+        </div>
+      </div>
+      ${canManageRooms() ? `
+      <div class="card" style="margin-top:1rem">
+        <h3 class="section-title" style="margin-top:0">${icon('settings')} ${t('rooms_manage_title')}</h3>
+        <form id="newRoomForm" style="display:flex;flex-wrap:wrap;gap:0.6rem;align-items:flex-end;margin:0.75rem 0">
+          <div class="field" style="flex:1 1 12rem"><label for="newRoomName">${t('rooms_field_room_name')}</label><input id="newRoomName" required /></div>
+          <div class="field" style="flex:1 1 12rem"><label for="newRoomLocation">${t('rooms_field_location')}</label><input id="newRoomLocation" /></div>
+          <div class="field" style="flex:0 0 8rem"><label for="newRoomCapacity">${t('rooms_field_capacity')}</label><input id="newRoomCapacity" type="number" min="1" /></div>
+          <button class="btn btn-sm" type="submit">${t('rooms_add_room_btn')}</button>
+        </form>
+        <p class="error-text" id="roomError"></p>
+        <div id="roomsAdminList" class="spinner-row">${t('loading')}</div>
+      </div>` : ''}
+    `;
+
+    let roomsCache = [];
+
+    function bookingCardHtml(b) {
+      const canCancel = b.user_id === state.user.id || canManageRooms();
+      return `
+        <div class="card" style="margin-bottom:0.6rem">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem">
+            <div>
+              <strong>${escapeHtml(b.title)}</strong>
+              <p class="hint" style="margin:0.2rem 0 0">${icon('building', 'badge-icon')} ${escapeHtml(b.room_name)} · ${icon('userCircle', 'badge-icon')} ${escapeHtml(b.user_name)}</p>
+              <p class="hint" style="margin:0.2rem 0 0">${formatDate(b.start_at)} → ${formatDate(b.end_at)}</p>
+            </div>
+            ${canCancel ? `<button type="button" class="btn btn-ghost btn-sm cancelBookingBtn" data-id="${b.id}">${t('rooms_cancel_btn')}</button>` : ''}
+          </div>
+        </div>`;
+    }
+
+    async function loadBookings() {
+      const listEl = document.getElementById('bookingsList');
+      listEl.className = 'spinner-row';
+      listEl.textContent = t('loading');
+      try {
+        const from = new Date().toISOString().slice(0, 16);
+        const results = await Promise.all(roomsCache.map((r) => api(`/rooms/${r.id}/bookings?from=${encodeURIComponent(from)}`).catch(() => ({ bookings: [] }))));
+        const bookings = results.flatMap((r) => r.bookings).sort((a, b) => (a.start_at < b.start_at ? -1 : 1));
+        listEl.className = '';
+        listEl.innerHTML = bookings.length ? bookings.map(bookingCardHtml).join('') : `<p class="hint">${t('rooms_no_bookings')}</p>`;
+        listEl.querySelectorAll('.cancelBookingBtn').forEach((btn) => {
+          btn.addEventListener('click', async () => {
+            if (!confirm(t('confirm_cancel_room_booking'))) return;
+            try {
+              await api(`/rooms/bookings/${btn.dataset.id}`, { method: 'DELETE' });
+              showToast(t('toast_room_booking_cancelled'), 'success');
+              loadBookings();
+            } catch (err) {
+              showToast(err.message, 'error');
+            }
+          });
+        });
+      } catch (err) {
+        listEl.className = '';
+        listEl.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
+      }
+    }
+
+    async function loadRoomsAdmin() {
+      const listEl = document.getElementById('roomsAdminList');
+      if (!listEl) return;
+      listEl.className = '';
+      listEl.innerHTML = roomsCache.length ? `
+        <div class="table-scroll">
+          <table class="users-table">
+            <thead><tr>
+              <th>${t('rooms_col_name')}</th><th>${t('rooms_col_location')}</th><th>${t('rooms_col_capacity')}</th><th></th>
+            </tr></thead>
+            <tbody>
+              ${roomsCache.map((r) => `
+                <tr>
+                  <td>${escapeHtml(r.name)}</td>
+                  <td>${r.location ? escapeHtml(r.location) : '—'}</td>
+                  <td>${r.capacity ? `${r.capacity} ${t('rooms_capacity_label')}` : '—'}</td>
+                  <td><button type="button" class="icon-btn deleteRoomBtn" data-id="${r.id}" title="${t('delete_room_title')}">${icon('trash')}</button></td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>` : `<p class="hint">${t('rooms_no_rooms')}</p>`;
+      listEl.querySelectorAll('.deleteRoomBtn').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          if (!confirm(t('confirm_delete_room'))) return;
+          try {
+            await api(`/rooms/${btn.dataset.id}`, { method: 'DELETE' });
+            showToast(t('toast_room_deleted'), 'success');
+            loadRooms();
+          } catch (err) {
+            showToast(err.message, 'error');
+          }
+        });
+      });
+    }
+
+    async function loadRooms() {
+      const { rooms } = await api('/rooms');
+      roomsCache = rooms;
+      const select = document.getElementById('bookingRoom');
+      select.innerHTML = rooms.length
+        ? rooms.map((r) => `<option value="${r.id}">${escapeHtml(r.name)}${r.capacity ? ` (${r.capacity} ${t('rooms_capacity_label')})` : ''}</option>`).join('')
+        : `<option value="">${t('rooms_no_rooms')}</option>`;
+      loadBookings();
+      loadRoomsAdmin();
+    }
+
+    guardForm(document.getElementById('newBookingForm'), async () => {
+      const errEl = document.getElementById('bookingError');
+      errEl.textContent = '';
+      const roomId = document.getElementById('bookingRoom').value;
+      if (!roomId) {
+        errEl.textContent = t('rooms_no_rooms');
+        return;
+      }
+      try {
+        await api(`/rooms/${roomId}/bookings`, {
+          method: 'POST',
+          body: {
+            title: document.getElementById('bookingTitle').value,
+            startAt: document.getElementById('bookingStart').value,
+            endAt: document.getElementById('bookingEnd').value,
+          },
+        });
+        document.getElementById('newBookingForm').reset();
+        showToast(t('toast_room_booked'), 'success');
+        loadBookings();
+      } catch (err) {
+        errEl.textContent = err.message;
+      }
+    });
+
+    const newRoomForm = document.getElementById('newRoomForm');
+    if (newRoomForm) {
+      guardForm(newRoomForm, async () => {
+        const errEl = document.getElementById('roomError');
+        errEl.textContent = '';
+        try {
+          await api('/rooms', {
+            method: 'POST',
+            body: {
+              name: document.getElementById('newRoomName').value,
+              location: document.getElementById('newRoomLocation').value,
+              capacity: document.getElementById('newRoomCapacity').value || null,
+            },
+          });
+          newRoomForm.reset();
+          showToast(t('toast_room_created'), 'success');
+          loadRooms();
+        } catch (err) {
+          errEl.textContent = err.message;
+        }
+      });
+    }
+
+    loadRooms();
   }
 
   function renderTwoFaCard() {
