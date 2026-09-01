@@ -63,6 +63,10 @@
   const sidebarEl = document.getElementById('sidebar');
   const sidebarBackdrop = document.getElementById('sidebarBackdrop');
   const sidebarCollapseBtn = document.getElementById('sidebarCollapseBtn');
+  const sidebarSystemStatus = document.getElementById('sidebarSystemStatus');
+  if (sidebarSystemStatus) {
+    sidebarSystemStatus.addEventListener('click', () => { state.adminSection = 'system'; });
+  }
 
   function statusLabels() {
     return {
@@ -243,6 +247,23 @@
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
     return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+  }
+
+  function computeOverallSeverity(status) {
+    const memPct = Math.min(100, Math.round((status.memory.rssMb / 512) * 100));
+    const reqPct = Math.min(100, Math.round((status.requestWindow.windowCount / status.requestWindow.windowMax) * 100));
+    const loadRatio = status.loadAvg1m / status.cpuCount;
+    const pctSeverity = (pct) => (pct >= 90 ? 'danger' : pct >= 70 ? 'warning' : 'ok');
+    const severities = [
+      pctSeverity(memPct),
+      pctSeverity(reqPct),
+      status.db.latencyMs === null || status.db.latencyMs > 400 ? 'danger' : status.db.latencyMs > 100 ? 'warning' : 'ok',
+      status.eventLoopLagMs > 100 ? 'danger' : status.eventLoopLagMs > 30 ? 'warning' : 'ok',
+      loadRatio > 1 ? 'danger' : loadRatio > 0.7 ? 'warning' : 'ok',
+    ];
+    if (severities.includes('danger')) return 'danger';
+    if (severities.includes('warning')) return 'warning';
+    return 'ok';
   }
 
   function attachmentIconName(mimeType) {
@@ -682,6 +703,10 @@
       system_eventloop_label: 'Ritardo event loop', system_eventloop_hint: 'Indicatore diretto di sovraccarico del server',
       system_load_label: 'Carico CPU (1 min)', system_load_hint: 'su',
       system_online_users_label: 'Utenti online', system_online_staff_prefix: 'Staff:', system_online_customers_prefix: 'Utenti:',
+      sidebar_status_ok: 'Sistema: operativo', sidebar_status_warning: 'Sistema: attenzione', sidebar_status_danger: 'Sistema: critico',
+      system_overall_ok_title: 'Tutto operativo', system_overall_ok_hint: 'Tutti gli indicatori sono entro i valori normali.',
+      system_overall_warning_title: 'Attenzione', system_overall_warning_hint: 'Uno o più indicatori si stanno avvicinando ai limiti: tenere sotto controllo.',
+      system_overall_danger_title: 'Intervento necessario', system_overall_danger_hint: 'Uno o più indicatori hanno superato la soglia critica.',
       system_storage_title: 'Spazio e utilizzo', system_storage_hint: 'Dimensione del database e conteggio delle righe per le tabelle principali, per tenere sotto controllo la crescita nel tempo.',
       system_storage_db_size_label: 'Dimensione database', system_storage_attachments_label: 'Allegati (ticket + onboarding)',
       system_storage_retention_hint: 'Pulizia automatica in corso: messaggi diretti dopo 14 giorni, notifiche lette dopo 90 giorni, registro attività dopo 365 giorni.',
@@ -1078,6 +1103,10 @@
       system_eventloop_label: 'Event loop lag', system_eventloop_hint: 'Direct indicator of server overload',
       system_load_label: 'CPU load (1 min)', system_load_hint: 'of',
       system_online_users_label: 'Online users', system_online_staff_prefix: 'Staff:', system_online_customers_prefix: 'Users:',
+      sidebar_status_ok: 'System: operational', sidebar_status_warning: 'System: attention', sidebar_status_danger: 'System: critical',
+      system_overall_ok_title: 'All systems operational', system_overall_ok_hint: 'All indicators are within normal range.',
+      system_overall_warning_title: 'Attention needed', system_overall_warning_hint: 'One or more indicators are approaching their limits: keep an eye on it.',
+      system_overall_danger_title: 'Action required', system_overall_danger_hint: 'One or more indicators have crossed the critical threshold.',
       system_storage_title: 'Storage and usage', system_storage_hint: 'Database size and row counts for the main tables, to keep growth under control over time.',
       system_storage_db_size_label: 'Database size', system_storage_attachments_label: 'Attachments (tickets + onboarding)',
       system_storage_retention_hint: 'Automatic cleanup in place: direct messages after 14 days, read notifications after 90 days, activity log after 365 days.',
@@ -1310,6 +1339,11 @@
         connectNotifSocket();
       }
       refreshAnnouncementsNavDot();
+      if (state.user.role === 'admin') {
+        if (!sidebarStatusTimer) startSidebarStatusPolling();
+      } else {
+        teardownSidebarStatusPolling();
+      }
     } else {
       userBadge.style.display = 'none';
       logoutBtn.style.display = 'none';
@@ -1318,6 +1352,8 @@
       notifDropdown.hidden = true;
       notifBadge.hidden = true;
       teardownNotifSocket();
+      teardownSidebarStatusPolling();
+      if (sidebarSystemStatus) sidebarSystemStatus.hidden = true;
     }
   }
 
@@ -1770,6 +1806,37 @@
       try { notifSocket.disconnect(); } catch {}
       notifSocket = null;
     }
+  }
+
+  let sidebarStatusTimer = null;
+  async function pollSidebarSystemStatus() {
+    if (!sidebarSystemStatus) return;
+    if (!state.user || state.user.role !== 'admin') {
+      sidebarSystemStatus.hidden = true;
+      return;
+    }
+    try {
+      const status = await api('/admin/status');
+      const severity = computeOverallSeverity(status);
+      const dot = sidebarSystemStatus.querySelector('.sidebar-status-dot');
+      const text = sidebarSystemStatus.querySelector('.sidebar-status-text');
+      dot.className = `sidebar-status-dot${severity === 'ok' ? '' : ` status-${severity}`}`;
+      text.textContent = t(`sidebar_status_${severity}`);
+      sidebarSystemStatus.hidden = false;
+    } catch {
+      sidebarSystemStatus.hidden = true;
+    }
+  }
+  function teardownSidebarStatusPolling() {
+    if (sidebarStatusTimer) {
+      clearInterval(sidebarStatusTimer);
+      sidebarStatusTimer = null;
+    }
+  }
+  function startSidebarStatusPolling() {
+    teardownSidebarStatusPolling();
+    pollSidebarSystemStatus();
+    sidebarStatusTimer = setInterval(pollSidebarSystemStatus, 60000);
   }
 
   async function connectNotifSocket() {
@@ -4838,6 +4905,22 @@
         return 'system-bar-ok';
       }
 
+      function severityOf(barClass) {
+        if (barClass === 'system-bar-danger') return 'danger';
+        if (barClass === 'system-bar-warning') return 'warning';
+        return 'ok';
+      }
+
+      function worstSeverity(...severities) {
+        if (severities.includes('danger')) return 'danger';
+        if (severities.includes('warning')) return 'warning';
+        return 'ok';
+      }
+
+      function statusIconHtml(name) {
+        return `<span class="system-status-icon">${icon(name)}</span>`;
+      }
+
       function formatUptime(seconds) {
         const days = Math.floor(seconds / 86400);
         const hours = Math.floor((seconds % 86400) / 3600);
@@ -4847,14 +4930,34 @@
         return `${mins}m`;
       }
 
+      let sparklineIdSeq = 0;
       function sparklineSvg(values, colorVar) {
-        const w = 200, h = 40;
+        const w = 200, h = 44;
         if (values.length < 2) return `<svg width="${w}" height="${h}" class="sparkline"></svg>`;
+        sparklineIdSeq += 1;
+        const gradId = `sparkGrad${sparklineIdSeq}`;
         const max = Math.max(...values, 0.001);
         const stepX = w / (values.length - 1);
-        const points = values.map((v, i) => `${(i * stepX).toFixed(1)},${(h - (v / max) * (h - 4) - 2).toFixed(1)}`).join(' ');
+        const coords = values.map((v, i) => [i * stepX, h - (v / max) * (h - 6) - 3]);
+        let path = `M ${coords[0][0].toFixed(1)} ${coords[0][1].toFixed(1)}`;
+        for (let i = 1; i < coords.length; i++) {
+          const [px, py] = coords[i - 1];
+          const [cx, cy] = coords[i];
+          const midX = (px + cx) / 2;
+          path += ` C ${midX.toFixed(1)} ${py.toFixed(1)}, ${midX.toFixed(1)} ${cy.toFixed(1)}, ${cx.toFixed(1)} ${cy.toFixed(1)}`;
+        }
+        const areaPath = `${path} L ${coords[coords.length - 1][0].toFixed(1)} ${h} L 0 ${h} Z`;
+        const [lastX, lastY] = coords[coords.length - 1];
         return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" class="sparkline">
-          <polyline points="${points}" fill="none" stroke="${colorVar}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+          <defs>
+            <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="${colorVar}" stop-opacity="0.35" />
+              <stop offset="100%" stop-color="${colorVar}" stop-opacity="0" />
+            </linearGradient>
+          </defs>
+          <path d="${areaPath}" fill="url(#${gradId})" class="sparkline-area" />
+          <path d="${path}" stroke="${colorVar}" class="sparkline-line" />
+          <circle cx="${lastX.toFixed(1)}" cy="${lastY.toFixed(1)}" fill="${colorVar}" class="sparkline-dot" />
         </svg>`;
       }
 
@@ -4876,12 +4979,12 @@
             <h4 class="section-title">${t('system_storage_title')}</h4>
             <p class="hint">${t('system_storage_hint')}</p>
             <div class="system-status-grid">
-              <div class="system-status-card">
-                <span class="system-status-label">${t('system_storage_db_size_label')}</span>
+              <div class="system-status-card system-status-card-ok">
+                <div class="system-status-card-head">${statusIconHtml('server')}<span class="system-status-label">${t('system_storage_db_size_label')}</span></div>
                 <span class="system-status-value">${storage.dbSizeBytes !== null ? formatFileSize(storage.dbSizeBytes) : t('system_db_error')}</span>
               </div>
-              <div class="system-status-card">
-                <span class="system-status-label">${t('system_storage_attachments_label')}</span>
+              <div class="system-status-card system-status-card-ok">
+                <div class="system-status-card-head">${statusIconHtml('paperclip')}<span class="system-status-label">${t('system_storage_attachments_label')}</span></div>
                 <span class="system-status-value">${formatFileSize(storage.attachmentBytes)}</span>
               </div>
             </div>
@@ -4920,48 +5023,67 @@
           const onlineStaff = onlineUsers.filter((u) => u.role === 'agent' || u.role === 'admin');
           const onlineCustomers = onlineUsers.filter((u) => u.role === 'customer');
 
+          const memSeverity = severityOf(statusBarClass(memPct));
+          const reqSeverity = severityOf(statusBarClass(reqPct));
+          const dbSeverity = severityOf(latencyClass);
+          const lagSeverity = severityOf(lagClass);
+          const loadSeverity = severityOf(loadClass);
+          const overall = worstSeverity(memSeverity, reqSeverity, dbSeverity, lagSeverity, loadSeverity);
+          const overallCopy = {
+            ok: { title: t('system_overall_ok_title'), hint: t('system_overall_ok_hint'), icon: 'check' },
+            warning: { title: t('system_overall_warning_title'), hint: t('system_overall_warning_hint'), icon: 'bell' },
+            danger: { title: t('system_overall_danger_title'), hint: t('system_overall_danger_hint'), icon: 'flame' },
+          }[overall];
+
           bodyEl.className = '';
           bodyEl.innerHTML = `
+            <div class="system-overall-banner status-${overall}">
+              <span class="system-overall-icon">${icon(overallCopy.icon)}</span>
+              <div>
+                <div class="system-overall-title">${overallCopy.title}</div>
+                <div class="system-overall-hint">${overallCopy.hint}</div>
+              </div>
+            </div>
             <div class="system-status-grid">
-              <div class="system-status-card">
-                <span class="system-status-label">${t('system_uptime_label')}</span>
+              <div class="system-status-card system-status-card-ok">
+                <div class="system-status-card-head">${statusIconHtml('clock')}<span class="system-status-label">${t('system_uptime_label')}</span></div>
                 <span class="system-status-value">${formatUptime(status.uptimeSeconds)}</span>
                 <span class="hint">Node ${escapeHtml(status.nodeVersion)} · ${status.cpuCount} CPU</span>
               </div>
-              <div class="system-status-card">
-                <span class="system-status-label">${t('system_online_users_label')}</span>
+              <div class="system-status-card system-status-card-ok">
+                <div class="system-status-card-head">${statusIconHtml('users')}<span class="system-status-label">${t('system_online_users_label')}</span></div>
                 <span class="system-status-value">${onlineUsers.length}</span>
                 <span class="hint">${t('system_online_staff_prefix')} ${onlineStaff.length} · ${t('system_online_customers_prefix')} ${onlineCustomers.length}</span>
               </div>
-              <div class="system-status-card">
-                <span class="system-status-label">${t('system_memory_label')}</span>
+              <div class="system-status-card system-status-card-${memSeverity}">
+                <div class="system-status-card-head">${statusIconHtml('activity')}<span class="system-status-label">${t('system_memory_label')}</span></div>
                 <span class="system-status-value">${status.memory.rssMb} MB</span>
                 <div class="system-bar"><div class="system-bar-fill ${statusBarClass(memPct)}" style="width:${memPct}%"></div></div>
                 <span class="hint">Heap ${status.memory.heapUsedMb} / ${status.memory.heapTotalMb} MB</span>
                 ${sparklineSvg(memHistory, 'var(--primary)')}
               </div>
-              <div class="system-status-card">
-                <span class="system-status-label">${t('system_requests_label')}</span>
+              <div class="system-status-card system-status-card-${reqSeverity}">
+                <div class="system-status-card-head">${statusIconHtml('wifi')}<span class="system-status-label">${t('system_requests_label')}</span></div>
                 <span class="system-status-value">${status.requestWindow.windowCount} / ${status.requestWindow.windowMax}</span>
                 <div class="system-bar"><div class="system-bar-fill ${statusBarClass(reqPct)}" style="width:${reqPct}%"></div></div>
                 <span class="hint">${t('system_requests_reset_prefix')} ${Math.ceil(status.requestWindow.resetInSeconds / 60)} ${t('system_requests_reset_suffix')} · ${status.requestWindow.totalCount} ${t('system_requests_total_suffix')}</span>
                 ${sparklineSvg(reqHistory, 'var(--primary)')}
               </div>
-              <div class="system-status-card">
-                <span class="system-status-label">${t('system_db_label')}</span>
+              <div class="system-status-card system-status-card-${dbSeverity}">
+                <div class="system-status-card-head">${statusIconHtml('server')}<span class="system-status-label">${t('system_db_label')}</span></div>
                 <span class="system-status-value">${status.db.latencyMs !== null ? `${status.db.latencyMs} ms` : t('system_db_error')}</span>
                 <div class="system-bar"><div class="system-bar-fill ${latencyClass}" style="width:${status.db.latencyMs !== null ? Math.min(100, Math.round((status.db.latencyMs / 500) * 100)) : 100}%"></div></div>
                 <span class="hint">${status.db.mode === 'turso' ? t('system_db_mode_turso') : t('system_db_mode_local')}</span>
               </div>
-              <div class="system-status-card">
-                <span class="system-status-label">${t('system_eventloop_label')}</span>
+              <div class="system-status-card system-status-card-${lagSeverity}">
+                <div class="system-status-card-head">${statusIconHtml('refresh')}<span class="system-status-label">${t('system_eventloop_label')}</span></div>
                 <span class="system-status-value">${status.eventLoopLagMs} ms</span>
                 <div class="system-bar"><div class="system-bar-fill ${lagClass}" style="width:${lagPct}%"></div></div>
                 <span class="hint">${t('system_eventloop_hint')}</span>
                 ${sparklineSvg(lagHistory, 'var(--primary)')}
               </div>
-              <div class="system-status-card">
-                <span class="system-status-label">${t('system_load_label')}</span>
+              <div class="system-status-card system-status-card-${loadSeverity}">
+                <div class="system-status-card-head">${statusIconHtml('flame')}<span class="system-status-label">${t('system_load_label')}</span></div>
                 <span class="system-status-value">${status.loadAvg1m}</span>
                 <div class="system-bar"><div class="system-bar-fill ${loadClass}" style="width:${loadPct}%"></div></div>
                 <span class="hint">${t('system_load_hint')} ${status.cpuCount} CPU</span>
