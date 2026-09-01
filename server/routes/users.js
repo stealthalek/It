@@ -7,6 +7,7 @@ const { authenticate, requireRole } = require('../middleware/auth');
 const asyncHandler = require('../middleware/asyncHandler');
 const { logAudit } = require('../audit');
 const { revokeAllSessions } = require('../lib/sessions');
+const { assertCompanyScoped } = require('../lib/companyGuard');
 
 const router = express.Router();
 router.use(authenticate);
@@ -73,10 +74,12 @@ router.get(
       const offset = (page - 1) * pageSize;
       const totalRow = await db.get(`SELECT COUNT(*) AS n FROM users u ${where}`, params);
       const users = await db.all(`${USER_SELECT} ${where} ORDER BY u.name ASC LIMIT ? OFFSET ?`, [...params, pageSize, offset]);
+      assertCompanyScoped(users, req.user);
       return res.json({ users, total: totalRow.n, page, pageSize });
     }
 
     const users = await db.all(`${USER_SELECT} ${where} ORDER BY u.name ASC LIMIT 5000`, params);
+    assertCompanyScoped(users, req.user);
     res.json({ users });
   })
 );

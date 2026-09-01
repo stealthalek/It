@@ -121,6 +121,24 @@ Per un backup manuale in qualsiasi momento (oltre le 24 ore coperte da Turso, o 
 
 Il backup automatico giornaliero via GitHub Actions è stato rimosso: le regole di protezione branch del repository lo forzavano a girare a ogni push come controllo obbligatorio, ma il workflow era pensato solo per lo schedule notturno e falliva a ogni esecuzione forzata, riempiendo la posta con notifiche di errore. Se in futuro si vuole reintrodurlo, va prima escluso dai controlli obbligatori in **Settings → Rules → Rulesets** del repository.
 
+### 2quater. Sposta gli allegati fuori dal database (opzionale, consigliato)
+
+Di default gli allegati dei ticket vengono salvati come testo (base64) dentro le righe del database: comodo, ma è la causa principale per cui un database Turso gratuito si riempie in fretta con pochi file grandi. Configurando uno storage esterno compatibile S3, i nuovi allegati vengono caricati lì invece che nel database (il database tiene solo il riferimento), liberando la stragrande maggioranza dello spazio. Gli allegati già esistenti continuano a funzionare normalmente, non è necessaria alcuna migrazione dei dati.
+
+Qualsiasi storage compatibile con l'API S3 funziona (il backend firma le richieste da sé, senza librerie esterne). Un'opzione gratuita ragionevole è [Backblaze B2](https://www.backblaze.com/cloud-storage), che offre un piano gratuito pensato per volumi di questo tipo ed espone un'API S3-compatibile nativa — verifica i limiti attuali sul loro sito prima di iscriverti, possono cambiare nel tempo.
+
+1. Crea un account gratuito su Backblaze B2 e un bucket **privato** (es. `it-ticketing-allegati`).
+2. Nella sezione "Application Keys" crea una chiave con permessi di lettura/scrittura limitati a quel bucket: ottieni `keyID` e `applicationKey`.
+3. Prendi nota dell'endpoint S3 del bucket (mostrato nella pagina del bucket, es. `https://s3.us-west-004.backblazeb2.com`) e della regione che vi compare (es. `us-west-004`).
+4. Su Render, apri il servizio → **Environment** e imposta:
+   - `S3_ENDPOINT` con l'endpoint del bucket
+   - `S3_BUCKET` con il nome del bucket
+   - `S3_REGION` con la regione del bucket
+   - `S3_ACCESS_KEY_ID` con il `keyID`
+   - `S3_SECRET_ACCESS_KEY` con l'`applicationKey`
+
+Se queste variabili non sono impostate, il backend continua a salvare gli allegati nel database come oggi (nessuna funzionalità persa, solo meno spazio libero su Turso).
+
 ### 3. Collega il frontend al backend
 
 1. Apri il sito pubblicato (Cloudflare o GitHub Pages), clicca sull'icona ingranaggio in alto (Impostazioni connessione).
@@ -206,6 +224,11 @@ La ricezione delle risposte (email in arrivo che diventano commenti automatici s
 | `SMTP_USER` | Utente/indirizzo per l'autenticazione SMTP | non impostato |
 | `SMTP_PASS` | Password o chiave API SMTP | non impostato |
 | `SMTP_FROM` | Indirizzo mittente mostrato nelle email | uguale a `SMTP_USER` |
+| `S3_ENDPOINT` | Endpoint dello storage compatibile S3, abilita gli allegati fuori dal database | non impostato (allegati salvati nel database) |
+| `S3_BUCKET` | Nome del bucket | non impostato |
+| `S3_REGION` | Regione del bucket | `auto` |
+| `S3_ACCESS_KEY_ID` | Chiave d'accesso allo storage | non impostato |
+| `S3_SECRET_ACCESS_KEY` | Chiave segreta dello storage | non impostato |
 
 ## Struttura del progetto
 
