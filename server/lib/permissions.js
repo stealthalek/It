@@ -9,6 +9,8 @@ const ALL_PERMISSIONS = [
   'reports_view',
   'tickets_delete',
   'announcements_manage',
+  'users_manage',
+  'groups_manage',
 ];
 
 function resolvePermissions(user) {

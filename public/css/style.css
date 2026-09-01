@@ -716,7 +716,14 @@ body:not(.role-customer):not(.role-agent):not(.role-admin) .nav-toggle { display
 .announcement-card.announcement-pinned { border-color: var(--primary); }
 .announcement-unread { border-left: 3px solid var(--primary); }
 .announcement-preview { margin: 0.5rem 0 0.35rem; color: var(--muted); }
-.announcement-body { white-space: pre-wrap; line-height: 1.6; }
+.announcement-body { line-height: 1.6; }
+.announcement-body p { margin: 0 0 0.85rem; }
+.announcement-body p:last-child { margin-bottom: 0; }
+.announcement-body h4, .announcement-body h5, .announcement-body h6 { margin: 1rem 0 0.5rem; }
+.announcement-body h4:first-child, .announcement-body h5:first-child, .announcement-body h6:first-child { margin-top: 0; }
+.announcement-body ul { margin: 0 0 0.85rem 1.2rem; padding: 0; }
+.announcement-body a { color: var(--primary); text-decoration: underline; }
+.announcement-format-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; margin-bottom: 0.4rem; }
 .announcement-admin-actions { display: flex; gap: 0.6rem; margin-top: 1.25rem; padding-top: 1.1rem; border-top: 1px solid var(--border); }
 
 .leave-card { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.4rem; }
@@ -2533,6 +2540,37 @@ body.col-resizing-active { cursor: col-resize !important; user-select: none; }
 }
 .org-node-badge-ok { background: var(--success-soft); color: var(--success); }
 .org-node-badge-danger { background: var(--danger-soft); color: var(--danger); }
+.org-node-members { margin-top: 0.4rem; }
+.org-node-members > summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--primary);
+  padding: 0.25rem 0;
+}
+.org-node-members > summary::-webkit-details-marker { display: none; }
+.org-node-members-body { padding-top: 0.4rem; border-top: 1px dashed var(--border); margin-top: 0.2rem; }
+.org-node-members-body .hint { font-size: 0.68rem; margin: 0 0 0.4rem; }
+.org-member-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.org-member-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--text);
+  cursor: grab;
+}
+.org-member-chip:active { cursor: grabbing; }
+.org-member-chip.dragging { opacity: 0.4; }
 .org-node-settings { margin-top: 0.4rem; }
 .org-node-settings > summary {
   cursor: pointer;

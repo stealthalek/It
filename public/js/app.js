@@ -568,6 +568,7 @@
       field_group_name: 'Nome del team', toast_group_name_updated: 'Nome del team aggiornato',
       toast_group_deleted: 'Gruppo eliminato', toast_group_created: 'Gruppo creato', toast_default_team_updated: 'Team predefinito aggiornato',
       org_drop_root_hint: 'Trascina qui un gruppo per renderlo di primo livello', toast_group_reparented: 'Gruppo riorganizzato',
+      toast_member_moved: 'Persona spostata di team', org_member_drag_hint: 'Trascina su un altro team per spostare la persona', org_no_members: 'Nessuna persona in questo team',
       assign_to_me_btn: 'Assegna a me', toast_ticket_assigned_to_you: 'Ticket assegnato a te',
       group_by_team_label: 'Raggruppa per team',
       widgets_section_title: 'Cruscotto di gestione', widgets_customize_btn: 'Personalizza',
@@ -747,8 +748,11 @@
       perm_automations_manage: 'Gestire automazioni', perm_holidays_manage: 'Gestire festività e orari',
       perm_canned_responses_manage: 'Gestire risposte rapide', perm_templates_manage: 'Gestire modelli di ticket',
       perm_announcements_manage: 'Gestire la bacheca annunci',
+      perm_users_manage: 'Gestire persone (creare, modificare, bloccare, eliminare)', perm_groups_manage: 'Gestire gruppi e organigramma',
       announcements_hint: 'Comunicazioni ufficiali dalla tua azienda.', btn_new_announcement: 'Nuovo annuncio',
       field_announcement_title: 'Titolo', field_announcement_body: 'Testo dell\'annuncio', announcement_pinned_label: 'Metti in evidenza (in cima alla bacheca)',
+      format_bold: 'Grassetto', format_italic: 'Corsivo', format_heading: 'Titolo', format_list: 'Elenco puntato', format_link: 'Link',
+      announcement_format_hint: 'Grassetto **così**, corsivo *così*, # per un titolo, - per un elenco, [testo](url) per un link',
       announcement_targets_label: 'Destinatari', announcement_targets_hint: 'Scegli gruppi e/o persone specifiche a cui inviare la notifica. Lascia vuoto per inviarla a tutta l\'azienda.',
       announcement_files_title: 'File allegati', dropzone_hint: 'Trascina qui i file o clicca per selezionarli',
       btn_pin: 'Metti in evidenza', btn_unpin: 'Rimuovi dall\'evidenza', btn_edit: 'Modifica',
@@ -989,6 +993,7 @@
       field_group_name: 'Team name', toast_group_name_updated: 'Team name updated',
       toast_group_deleted: 'Group deleted', toast_group_created: 'Group created', toast_default_team_updated: 'Default team updated',
       org_drop_root_hint: 'Drag a group here to make it top-level', toast_group_reparented: 'Group reorganized',
+      toast_member_moved: 'Person moved to another team', org_member_drag_hint: 'Drag onto another team to move this person', org_no_members: 'No one in this team yet',
       assign_to_me_btn: 'Assign to me', toast_ticket_assigned_to_you: 'Ticket assigned to you',
       group_by_team_label: 'Group by team',
       widgets_section_title: 'Management dashboard', widgets_customize_btn: 'Customize',
@@ -1168,8 +1173,11 @@
       perm_automations_manage: 'Manage automations', perm_holidays_manage: 'Manage holidays and hours',
       perm_canned_responses_manage: 'Manage canned responses', perm_templates_manage: 'Manage ticket templates',
       perm_announcements_manage: 'Manage the announcements board',
+      perm_users_manage: 'Manage people (create, edit, block, delete)', perm_groups_manage: 'Manage groups and org chart',
       announcements_hint: 'Official communications from your company.', btn_new_announcement: 'New announcement',
       field_announcement_title: 'Title', field_announcement_body: 'Announcement text', announcement_pinned_label: 'Pin to top of the board',
+      format_bold: 'Bold', format_italic: 'Italic', format_heading: 'Heading', format_list: 'Bullet list', format_link: 'Link',
+      announcement_format_hint: 'Bold **like this**, italic *like this*, # for a heading, - for a list, [text](url) for a link',
       announcement_targets_label: 'Recipients', announcement_targets_hint: 'Choose specific groups and/or people to notify. Leave empty to send it to the whole company.',
       announcement_files_title: 'Attached files', dropzone_hint: 'Drag files here or click to select',
       btn_pin: 'Pin', btn_unpin: 'Unpin', btn_edit: 'Edit',
@@ -3412,7 +3420,7 @@
     const countdown = formatSlaCountdown(tk.sla_remaining_ms);
     return `
       <a class="ticket-row prio-${tk.priority} ${opts.selectable ? 'selectable-row' : ''}" href="#/ticket/${tk.id}">
-        ${opts.selectable ? `<label class="ticket-select-check" onclick="event.stopPropagation()"><input type="checkbox" class="ticketSelectBox" data-id="${tk.id}" /></label>` : ''}
+        ${opts.selectable ? `<label class="ticket-select-check"><input type="checkbox" class="ticketSelectBox" data-id="${tk.id}" /></label>` : ''}
         <span class="ticket-row-col-type" title="${typeLabels()[tk.type] || tk.type}">${icon(tk.type, 'badge-icon')}</span>
         <span class="ticket-row-col-number">#${formatTicketNumber(tk.id)}</span>
         <span class="ticket-row-col-subject">
@@ -3497,6 +3505,9 @@
   }
 
   function wireTicketCardActions(container) {
+    container.querySelectorAll('.ticket-select-check').forEach((label) => {
+      label.addEventListener('click', (e) => e.stopPropagation());
+    });
     container.querySelectorAll('.assignMeBtn').forEach((btn) => {
       btn.addEventListener('click', async (e) => {
         e.preventDefault();
@@ -5334,9 +5345,10 @@
           staffUsersCache.map((u) => `<option value="${u.id}" ${String(u.id) === String(selectedId) ? 'selected' : ''}>${escapeHtml(u.name)}</option>`).join('');
       }
 
-      function renderOrgNode(node, statsById) {
+      function renderOrgNode(node, statsById, membersByGroup) {
         const stats = statsById.get(node.id) || { open: 0, breached: 0 };
         const hasChildren = node.children.length > 0;
+        const members = membersByGroup.get(node.id) || [];
         return `
           <div class="org-branch">
             <div class="org-node" draggable="true" data-group-id="${node.id}" data-group-name="${escapeHtml(node.name)}" title="${t('org_node_hint')}">
@@ -5353,6 +5365,17 @@
                 <span class="org-node-badge ${stats.breached > 0 ? 'org-node-badge-danger' : 'org-node-badge-ok'}">${stats.open} ${t('org_open_tickets')}</span>
                 ${stats.breached > 0 ? `<span class="org-node-badge org-node-badge-danger">${stats.breached} ${t('org_sla_breach')}</span>` : ''}
               </div>
+              <details class="org-node-members">
+                <summary>${icon('users', 'badge-icon')} ${t('orgchart_view_members')}</summary>
+                <div class="org-node-members-body">
+                  <p class="hint">${t('org_member_drag_hint')}</p>
+                  <div class="org-member-chips">
+                    ${members.length ? members.map((m) => `
+                      <span class="org-member-chip" draggable="true" data-user-id="${m.id}" data-origin-group="${node.id}" title="${escapeHtml(m.name)}">${icon('userCircle', 'badge-icon')}${escapeHtml(m.name)}</span>
+                    `).join('') : `<span class="hint">${t('org_no_members')}</span>`}
+                  </div>
+                </div>
+              </details>
               <details class="org-node-settings">
                 <summary>${icon('settings', 'badge-icon')} ${t('org_settings_toggle')}</summary>
                 <div class="org-node-settings-body">
@@ -5373,7 +5396,7 @@
                 </div>
               </details>
             </div>
-            ${hasChildren ? `<div class="org-children">${node.children.map((child) => renderOrgNode(child, statsById)).join('')}</div>` : ''}
+            ${hasChildren ? `<div class="org-children">${node.children.map((child) => renderOrgNode(child, statsById, membersByGroup)).join('')}</div>` : ''}
           </div>`;
       }
 
@@ -5397,11 +5420,18 @@
             if (tk.sla_status === 'breached') entry.breached += 1;
             statsById.set(tk.group_id, entry);
           });
+          const membersByGroup = new Map();
+          users.forEach((u) => {
+            if (!u.group_id) return;
+            if (!membersByGroup.has(u.group_id)) membersByGroup.set(u.group_id, []);
+            membersByGroup.get(u.group_id).push({ id: u.id, name: u.name });
+          });
+          membersByGroup.forEach((list) => list.sort((a, b) => a.name.localeCompare(b.name)));
           const tree = buildGroupTree(groups);
           listEl.className = '';
           listEl.innerHTML = tree.length ? `
             <div id="orgRootDrop" class="org-root-drop">${t('org_drop_root_hint')}</div>
-            <div class="org-chart">${tree.map((node) => renderOrgNode(node, statsById)).join('')}</div>` : `<p class="hint">${t('no_groups_hint')}</p>`;
+            <div class="org-chart">${tree.map((node) => renderOrgNode(node, statsById, membersByGroup)).join('')}</div>` : `<p class="hint">${t('no_groups_hint')}</p>`;
 
           listEl.querySelectorAll('.org-node').forEach((nodeEl) => {
             nodeEl.addEventListener('click', (e) => {
@@ -5430,6 +5460,8 @@
           });
 
           let draggedGroupId = null;
+          let draggedUserId = null;
+          let draggedUserOriginGroup = null;
           async function reparentGroup(sourceId, parentId) {
             try {
               await api(`/groups/${sourceId}`, { method: 'PATCH', body: { parentId } });
@@ -5440,6 +5472,32 @@
               showToast(err.message, 'error');
             }
           }
+          async function reassignMember(userId, groupId) {
+            try {
+              await api(`/users/${userId}/group`, { method: 'PATCH', body: { groupId } });
+              showToast(t('toast_member_moved'), 'success');
+              loadGroups();
+            } catch (err) {
+              showToast(err.message, 'error');
+            }
+          }
+          listEl.querySelectorAll('.org-member-chip').forEach((chip) => {
+            chip.addEventListener('dragstart', (e) => {
+              e.stopPropagation();
+              draggedUserId = chip.dataset.userId;
+              draggedUserOriginGroup = chip.dataset.originGroup;
+              chip.classList.add('dragging');
+              e.dataTransfer.effectAllowed = 'move';
+              e.dataTransfer.setData('text/plain', `user:${draggedUserId}`);
+            });
+            chip.addEventListener('dragend', (e) => {
+              e.stopPropagation();
+              chip.classList.remove('dragging');
+              listEl.querySelectorAll('.drop-target').forEach((el) => el.classList.remove('drop-target'));
+              draggedUserId = null;
+              draggedUserOriginGroup = null;
+            });
+          });
           listEl.querySelectorAll('.org-node').forEach((nodeEl) => {
             nodeEl.addEventListener('dragstart', (e) => {
               draggedGroupId = nodeEl.dataset.groupId;
@@ -5453,6 +5511,13 @@
               draggedGroupId = null;
             });
             nodeEl.addEventListener('dragover', (e) => {
+              if (draggedUserId) {
+                if (draggedUserOriginGroup === nodeEl.dataset.groupId) return;
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                nodeEl.classList.add('drop-target');
+                return;
+              }
               if (!draggedGroupId || draggedGroupId === nodeEl.dataset.groupId) return;
               e.preventDefault();
               e.dataTransfer.dropEffect = 'move';
@@ -5462,8 +5527,16 @@
             nodeEl.addEventListener('drop', (e) => {
               e.preventDefault();
               nodeEl.classList.remove('drop-target');
-              const sourceId = draggedGroupId;
               const targetId = nodeEl.dataset.groupId;
+              if (draggedUserId) {
+                const uid = draggedUserId;
+                if (draggedUserOriginGroup === targetId) return;
+                draggedUserId = null;
+                draggedUserOriginGroup = null;
+                reassignMember(uid, Number(targetId));
+                return;
+              }
+              const sourceId = draggedGroupId;
               if (!sourceId || sourceId === targetId) return;
               reparentGroup(sourceId, Number(targetId));
             });
@@ -5472,7 +5545,7 @@
           const rootDrop = document.getElementById('orgRootDrop');
           if (rootDrop) {
             rootDrop.addEventListener('dragover', (e) => {
-              if (!draggedGroupId) return;
+              if (!draggedGroupId && !draggedUserId) return;
               e.preventDefault();
               e.dataTransfer.dropEffect = 'move';
               rootDrop.classList.add('drop-target');
@@ -5481,6 +5554,13 @@
             rootDrop.addEventListener('drop', (e) => {
               e.preventDefault();
               rootDrop.classList.remove('drop-target');
+              if (draggedUserId) {
+                const uid = draggedUserId;
+                draggedUserId = null;
+                draggedUserOriginGroup = null;
+                reassignMember(uid, null);
+                return;
+              }
               const sourceId = draggedGroupId;
               if (!sourceId) return;
               reparentGroup(sourceId, null);
@@ -6584,6 +6664,9 @@
       let currentPageUsers = [];
       function wireUserCheckboxes() {
         const tbody = document.getElementById('usersTableBody');
+        tbody.querySelectorAll('.userSelectCell').forEach((cell) => {
+          cell.addEventListener('click', (e) => e.stopPropagation());
+        });
         tbody.querySelectorAll('.userSelectBox').forEach((box) => {
           box.checked = selectedUserIds.has(Number(box.dataset.id));
           box.addEventListener('change', () => {
@@ -6602,7 +6685,7 @@
         const tbody = document.getElementById('usersTableBody');
         tbody.innerHTML = users.length ? users.map((u) => `
           <tr class="user-row" data-user-id="${u.id}" tabindex="0" role="link">
-            ${isAdmin ? `<td onclick="event.stopPropagation()">${u.id !== state.user.id ? `<input type="checkbox" class="userSelectBox" data-id="${u.id}" />` : ''}</td>` : ''}
+            ${isAdmin ? `<td class="userSelectCell">${u.id !== state.user.id ? `<input type="checkbox" class="userSelectBox" data-id="${u.id}" />` : ''}</td>` : ''}
             <td>${escapeHtml(u.name)}</td>
             <td>${escapeHtml(u.email)}</td>
             <td><span class="role-tag">${roleLabels()[u.role] || u.role}</span> ${u.role_label_it ? `<span class="role-tag" style="background:${u.role_color}22;color:${u.role_color};border-color:${u.role_color}44">${escapeHtml(state.user.locale === 'en' ? u.role_label_en : u.role_label_it)}</span>` : ''} ${u.is_external ? `<span class="role-tag role-tag-external">${t('external_badge')}</span>` : ''}</td>
@@ -7342,6 +7425,53 @@
     refreshAnnouncementsNavDot();
   }
 
+  function formatAnnouncementBody(raw) {
+    const escaped = escapeHtml(raw);
+    function inline(text) {
+      let out = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+|mailto:[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+      out = out.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+      out = out.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+      return out;
+    }
+    const blocks = [];
+    let listBuffer = [];
+    let paragraphBuffer = [];
+    function flushList() {
+      if (listBuffer.length) {
+        blocks.push(`<ul>${listBuffer.map((li) => `<li>${li}</li>`).join('')}</ul>`);
+        listBuffer = [];
+      }
+    }
+    function flushParagraph() {
+      if (paragraphBuffer.length) {
+        blocks.push(`<p>${paragraphBuffer.join('<br>')}</p>`);
+        paragraphBuffer = [];
+      }
+    }
+    escaped.split('\n').forEach((line) => {
+      const headingMatch = /^(#{1,3})\s+(.*)$/.exec(line);
+      const listMatch = /^-\s+(.*)$/.exec(line);
+      if (headingMatch) {
+        flushParagraph();
+        flushList();
+        const level = headingMatch[1].length + 3;
+        blocks.push(`<h${level}>${inline(headingMatch[2])}</h${level}>`);
+      } else if (listMatch) {
+        flushParagraph();
+        listBuffer.push(inline(listMatch[1]));
+      } else if (line.trim()) {
+        flushList();
+        paragraphBuffer.push(inline(line));
+      } else {
+        flushParagraph();
+        flushList();
+      }
+    });
+    flushParagraph();
+    flushList();
+    return blocks.filter(Boolean).join('') || '<p></p>';
+  }
+
   async function renderAnnouncementDetail(id) {
     appEl.innerHTML = `<div class="card spinner-row">${t('loading')}</div>`;
     let announcement;
@@ -7364,7 +7494,7 @@
         <a href="#/announcements" class="btn btn-ghost btn-sm">${icon('arrowLeft')} ${t('back_to_list')}</a>
       </div>
       <div class="card">
-        <p class="announcement-body">${escapeHtml(announcement.body).replace(/\n/g, '<br>')}</p>
+        <div class="announcement-body">${formatAnnouncementBody(announcement.body)}</div>
         ${canManageAnnouncements() ? `
           <div class="announcement-admin-actions">
             <button type="button" class="btn btn-ghost btn-sm" id="announcementPinBtn">${announcement.pinned ? t('btn_unpin') : t('btn_pin')}</button>
@@ -7510,6 +7640,14 @@
           </div>
           <div class="field">
             <label for="announcementBody">${t('field_announcement_body')}</label>
+            <div class="announcement-format-toolbar">
+              <button type="button" class="btn btn-ghost btn-sm" data-format="bold" title="${t('format_bold')}"><strong>B</strong></button>
+              <button type="button" class="btn btn-ghost btn-sm" data-format="italic" title="${t('format_italic')}"><em>I</em></button>
+              <button type="button" class="btn btn-ghost btn-sm" data-format="heading" title="${t('format_heading')}">H</button>
+              <button type="button" class="btn btn-ghost btn-sm" data-format="list" title="${t('format_list')}">${icon('grip')}</button>
+              <button type="button" class="btn btn-ghost btn-sm" data-format="link" title="${t('format_link')}">${icon('globe')}</button>
+              <span class="hint">${t('announcement_format_hint')}</span>
+            </div>
             <textarea id="announcementBody" rows="8" required>${existing ? escapeHtml(existing.body) : ''}</textarea>
           </div>
           <label class="checkbox-field">
@@ -7546,6 +7684,37 @@
           </div>
         </form>
       </div>`;
+
+    const bodyTextarea = document.getElementById('announcementBody');
+    document.querySelectorAll('.announcement-format-toolbar [data-format]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const start = bodyTextarea.selectionStart;
+        const end = bodyTextarea.selectionEnd;
+        const selected = bodyTextarea.value.slice(start, end);
+        const format = btn.dataset.format;
+        let insertText = selected;
+        let cursorOffset = 0;
+        if (format === 'bold') {
+          insertText = `**${selected || t('format_bold')}**`;
+          cursorOffset = selected ? insertText.length : 2;
+        } else if (format === 'italic') {
+          insertText = `*${selected || t('format_italic')}*`;
+          cursorOffset = selected ? insertText.length : 1;
+        } else if (format === 'heading') {
+          insertText = `# ${selected || t('format_heading')}`;
+          cursorOffset = insertText.length;
+        } else if (format === 'list') {
+          insertText = (selected || t('format_list')).split('\n').map((line) => `- ${line}`).join('\n');
+          cursorOffset = insertText.length;
+        } else if (format === 'link') {
+          insertText = `[${selected || t('format_link')}](https://)`;
+          cursorOffset = insertText.length;
+        }
+        bodyTextarea.value = bodyTextarea.value.slice(0, start) + insertText + bodyTextarea.value.slice(end);
+        bodyTextarea.focus();
+        bodyTextarea.setSelectionRange(start + cursorOffset, start + cursorOffset);
+      });
+    });
 
     const userSearch = document.getElementById('announcementUserSearch');
     const userSelect = document.getElementById('announcementTargetUsers');

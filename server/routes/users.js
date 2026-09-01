@@ -8,6 +8,7 @@ const asyncHandler = require('../middleware/asyncHandler');
 const { logAudit } = require('../audit');
 const { revokeAllSessions } = require('../lib/sessions');
 const { assertCompanyScoped } = require('../lib/companyGuard');
+const { requirePermission } = require('../lib/permissions');
 
 const router = express.Router();
 router.use(authenticate);
@@ -86,7 +87,7 @@ router.get(
 
 router.get(
   '/:id',
-  requireRole('admin'),
+  requirePermission('users_manage'),
   asyncHandler(async (req, res) => {
     const user = await db.get(`${USER_SELECT} WHERE u.id = ?`, [req.params.id]);
     if (!user) {
@@ -102,7 +103,7 @@ router.get(
 
 router.post(
   '/',
-  requireRole('admin'),
+  requirePermission('users_manage'),
   asyncHandler(async (req, res) => {
     const { name, email, role, groupId, locale, isExternal, managerId, roleId, companyId } = req.body || {};
 
@@ -233,7 +234,7 @@ router.patch(
 
 router.patch(
   '/:id/group',
-  requireRole('admin'),
+  requirePermission('users_manage'),
   asyncHandler(async (req, res) => {
     const target = await db.get('SELECT is_super_admin, company_id FROM users WHERE id = ?', [req.params.id]);
     if (outOfScope(target, req.user)) {
@@ -263,7 +264,7 @@ router.patch(
 
 router.patch(
   '/:id/locale',
-  requireRole('admin'),
+  requirePermission('users_manage'),
   asyncHandler(async (req, res) => {
     const { locale } = req.body || {};
     if (!LOCALES.includes(locale)) {
@@ -288,7 +289,7 @@ router.patch(
 
 router.patch(
   '/:id/external',
-  requireRole('admin'),
+  requirePermission('users_manage'),
   asyncHandler(async (req, res) => {
     const target = await db.get('SELECT is_super_admin, company_id FROM users WHERE id = ?', [req.params.id]);
     if (outOfScope(target, req.user)) {
@@ -336,7 +337,7 @@ router.patch(
 
 router.patch(
   '/:id/manager',
-  requireRole('admin'),
+  requirePermission('users_manage'),
   asyncHandler(async (req, res) => {
     const target = await db.get('SELECT is_super_admin, company_id FROM users WHERE id = ?', [req.params.id]);
     if (outOfScope(target, req.user)) {
@@ -369,7 +370,7 @@ router.patch(
 
 router.post(
   '/:id/reset-password',
-  requireRole('admin'),
+  requirePermission('users_manage'),
   asyncHandler(async (req, res) => {
     const target = await db.get('SELECT * FROM users WHERE id = ?', [req.params.id]);
     if (!target || (target.is_super_admin && !req.user.is_super_admin)) {
@@ -389,7 +390,7 @@ router.post(
 
 router.patch(
   '/:id/profile',
-  requireRole('admin'),
+  requirePermission('users_manage'),
   asyncHandler(async (req, res) => {
     const target = await db.get('SELECT is_super_admin, company_id FROM users WHERE id = ?', [req.params.id]);
     if (outOfScope(target, req.user)) {
@@ -431,7 +432,7 @@ router.patch(
 
 router.patch(
   '/:id/block',
-  requireRole('admin'),
+  requirePermission('users_manage'),
   asyncHandler(async (req, res) => {
     if (Number(req.params.id) === req.user.id) {
       return res.status(400).json({ error: 'Non puoi bloccare il tuo stesso account' });
@@ -465,7 +466,7 @@ router.patch(
 
 router.delete(
   '/:id',
-  requireRole('admin'),
+  requirePermission('users_manage'),
   asyncHandler(async (req, res) => {
     if (Number(req.params.id) === req.user.id) {
       return res.status(400).json({ error: 'Non puoi eliminare il tuo stesso account' });
