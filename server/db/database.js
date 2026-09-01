@@ -406,6 +406,10 @@ async function setupSchema() {
       'CREATE INDEX IF NOT EXISTS idx_tickets_status ON tickets(status)',
       'CREATE INDEX IF NOT EXISTS idx_tickets_category ON tickets(category)',
       'CREATE INDEX IF NOT EXISTS idx_tickets_updated_at ON tickets(updated_at)',
+      'CREATE INDEX IF NOT EXISTS idx_tickets_status_updated_at ON tickets(status, updated_at)',
+      'CREATE INDEX IF NOT EXISTS idx_tickets_created_by_updated_at ON tickets(created_by, updated_at)',
+      'CREATE INDEX IF NOT EXISTS idx_tickets_assigned_to_updated_at ON tickets(assigned_to, updated_at)',
+      'CREATE INDEX IF NOT EXISTS idx_tickets_category_updated_at ON tickets(category, updated_at)',
     ],
     'write'
   );
@@ -575,6 +579,7 @@ async function migrate() {
     await run('ALTER TABLE tickets ADD COLUMN group_id INTEGER REFERENCES groups(id) ON DELETE SET NULL');
   }
   await run('CREATE INDEX IF NOT EXISTS idx_tickets_group_id ON tickets(group_id)');
+  await run('CREATE INDEX IF NOT EXISTS idx_tickets_group_id_updated_at ON tickets(group_id, updated_at)');
   if (!ticketCols2.some((c) => c.name === 'resolved_at')) {
     await run('ALTER TABLE tickets ADD COLUMN resolved_at TEXT');
   }
@@ -872,6 +877,7 @@ async function migrate() {
     await run('ALTER TABLE tickets ADD COLUMN company_id INTEGER REFERENCES companies(id) ON DELETE SET NULL');
   }
   await run('CREATE INDEX IF NOT EXISTS idx_tickets_company_id ON tickets(company_id)');
+  await run('CREATE INDEX IF NOT EXISTS idx_tickets_company_id_updated_at ON tickets(company_id, updated_at)');
 
   const auditLogCols = await all('PRAGMA table_info(audit_log)');
   if (auditLogCols.length && !auditLogCols.some((c) => c.name === 'company_id')) {
