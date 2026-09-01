@@ -2129,7 +2129,18 @@ body.col-resizing-active { cursor: col-resize !important; user-select: none; }
 .checkbox-field input[type="checkbox"]:checked::before { transform: translateX(1.05rem); }
 .checkbox-field input[type="checkbox"]:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 
-.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  background:
+    linear-gradient(to right, var(--surface) 30%, transparent),
+    linear-gradient(to left, var(--surface) 30%, transparent) 100% 0,
+    linear-gradient(to right, color-mix(in srgb, var(--text) 18%, transparent), transparent),
+    linear-gradient(to left, color-mix(in srgb, var(--text) 18%, transparent), transparent) 100% 0;
+  background-repeat: no-repeat;
+  background-size: 32px 100%, 32px 100%, 12px 100%, 12px 100%;
+  background-attachment: local, local, scroll, scroll;
+}
 .users-table { width: 100%; min-width: 480px; border-collapse: collapse; }
 .users-table th, .users-table td {
   text-align: left;
