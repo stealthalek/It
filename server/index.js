@@ -49,7 +49,23 @@ const app = express();
 app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3000;
 
-app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: false }));
+const HOSTED_API_ORIGIN = 'https://it-ticketing-api-2g68.onrender.com';
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+      fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+      imgSrc: ["'self'", 'data:', 'blob:'],
+      connectSrc: ["'self'", HOSTED_API_ORIGIN, HOSTED_API_ORIGIN.replace('https://', 'wss://')],
+      objectSrc: ["'none'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"],
+    },
+  },
+  crossOriginResourcePolicy: false,
+}));
 app.use(compression());
 app.use(cors());
 app.use(express.json({ limit: '80mb' }));

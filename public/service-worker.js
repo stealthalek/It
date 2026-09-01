@@ -1,9 +1,10 @@
-const CACHE_NAME = 'ticketing-static-v6';
+const CACHE_NAME = 'ticketing-static-v7';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './css/style.css',
   './js/app.js',
+  './js/head-init.js',
   './manifest.json',
   './img/icon.svg',
 ];

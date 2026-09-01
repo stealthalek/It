@@ -3420,7 +3420,7 @@
     const countdown = formatSlaCountdown(tk.sla_remaining_ms);
     return `
       <a class="ticket-row prio-${tk.priority} ${opts.selectable ? 'selectable-row' : ''}" href="#/ticket/${tk.id}">
-        ${opts.selectable ? `<label class="ticket-select-check" onclick="event.stopPropagation()"><input type="checkbox" class="ticketSelectBox" data-id="${tk.id}" /></label>` : ''}
+        ${opts.selectable ? `<label class="ticket-select-check"><input type="checkbox" class="ticketSelectBox" data-id="${tk.id}" /></label>` : ''}
         <span class="ticket-row-col-type" title="${typeLabels()[tk.type] || tk.type}">${icon(tk.type, 'badge-icon')}</span>
         <span class="ticket-row-col-number">#${formatTicketNumber(tk.id)}</span>
         <span class="ticket-row-col-subject">
@@ -3505,6 +3505,9 @@
   }
 
   function wireTicketCardActions(container) {
+    container.querySelectorAll('.ticket-select-check').forEach((label) => {
+      label.addEventListener('click', (e) => e.stopPropagation());
+    });
     container.querySelectorAll('.assignMeBtn').forEach((btn) => {
       btn.addEventListener('click', async (e) => {
         e.preventDefault();
@@ -6661,6 +6664,9 @@
       let currentPageUsers = [];
       function wireUserCheckboxes() {
         const tbody = document.getElementById('usersTableBody');
+        tbody.querySelectorAll('.userSelectCell').forEach((cell) => {
+          cell.addEventListener('click', (e) => e.stopPropagation());
+        });
         tbody.querySelectorAll('.userSelectBox').forEach((box) => {
           box.checked = selectedUserIds.has(Number(box.dataset.id));
           box.addEventListener('change', () => {
@@ -6679,7 +6685,7 @@
         const tbody = document.getElementById('usersTableBody');
         tbody.innerHTML = users.length ? users.map((u) => `
           <tr class="user-row" data-user-id="${u.id}" tabindex="0" role="link">
-            ${isAdmin ? `<td onclick="event.stopPropagation()">${u.id !== state.user.id ? `<input type="checkbox" class="userSelectBox" data-id="${u.id}" />` : ''}</td>` : ''}
+            ${isAdmin ? `<td class="userSelectCell">${u.id !== state.user.id ? `<input type="checkbox" class="userSelectBox" data-id="${u.id}" />` : ''}</td>` : ''}
             <td>${escapeHtml(u.name)}</td>
             <td>${escapeHtml(u.email)}</td>
             <td><span class="role-tag">${roleLabels()[u.role] || u.role}</span> ${u.role_label_it ? `<span class="role-tag" style="background:${u.role_color}22;color:${u.role_color};border-color:${u.role_color}44">${escapeHtml(state.user.locale === 'en' ? u.role_label_en : u.role_label_it)}</span>` : ''} ${u.is_external ? `<span class="role-tag role-tag-external">${t('external_badge')}</span>` : ''}</td>
