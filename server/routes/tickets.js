@@ -5,6 +5,7 @@ const { authenticate } = require('../middleware/auth');
 const asyncHandler = require('../middleware/asyncHandler');
 const realtime = require('../realtime');
 const storage = require('../storage');
+const { assertCompanyScoped } = require('../lib/companyGuard');
 const mailer = require('../mailer');
 const { notifyUser } = require('../notifications');
 const { businessMillisBetween, computeSlaStatus, computeSlaRemaining, withSla } = require('../sla');
@@ -410,10 +411,12 @@ router.get(
       const offset = (page - 1) * pageSize;
       const totalRow = await db.get(`SELECT COUNT(*) AS n FROM tickets t ${where}`, params);
       const tickets = await db.all(`${TICKET_SELECT} ${where} ORDER BY t.updated_at DESC LIMIT ? OFFSET ?`, [...params, pageSize, offset]);
+      assertCompanyScoped(tickets, req.user);
       return res.json({ tickets: tickets.map(withSla), total: totalRow.n, page, pageSize });
     }
 
     const tickets = await db.all(`${TICKET_SELECT} ${where} ORDER BY t.updated_at DESC LIMIT 2000`, params);
+    assertCompanyScoped(tickets, req.user);
 
     res.json({ tickets: tickets.map(withSla) });
   })
