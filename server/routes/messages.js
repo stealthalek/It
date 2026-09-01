@@ -1,8 +1,9 @@
 const express = require('express');
 const db = require('../db/database');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, requireRole } = require('../middleware/auth');
 const asyncHandler = require('../middleware/asyncHandler');
 const realtime = require('../realtime');
+const { logAudit } = require('../audit');
 
 const router = express.Router();
 router.use(authenticate);
@@ -139,6 +140,24 @@ router.delete(
     }
     await db.run('DELETE FROM direct_messages WHERE id = ?', [req.params.id]);
     realtime.broadcastDirectMessageDelete(existing.recipient_id, { id: existing.id, senderId: existing.sender_id });
+    res.status(204).end();
+  })
+);
+
+router.delete(
+  '/conversation/:userId',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const other = await db.get('SELECT id, name, company_id, is_super_admin FROM users WHERE id = ?', [req.params.userId]);
+    if (!other || outOfScope(other, req.user)) {
+      return res.status(404).json({ error: 'Utente non trovato' });
+    }
+    const result = await db.run(
+      'DELETE FROM direct_messages WHERE (sender_id = ? AND recipient_id = ?) OR (sender_id = ? AND recipient_id = ?)',
+      [req.user.id, other.id, other.id, req.user.id]
+    );
+    realtime.broadcastConversationDelete(other.id, { otherUserId: req.user.id });
+    logAudit(req.user.id, 'message', other.id, `Chat con ${other.name} eliminata (${result.rowsAffected} messaggi)`).catch(() => {});
     res.status(204).end();
   })
 );
