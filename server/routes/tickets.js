@@ -1,8 +1,10 @@
 const express = require('express');
+const crypto = require('crypto');
 const db = require('../db/database');
 const { authenticate } = require('../middleware/auth');
 const asyncHandler = require('../middleware/asyncHandler');
 const realtime = require('../realtime');
+const storage = require('../storage');
 const mailer = require('../mailer');
 const { notifyUser } = require('../notifications');
 const { businessMillisBetween, computeSlaStatus, computeSlaRemaining, withSla } = require('../sla');
@@ -1051,9 +1053,17 @@ router.post(
       if (!comment) return res.status(400).json({ error: 'Commento non valido' });
     }
 
+    let storedData = dataUrl;
+    let storageKey = null;
+    if (storage.enabled) {
+      storageKey = `tickets/${ticket.id}/${Date.now()}-${crypto.randomBytes(8).toString('hex')}`;
+      await storage.putObject(storageKey, Buffer.from(base64Data, 'base64'), mimeType);
+      storedData = '';
+    }
+
     const info = await db.run(
-      'INSERT INTO ticket_attachments (ticket_id, comment_id, uploaded_by, file_name, mime_type, size_bytes, data) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [ticket.id, commentId || null, req.user.id, fileName.trim().slice(0, 255), mimeType, sizeBytes, dataUrl]
+      'INSERT INTO ticket_attachments (ticket_id, comment_id, uploaded_by, file_name, mime_type, size_bytes, data, storage_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [ticket.id, commentId || null, req.user.id, fileName.trim().slice(0, 255), mimeType, sizeBytes, storedData, storageKey]
     );
     await logEvent(ticket.id, req.user.id, `Allegato aggiunto: "${fileName.trim().slice(0, 255)}"`);
 
@@ -1074,7 +1084,12 @@ router.get(
     if (!ticket) return;
     const row = await db.get('SELECT * FROM ticket_attachments WHERE id = ? AND ticket_id = ?', [req.params.attId, ticket.id]);
     if (!row) return res.status(404).json({ error: 'Allegato non trovato' });
-    res.json({ attachment: { ...attachmentMeta(row), data: row.data } });
+    let data = row.data;
+    if (row.storage_key) {
+      const { buffer } = await storage.getObject(row.storage_key);
+      data = `data:${row.mime_type};base64,${buffer.toString('base64')}`;
+    }
+    res.json({ attachment: { ...attachmentMeta(row), data } });
   })
 );
 
@@ -1087,6 +1102,9 @@ router.delete(
     if (!row) return res.status(404).json({ error: 'Allegato non trovato' });
     if (row.uploaded_by !== req.user.id && !isStaff(req.user)) {
       return res.status(403).json({ error: 'Permessi insufficienti' });
+    }
+    if (row.storage_key) {
+      await storage.deleteObject(row.storage_key).catch(() => {});
     }
     await db.run('DELETE FROM ticket_attachments WHERE id = ?', [row.id]);
     await logEvent(ticket.id, req.user.id, `Allegato rimosso: "${row.file_name}"`);

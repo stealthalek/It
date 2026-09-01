@@ -534,6 +534,11 @@ async function migrate() {
     await run('ALTER TABLE groups ADD COLUMN parent_id INTEGER REFERENCES groups(id) ON DELETE SET NULL');
   }
 
+  const ticketAttachmentCols = await all('PRAGMA table_info(ticket_attachments)');
+  if (ticketAttachmentCols.length && !ticketAttachmentCols.some((c) => c.name === 'storage_key')) {
+    await run('ALTER TABLE ticket_attachments ADD COLUMN storage_key TEXT');
+  }
+
   await seedDefaultGroups();
 
   const commentCols = await all('PRAGMA table_info(comments)');
