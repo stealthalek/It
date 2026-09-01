@@ -32,7 +32,9 @@ function serializeField(field) {
 router.get(
   '/',
   asyncHandler(async (req, res) => {
-    const fields = await db.all(`${FIELD_SELECT} ORDER BY f.position ASC, f.id ASC`);
+    const where = req.user.is_super_admin ? '' : 'WHERE f.company_id IS NULL OR f.company_id = ?';
+    const params = req.user.is_super_admin ? [] : [req.user.company_id];
+    const fields = await db.all(`${FIELD_SELECT} ${where} ORDER BY f.position ASC, f.id ASC`, params);
     res.json({ fields: fields.map(serializeField) });
   })
 );
@@ -55,14 +57,16 @@ router.post(
 
     let finalCategoryId = null;
     if (categoryId) {
-      const category = await db.get('SELECT id FROM categories WHERE id = ?', [categoryId]);
-      if (!category) return res.status(400).json({ error: 'Categoria non valida' });
+      const category = await db.get('SELECT id, company_id FROM categories WHERE id = ?', [categoryId]);
+      if (!category || (!req.user.is_super_admin && category.company_id && category.company_id !== req.user.company_id)) {
+        return res.status(400).json({ error: 'Categoria non valida' });
+      }
       finalCategoryId = category.id;
     }
 
     const posRow = await db.get('SELECT COALESCE(MAX(position), -1) AS maxPos FROM custom_fields');
     const info = await db.run(
-      'INSERT INTO custom_fields (name, field_type, options, category_id, required, position) VALUES (?, ?, ?, ?, ?, ?)',
+      'INSERT INTO custom_fields (name, field_type, options, category_id, required, position, company_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
       [
         name.trim(),
         fieldType,
@@ -70,6 +74,7 @@ router.post(
         finalCategoryId,
         required ? 1 : 0,
         posRow.maxPos + 1,
+        req.user.company_id || null,
       ]
     );
 
@@ -83,8 +88,10 @@ router.delete(
   '/:id',
   requireRole('admin'),
   asyncHandler(async (req, res) => {
-    const field = await db.get('SELECT name FROM custom_fields WHERE id = ?', [req.params.id]);
-    if (!field) return res.status(404).json({ error: 'Campo non trovato' });
+    const field = await db.get('SELECT name, company_id FROM custom_fields WHERE id = ?', [req.params.id]);
+    if (!field || (!req.user.is_super_admin && field.company_id && field.company_id !== req.user.company_id)) {
+      return res.status(404).json({ error: 'Campo non trovato' });
+    }
     await db.run('DELETE FROM custom_fields WHERE id = ?', [req.params.id]);
     logAudit(req.user.id, 'custom_field', Number(req.params.id), `Campo personalizzato "${field.name}" eliminato`).catch(() => {});
     res.status(204).end();

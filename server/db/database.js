@@ -799,6 +799,36 @@ async function migrate() {
     await run('ALTER TABLE assets ADD COLUMN company_id INTEGER REFERENCES companies(id) ON DELETE SET NULL');
   }
   await run('CREATE INDEX IF NOT EXISTS idx_assets_company_id ON assets(company_id)');
+
+  const roleCols = await all('PRAGMA table_info(roles)');
+  if (roleCols.length && !roleCols.some((c) => c.name === 'company_id')) {
+    await run('ALTER TABLE roles ADD COLUMN company_id INTEGER REFERENCES companies(id) ON DELETE SET NULL');
+  }
+  await run('CREATE INDEX IF NOT EXISTS idx_roles_company_id ON roles(company_id)');
+
+  const categoryCols2 = await all('PRAGMA table_info(categories)');
+  if (categoryCols2.length && !categoryCols2.some((c) => c.name === 'company_id')) {
+    await run('ALTER TABLE categories ADD COLUMN company_id INTEGER REFERENCES companies(id) ON DELETE SET NULL');
+  }
+  await run('CREATE INDEX IF NOT EXISTS idx_categories_company_id ON categories(company_id)');
+
+  const customFieldCols = await all('PRAGMA table_info(custom_fields)');
+  if (customFieldCols.length && !customFieldCols.some((c) => c.name === 'company_id')) {
+    await run('ALTER TABLE custom_fields ADD COLUMN company_id INTEGER REFERENCES companies(id) ON DELETE SET NULL');
+  }
+  await run('CREATE INDEX IF NOT EXISTS idx_custom_fields_company_id ON custom_fields(company_id)');
+
+  const cannedResponseCols = await all('PRAGMA table_info(canned_responses)');
+  if (cannedResponseCols.length && !cannedResponseCols.some((c) => c.name === 'company_id')) {
+    await run('ALTER TABLE canned_responses ADD COLUMN company_id INTEGER REFERENCES companies(id) ON DELETE SET NULL');
+  }
+  await run('CREATE INDEX IF NOT EXISTS idx_canned_responses_company_id ON canned_responses(company_id)');
+
+  const ticketTemplateCols = await all('PRAGMA table_info(ticket_templates)');
+  if (ticketTemplateCols.length && !ticketTemplateCols.some((c) => c.name === 'company_id')) {
+    await run('ALTER TABLE ticket_templates ADD COLUMN company_id INTEGER REFERENCES companies(id) ON DELETE SET NULL');
+  }
+  await run('CREATE INDEX IF NOT EXISTS idx_ticket_templates_company_id ON ticket_templates(company_id)');
 }
 
 async function seedDefaultCompany() {
@@ -829,6 +859,12 @@ async function seedDefaultCompany() {
   await run(`UPDATE assets SET company_id = (
     SELECT company_id FROM users WHERE users.id = assets.assigned_to
   ) WHERE company_id IS NULL AND assigned_to IS NOT NULL`);
+  await run(`UPDATE canned_responses SET company_id = (
+    SELECT company_id FROM users WHERE users.id = canned_responses.created_by
+  ) WHERE company_id IS NULL AND created_by IS NOT NULL`);
+  await run(`UPDATE ticket_templates SET company_id = (
+    SELECT company_id FROM users WHERE users.id = ticket_templates.created_by
+  ) WHERE company_id IS NULL AND created_by IS NOT NULL`);
 }
 
 async function seedDefaultRoles() {

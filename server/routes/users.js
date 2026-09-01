@@ -121,8 +121,8 @@ router.post(
 
     let finalRoleId = null;
     if (roleId) {
-      const roleRow = await db.get('SELECT id FROM roles WHERE id = ?', [roleId]);
-      if (!roleRow) {
+      const roleRow = await db.get('SELECT id, company_id FROM roles WHERE id = ?', [roleId]);
+      if (!roleRow || (!req.user.is_super_admin && roleRow.company_id && roleRow.company_id !== finalCompanyId)) {
         return res.status(400).json({ error: 'Ruolo specifico non valido' });
       }
       finalRoleId = roleRow.id;
@@ -183,8 +183,8 @@ router.patch(
     const { roleId } = req.body || {};
     let finalRoleId = null;
     if (roleId) {
-      const role = await db.get('SELECT id FROM roles WHERE id = ?', [roleId]);
-      if (!role) {
+      const role = await db.get('SELECT id, company_id FROM roles WHERE id = ?', [roleId]);
+      if (!role || (!req.user.is_super_admin && role.company_id && role.company_id !== req.user.company_id)) {
         return res.status(400).json({ error: 'Ruolo non valido' });
       }
       finalRoleId = role.id;

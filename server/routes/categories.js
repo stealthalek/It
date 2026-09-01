@@ -18,7 +18,9 @@ const CATEGORY_SELECT = `
 router.get(
   '/',
   asyncHandler(async (req, res) => {
-    const categories = await db.all(`${CATEGORY_SELECT} ORDER BY cat.name ASC`);
+    const where = req.user.is_super_admin ? '' : 'WHERE cat.company_id IS NULL OR cat.company_id = ?';
+    const params = req.user.is_super_admin ? [] : [req.user.company_id];
+    const categories = await db.all(`${CATEGORY_SELECT} ${where} ORDER BY cat.name ASC`, params);
     res.json({ categories });
   })
 );
@@ -39,8 +41,8 @@ router.post(
 
     let finalGroupId = null;
     if (defaultGroupId) {
-      const group = await db.get('SELECT id FROM groups WHERE id = ?', [defaultGroupId]);
-      if (!group) {
+      const group = await db.get('SELECT id, company_id FROM groups WHERE id = ?', [defaultGroupId]);
+      if (!group || (!req.user.is_super_admin && group.company_id && group.company_id !== req.user.company_id)) {
         return res.status(400).json({ error: 'Gruppo non valido' });
       }
       finalGroupId = group.id;
@@ -48,8 +50,8 @@ router.post(
 
     let finalParentId = null;
     if (parentId) {
-      const parent = await db.get('SELECT id, parent_id FROM categories WHERE id = ?', [parentId]);
-      if (!parent) {
+      const parent = await db.get('SELECT id, parent_id, company_id FROM categories WHERE id = ?', [parentId]);
+      if (!parent || (!req.user.is_super_admin && parent.company_id && parent.company_id !== req.user.company_id)) {
         return res.status(400).json({ error: 'Categoria principale non valida' });
       }
       if (parent.parent_id) {
@@ -58,11 +60,12 @@ router.post(
       finalParentId = parent.id;
     }
 
-    const info = await db.run('INSERT INTO categories (name, icon, default_group_id, parent_id) VALUES (?, ?, ?, ?)', [
+    const info = await db.run('INSERT INTO categories (name, icon, default_group_id, parent_id, company_id) VALUES (?, ?, ?, ?, ?)', [
       name.trim(),
       icon && icon.trim() ? icon.trim() : 'ticket',
       finalGroupId,
       finalParentId,
+      req.user.company_id || null,
     ]);
     const category = await db.get(`${CATEGORY_SELECT} WHERE cat.id = ?`, [Number(info.lastInsertRowid)]);
     logAudit(req.user.id, 'category', category.id, `Creata categoria "${category.name}"${category.parent_name ? ` sotto "${category.parent_name}"` : ''}`).catch(() => {});
@@ -75,7 +78,7 @@ router.patch(
   requireRole('admin'),
   asyncHandler(async (req, res) => {
     const category = await db.get('SELECT * FROM categories WHERE id = ?', [req.params.id]);
-    if (!category) {
+    if (!category || (!req.user.is_super_admin && category.company_id && category.company_id !== req.user.company_id)) {
       return res.status(404).json({ error: 'Categoria non trovata' });
     }
 
@@ -91,8 +94,8 @@ router.patch(
       if (defaultGroupId === null) {
         updates.push('default_group_id = NULL');
       } else {
-        const group = await db.get('SELECT id FROM groups WHERE id = ?', [defaultGroupId]);
-        if (!group) {
+        const group = await db.get('SELECT id, company_id FROM groups WHERE id = ?', [defaultGroupId]);
+        if (!group || (!req.user.is_super_admin && group.company_id && group.company_id !== req.user.company_id)) {
           return res.status(400).json({ error: 'Gruppo non valido' });
         }
         updates.push('default_group_id = ?');
@@ -117,7 +120,7 @@ router.delete(
   requireRole('admin'),
   asyncHandler(async (req, res) => {
     const category = await db.get('SELECT * FROM categories WHERE id = ?', [req.params.id]);
-    if (!category) {
+    if (!category || (!req.user.is_super_admin && category.company_id && category.company_id !== req.user.company_id)) {
       return res.status(404).json({ error: 'Categoria non trovata' });
     }
 
