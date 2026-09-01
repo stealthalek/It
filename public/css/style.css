@@ -538,6 +538,26 @@ svg { display: block; }
 .sidebar.collapsed #logoutBtn .nav-label { display: none; }
 .sidebar.collapsed .main-nav a.active::before { left: 0.1rem; }
 
+.nav-section-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 0.85rem 0.65rem 0.3rem;
+  opacity: 0.75;
+}
+.nav-section-label[hidden] { display: none; }
+.nav-section-label:first-child { padding-top: 0.25rem; }
+.sidebar.collapsed .nav-section-label { padding-left: 0; text-align: center; font-size: 0; }
+.sidebar.collapsed .nav-section-label::before { content: ''; display: block; height: 1px; background: var(--border); margin: 0 0.4rem; }
+.nav-section-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 0.6rem 0.65rem;
+}
+.nav-section-divider[hidden] { display: none; }
+
 .user-badge {
   font-size: 0.82rem;
   color: var(--muted);
@@ -892,6 +912,7 @@ body:not(.role-customer):not(.role-agent):not(.role-admin) .nav-toggle { display
 .stat-card {
   background: var(--surface);
   border: 1px solid var(--border);
+  border-left: 3px solid transparent;
   border-radius: var(--radius);
   padding: 0.9rem 1.1rem;
   box-shadow: var(--shadow);
@@ -900,16 +921,24 @@ body:not(.role-customer):not(.role-agent):not(.role-admin) .nav-toggle { display
   font: inherit;
   color: inherit;
   width: 100%;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 .stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 14px rgba(60, 40, 25, 0.1); }
 .stat-card .stat-value { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.02em; }
 .stat-card .stat-label { color: var(--muted); font-size: 0.82rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
+.stat-card.accent-open { border-left-color: var(--primary); }
 .stat-card.accent-open .stat-value { color: var(--primary); }
+.stat-card.accent-in_progress { border-left-color: var(--warning); }
 .stat-card.accent-in_progress .stat-value { color: var(--warning); }
+.stat-card.accent-waiting_customer { border-left-color: var(--waiting); }
 .stat-card.accent-waiting_customer .stat-value { color: var(--waiting); }
+.stat-card.accent-resolved { border-left-color: var(--success); }
 .stat-card.accent-resolved .stat-value { color: var(--success); }
+.stat-card.accent-urgent { border-left-color: var(--danger); }
 .stat-card.accent-urgent .stat-value { color: var(--danger); }
+.stat-card.accent-incident { border-left-color: var(--type-incident); }
 .stat-card.accent-incident .stat-value { color: var(--type-incident); }
+.stat-card.accent-task { border-left-color: var(--type-task); }
 .stat-card.accent-task .stat-value { color: var(--type-task); }
 
 .viewas-banner {
