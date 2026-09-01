@@ -6,6 +6,8 @@ const { formatTicketNumber } = require('./lib/ticketNumber');
 
 const AUTO_CLOSE_HOURS = 72;
 const MESSAGE_TTL_DAYS = 14;
+const READ_NOTIFICATION_TTL_DAYS = 90;
+const AUDIT_LOG_TTL_DAYS = 365;
 const CHECK_INTERVAL_MS = 10 * 60 * 1000;
 
 async function autoCloseResolvedTickets() {
@@ -89,15 +91,31 @@ async function purgeExpiredMessages() {
   await db.run("DELETE FROM direct_messages WHERE created_at <= datetime('now', ?)", [`-${MESSAGE_TTL_DAYS} days`]);
 }
 
-function startAutoCloseScheduler() {
+async function purgeOldNotifications() {
+  await db.run(
+    "DELETE FROM notifications WHERE is_read = 1 AND created_at <= datetime('now', ?)",
+    [`-${READ_NOTIFICATION_TTL_DAYS} days`]
+  );
+}
+
+async function purgeOldAuditLog() {
+  await db.run("DELETE FROM audit_log WHERE created_at <= datetime('now', ?)", [`-${AUDIT_LOG_TTL_DAYS} days`]);
+}
+
+function runMaintenanceJobs() {
   autoCloseResolvedTickets().catch((err) => console.error('Auto-chiusura ticket fallita:', err.message));
   checkSlaWarnings().catch((err) => console.error('Verifica SLA fallita:', err.message));
   purgeExpiredMessages().catch((err) => console.error('Pulizia messaggi diretti fallita:', err.message));
-  setInterval(() => {
-    autoCloseResolvedTickets().catch((err) => console.error('Auto-chiusura ticket fallita:', err.message));
-    checkSlaWarnings().catch((err) => console.error('Verifica SLA fallita:', err.message));
-    purgeExpiredMessages().catch((err) => console.error('Pulizia messaggi diretti fallita:', err.message));
-  }, CHECK_INTERVAL_MS);
+  purgeOldNotifications().catch((err) => console.error('Pulizia notifiche fallita:', err.message));
+  purgeOldAuditLog().catch((err) => console.error('Pulizia registro attività fallita:', err.message));
 }
 
-module.exports = { startAutoCloseScheduler, autoCloseResolvedTickets, checkSlaWarnings, purgeExpiredMessages };
+function startAutoCloseScheduler() {
+  runMaintenanceJobs();
+  setInterval(runMaintenanceJobs, CHECK_INTERVAL_MS);
+}
+
+module.exports = {
+  startAutoCloseScheduler, autoCloseResolvedTickets, checkSlaWarnings, purgeExpiredMessages,
+  purgeOldNotifications, purgeOldAuditLog,
+};

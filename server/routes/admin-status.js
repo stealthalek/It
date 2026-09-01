@@ -10,6 +10,36 @@ const router = express.Router();
 router.use(authenticate);
 router.use(requireRole('admin'));
 
+const STORAGE_TABLES = [
+  'tickets', 'comments', 'ticket_events', 'ticket_attachments', 'onboarding_attachments',
+  'notifications', 'audit_log', 'direct_messages', 'users',
+];
+
+async function getStorageStats() {
+  const rowCounts = {};
+  await Promise.all(STORAGE_TABLES.map(async (table) => {
+    const row = await db.get(`SELECT COUNT(*) AS n FROM ${table}`).catch(() => null);
+    rowCounts[table] = row ? row.n : null;
+  }));
+
+  const attachmentRow = await db.get(
+    `SELECT COALESCE(SUM(size_bytes), 0) AS bytes FROM (
+       SELECT size_bytes FROM ticket_attachments
+       UNION ALL
+       SELECT size_bytes FROM onboarding_attachments
+     )`
+  ).catch(() => ({ bytes: 0 }));
+
+  let dbSizeBytes = null;
+  try {
+    const pageCount = await db.get('PRAGMA page_count');
+    const pageSize = await db.get('PRAGMA page_size');
+    if (pageCount && pageSize) dbSizeBytes = Number(pageCount.page_count) * Number(pageSize.page_size);
+  } catch {}
+
+  return { rowCounts, attachmentBytes: attachmentRow.bytes, dbSizeBytes };
+}
+
 router.get(
   '/',
   asyncHandler(async (req, res) => {
@@ -37,6 +67,7 @@ router.get(
       loadAvg1m: Math.round(os.loadavg()[0] * 100) / 100,
       eventLoopLagMs: getEventLoopLagMs(),
       onlineUsers: getOnlineUsers(),
+      storage: await getStorageStats(),
     });
   })
 );
