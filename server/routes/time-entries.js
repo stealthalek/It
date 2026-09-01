@@ -1,6 +1,6 @@
 const express = require('express');
 const db = require('../db/database');
-const { authenticate, requireRole } = require('../middleware/auth');
+const { authenticate } = require('../middleware/auth');
 const asyncHandler = require('../middleware/asyncHandler');
 
 const router = express.Router();
@@ -89,15 +89,34 @@ router.delete(
 
 router.get(
   '/team',
-  requireRole('admin'),
   asyncHandler(async (req, res) => {
-    const { from, to, userId } = req.query;
+    const isAdmin = req.user.role === 'admin' || req.user.is_super_admin;
     const conditions = [];
     const params = [];
-    if (!req.user.is_super_admin) {
-      conditions.push('u.company_id = ?');
-      params.push(req.user.company_id);
+
+    if (isAdmin) {
+      if (!req.user.is_super_admin) {
+        conditions.push('u.company_id = ?');
+        params.push(req.user.company_id);
+      }
+    } else {
+      const reports = await db.all(
+        `WITH RECURSIVE reports(id) AS (
+           SELECT id FROM users WHERE manager_id = ?
+           UNION ALL
+           SELECT u.id FROM users u JOIN reports r ON u.manager_id = r.id
+         )
+         SELECT id FROM reports`,
+        [req.user.id]
+      );
+      if (!reports.length) {
+        return res.status(403).json({ error: 'Permessi insufficienti' });
+      }
+      conditions.push(`te.user_id IN (${reports.map(() => '?').join(',')})`);
+      params.push(...reports.map((r) => r.id));
     }
+
+    const { from, to, userId } = req.query;
     if (userId) {
       conditions.push('te.user_id = ?');
       params.push(Number(userId));
