@@ -2312,6 +2312,14 @@ body.col-resizing-active { cursor: col-resize !important; user-select: none; }
   padding-bottom: 0.5rem;
   margin-bottom: 1.25rem;
   border-bottom: 1px solid var(--border);
+  background:
+    linear-gradient(to right, var(--bg) 30%, transparent),
+    linear-gradient(to left, var(--bg) 30%, transparent) 100% 0,
+    linear-gradient(to right, color-mix(in srgb, var(--text) 18%, transparent), transparent),
+    linear-gradient(to left, color-mix(in srgb, var(--text) 18%, transparent), transparent) 100% 0;
+  background-repeat: no-repeat;
+  background-size: 32px 100%, 32px 100%, 12px 100%, 12px 100%;
+  background-attachment: local, local, scroll, scroll;
 }
 .admin-tab {
   flex: 0 0 auto;
@@ -2386,6 +2394,14 @@ body.col-resizing-active { cursor: col-resize !important; user-select: none; }
   gap: 2rem;
   overflow-x: auto;
   padding: 0.5rem 0.25rem 1rem;
+  background:
+    linear-gradient(to right, var(--surface) 30%, transparent),
+    linear-gradient(to left, var(--surface) 30%, transparent) 100% 0,
+    linear-gradient(to right, color-mix(in srgb, var(--text) 18%, transparent), transparent),
+    linear-gradient(to left, color-mix(in srgb, var(--text) 18%, transparent), transparent) 100% 0;
+  background-repeat: no-repeat;
+  background-size: 32px 100%, 32px 100%, 12px 100%, 12px 100%;
+  background-attachment: local, local, scroll, scroll;
 }
 .org-toolbar { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; }
 .org-collapse-icon { transform: rotate(180deg); }
