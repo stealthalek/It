@@ -2168,6 +2168,7 @@ body.col-resizing-active { cursor: col-resize !important; user-select: none; }
 .org-node {
   background: var(--surface);
   border: 1px solid var(--border);
+  border-top: 3px solid var(--border);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow);
   padding: 0.75rem 0.9rem;
@@ -2176,6 +2177,7 @@ body.col-resizing-active { cursor: col-resize !important; user-select: none; }
   cursor: pointer;
 }
 .org-node:hover { border-color: var(--primary); }
+.org-chart > .org-branch > .org-node { border-top-color: var(--primary); }
 .org-node.dragging { opacity: 0.4; }
 .org-node.drop-target { border-color: var(--primary); background: var(--primary-soft); box-shadow: 0 0 0 2px var(--primary-soft); }
 .org-root-drop {
@@ -2315,9 +2317,9 @@ body.col-resizing-active { cursor: col-resize !important; user-select: none; }
   position: absolute;
   top: -1.75rem;
   left: 50%;
-  width: 1px;
+  width: 2px;
   height: 1.75rem;
-  background: var(--border);
+  background: color-mix(in srgb, var(--primary) 30%, var(--border));
 }
 .org-children > .org-branch { position: relative; padding-top: 1.5rem; }
 .org-children > .org-branch::before {
@@ -2325,9 +2327,9 @@ body.col-resizing-active { cursor: col-resize !important; user-select: none; }
   position: absolute;
   top: 0;
   left: 50%;
-  width: 1px;
+  width: 2px;
   height: 1.5rem;
-  background: var(--border);
+  background: color-mix(in srgb, var(--primary) 30%, var(--border));
 }
 .org-children > .org-branch::after {
   content: '';
@@ -2335,8 +2337,8 @@ body.col-resizing-active { cursor: col-resize !important; user-select: none; }
   top: 0;
   left: 0;
   right: 0;
-  height: 1px;
-  background: var(--border);
+  height: 2px;
+  background: color-mix(in srgb, var(--primary) 30%, var(--border));
 }
 .org-children > .org-branch:first-child::after { left: 50%; }
 .org-children > .org-branch:last-child::after { right: 50%; }
