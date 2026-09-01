@@ -477,6 +477,7 @@
       field_group_display_name: 'Nome visualizzato', field_group_display_name_placeholder: 'Usa il nome dell\'organizzazione',
       field_group_display_name_hint: 'Se impostato, sostituisce il nome dell\'organizzazione per i membri di questo gruppo e dei suoi sotto-gruppi.',
       toast_group_display_name_updated: 'Nome visualizzato aggiornato',
+      field_group_name: 'Nome del team', toast_group_name_updated: 'Nome del team aggiornato',
       toast_group_deleted: 'Gruppo eliminato', toast_group_created: 'Gruppo creato', toast_default_team_updated: 'Team predefinito aggiornato',
       org_drop_root_hint: 'Trascina qui un gruppo per renderlo di primo livello', toast_group_reparented: 'Gruppo riorganizzato',
       assign_to_me_btn: 'Assegna a me', toast_ticket_assigned_to_you: 'Ticket assegnato a te',
@@ -590,6 +591,7 @@
       admin_companies_title: 'Gestione aziende', admin_companies_hint: 'Ogni azienda ha una propria intestazione, logo, gruppi e utenti separati dalle altre.',
       field_company_name: 'Nome interno', field_company_display_name: 'Titolo mostrato (opzionale)',
       btn_create_company: 'Crea azienda', company_error_required: 'Il nome interno è obbligatorio',
+      name_required_error: 'Il nome è obbligatorio',
       table_company: 'Azienda', table_members: 'Utenti', table_groups: 'Gruppi',
       company_active_label: 'Attiva', company_inactive_label: 'Disattivata',
       btn_deactivate: 'Disattiva', btn_activate: 'Attiva',
@@ -605,6 +607,8 @@
       timesheet_history_title: 'Storico timbrature', th_clock_in: 'Entrata', th_clock_out: 'Uscita', th_duration: 'Durata',
       timesheet_no_entries: 'Nessuna timbratura registrata.', timesheet_ongoing: 'in corso',
       timesheet_team_title: 'Ore del team', timesheet_team_hint: 'Timbrature del tuo team: dei tuoi collaboratori diretti, oppure di tutta l\'azienda se sei amministratore.',
+      timesheet_pay_title: 'Stima paga mensile', timesheet_pay_hint: 'Calcolo approssimativo in base alle ore timbrate questo mese e al guadagno orario che inserisci qui sotto. Il valore resta solo su questo dispositivo.',
+      timesheet_pay_wage_label: 'Guadagno orario (€)', timesheet_pay_hours_label: 'Ore timbrate questo mese', timesheet_pay_estimate_label: 'Stima paga del mese',
       toast_clocked_in: 'Entrata registrata', toast_clocked_out: 'Uscita registrata',
       admin_system_title: 'Stato del server', admin_system_hint: 'Indicatori in tempo reale su carico, memoria e limiti tecnici della piattaforma (solo admin).',
       system_uptime_label: 'Attivo da', system_memory_label: 'Memoria (RSS)', system_requests_label: 'Richieste API (15 min)',
@@ -818,6 +822,7 @@
       field_group_display_name: 'Display name', field_group_display_name_placeholder: 'Use the organization name',
       field_group_display_name_hint: 'When set, it replaces the organization name for members of this group and its sub-groups.',
       toast_group_display_name_updated: 'Display name updated',
+      field_group_name: 'Team name', toast_group_name_updated: 'Team name updated',
       toast_group_deleted: 'Group deleted', toast_group_created: 'Group created', toast_default_team_updated: 'Default team updated',
       org_drop_root_hint: 'Drag a group here to make it top-level', toast_group_reparented: 'Group reorganized',
       assign_to_me_btn: 'Assign to me', toast_ticket_assigned_to_you: 'Ticket assigned to you',
@@ -931,6 +936,7 @@
       admin_companies_title: 'Company management', admin_companies_hint: 'Each company has its own title, logo, groups and users, separate from the others.',
       field_company_name: 'Internal name', field_company_display_name: 'Displayed title (optional)',
       btn_create_company: 'Create company', company_error_required: 'The internal name is required',
+      name_required_error: 'The name is required',
       table_company: 'Company', table_members: 'Users', table_groups: 'Groups',
       company_active_label: 'Active', company_inactive_label: 'Deactivated',
       btn_deactivate: 'Deactivate', btn_activate: 'Activate',
@@ -946,6 +952,8 @@
       timesheet_history_title: 'Time entry history', th_clock_in: 'Clock in', th_clock_out: 'Clock out', th_duration: 'Duration',
       timesheet_no_entries: 'No time entries recorded yet.', timesheet_ongoing: 'ongoing',
       timesheet_team_title: 'Team hours', timesheet_team_hint: 'Time entries for your team: your direct reports, or the whole company if you\'re an administrator.',
+      timesheet_pay_title: 'Estimated monthly pay', timesheet_pay_hint: 'A rough estimate based on the hours clocked this month and the hourly wage you enter below. This value stays on this device only.',
+      timesheet_pay_wage_label: 'Hourly wage', timesheet_pay_hours_label: 'Hours clocked this month', timesheet_pay_estimate_label: 'Estimated pay this month',
       toast_clocked_in: 'Clocked in', toast_clocked_out: 'Clocked out',
       admin_system_title: 'Server status', admin_system_hint: 'Real-time indicators of platform load, memory and technical limits (admin only).',
       system_uptime_label: 'Up for', system_memory_label: 'Memory (RSS)', system_requests_label: 'API requests (15 min)',
@@ -4791,6 +4799,7 @@
               <details class="org-node-settings">
                 <summary>${icon('settings', 'badge-icon')} ${t('org_settings_toggle')}</summary>
                 <div class="org-node-settings-body">
+                  <label>${t('field_group_name')} <input type="text" class="groupNameInput" data-group-id="${node.id}" value="${escapeHtml(node.name)}" /></label>
                   <label>${t('field_manager')} <select class="managerInput" data-group-id="${node.id}">${staffOptionsHtml(node.manager_id)}</select></label>
                   <label>${t('field_response_hours')} <input type="number" min="1" class="slaInput" data-group-id="${node.id}" data-field="slaResponseHours" value="${node.sla_response_hours ?? ''}" /></label>
                   <label>${t('field_resolve_hours')} <input type="number" min="1" class="slaInput" data-group-id="${node.id}" data-field="slaResolveHours" value="${node.sla_resolve_hours ?? ''}" /></label>
@@ -4946,6 +4955,27 @@
                 showToast(t('toast_work_hours_updated'), 'success');
               } catch (err) {
                 showToast(err.message, 'error');
+              }
+            });
+          });
+
+          listEl.querySelectorAll('.groupNameInput').forEach((input) => {
+            input.addEventListener('change', async () => {
+              const groupId = input.dataset.groupId;
+              const name = input.value.trim();
+              if (!name) {
+                showToast(t('name_required_error'), 'error');
+                input.value = input.defaultValue;
+                return;
+              }
+              try {
+                await api(`/groups/${groupId}`, { method: 'PATCH', body: { name } });
+                showToast(t('toast_group_name_updated'), 'success');
+                loadGroups();
+                loadGroupOptions();
+              } catch (err) {
+                showToast(err.message, 'error');
+                input.value = input.defaultValue;
               }
             });
           });
@@ -7877,6 +7907,16 @@
           <button type="button" id="timesheetToggleBtn" class="btn" disabled></button>
           <p class="error-text" id="timesheetError"></p>
         </div>
+        <div class="card">
+          <h3 class="section-title" style="margin-top:0">${icon('activity')} ${t('timesheet_pay_title')}</h3>
+          <p class="hint">${t('timesheet_pay_hint')}</p>
+          <div class="field">
+            <label for="timesheetWageInput">${t('timesheet_pay_wage_label')}</label>
+            <input type="number" id="timesheetWageInput" min="0" step="0.01" placeholder="0.00" />
+          </div>
+          <p class="hint">${t('timesheet_pay_hours_label')}: <strong id="timesheetPayHours">–</strong></p>
+          <p class="hint">${t('timesheet_pay_estimate_label')}: <strong id="timesheetPayEstimate">–</strong></p>
+        </div>
         ${(isStaff() || (state.user && state.user.is_manager)) ? `
         <div class="card admin-grid-full">
           <h3 class="section-title" style="margin-top:0">${icon('users')} ${t('timesheet_team_title')}</h3>
@@ -7912,17 +7952,52 @@
         </div>`;
     }
 
+    function monthlyMinutes(entries) {
+      const now = new Date();
+      const monthStart = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1);
+      return entries.reduce((total, e) => {
+        const start = new Date(`${e.clock_in.replace(' ', 'T')}Z`).getTime();
+        if (start < monthStart) return total;
+        const end = e.clock_out ? new Date(`${e.clock_out.replace(' ', 'T')}Z`).getTime() : Date.now();
+        return total + Math.max(0, (end - start) / 60000);
+      }, 0);
+    }
+
+    function renderPayEstimate(entries) {
+      const hoursEl = document.getElementById('timesheetPayHours');
+      const estimateEl = document.getElementById('timesheetPayEstimate');
+      if (!hoursEl || !estimateEl) return;
+      const hours = monthlyMinutes(entries) / 60;
+      hoursEl.textContent = hours.toFixed(1);
+      const wageInput = document.getElementById('timesheetWageInput');
+      const wage = parseFloat(wageInput.value);
+      estimateEl.textContent = wage > 0 ? `${(hours * wage).toFixed(2)} €` : '–';
+    }
+
+    let lastEntries = [];
     async function loadHistory() {
       const el = document.getElementById('timesheetHistory');
       try {
         const { entries } = await api('/time-entries');
+        lastEntries = entries;
         el.className = '';
         el.innerHTML = entriesTableHtml(entries, false);
+        renderPayEstimate(entries);
       } catch (err) {
         el.className = '';
         el.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
       }
     }
+
+    const wageInput = document.getElementById('timesheetWageInput');
+    try { wageInput.value = localStorage.getItem('ticketing_hourly_wage') || ''; } catch {}
+    wageInput.addEventListener('input', () => {
+      try {
+        if (wageInput.value) localStorage.setItem('ticketing_hourly_wage', wageInput.value);
+        else localStorage.removeItem('ticketing_hourly_wage');
+      } catch {}
+      renderPayEstimate(lastEntries);
+    });
 
     async function loadTeam() {
       const el = document.getElementById('timesheetTeamList');
