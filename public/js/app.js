@@ -707,6 +707,20 @@
       timesheet_pay_wage_label: 'Guadagno orario (€)', timesheet_pay_hours_label: 'Ore timbrate questo mese', timesheet_pay_estimate_label: 'Stima paga del mese',
       toast_clocked_in: 'Entrata registrata', toast_clocked_out: 'Uscita registrata',
       admin_system_title: 'Stato del server', admin_system_hint: 'Indicatori in tempo reale su carico, memoria e limiti tecnici della piattaforma (solo admin).',
+      admin_section_privacy: 'Dati e Privacy',
+      admin_privacy_title: 'Dati e privacy', admin_privacy_hint: 'Dove vengono conservati i dati aziendali, per quanto tempo, e come sono protetti.',
+      privacy_db_label: 'Database', privacy_db_turso: 'Turso (gestito, persistente)', privacy_db_local: 'File locale (solo sviluppo, non persistente)',
+      privacy_attachments_label: 'Allegati ticket', privacy_attachments_db: 'Nel database',
+      privacy_backup_label: 'Backup', privacy_backup_pitr: 'Point-in-time recovery attivo (24 ore) + backup manuale disponibile',
+      privacy_backup_none: 'Nessun backup automatico (ambiente di sviluppo)',
+      privacy_categories_title: 'Categorie di dati trattati e conservazione',
+      privacy_cat_identity: 'Anagrafica utenti (nome, email, ruolo, reparto)', privacy_cat_tickets: 'Ticket, commenti e allegati',
+      privacy_cat_messages: 'Messaggi diretti tra colleghi', privacy_cat_notifications: 'Notifiche (una volta lette)',
+      privacy_cat_audit: 'Registro attività (audit log)', privacy_cat_timesheet: 'Timbrature, ferie e permessi',
+      privacy_ret_manual: 'Conservato finché non lo elimina un amministratore',
+      privacy_ret_auto_after: 'Eliminato automaticamente dopo', privacy_days_unit: 'giorni',
+      privacy_isolation_hint: 'Ogni azienda vede solo i propri dati: l\'isolamento è applicato su ogni lista, con un controllo automatico che blocca la risposta se una riga fuori perimetro dovesse comunque comparire, invece di restituirla.',
+      privacy_transport_hint: 'Tutto il traffico tra dispositivo, applicazione e database viaggia cifrato via HTTPS.',
       system_uptime_label: 'Attivo da', system_memory_label: 'Memoria (RSS)', system_requests_label: 'Richieste API (15 min)',
       system_requests_reset_prefix: 'si azzera tra', system_requests_reset_suffix: 'min', system_requests_total_suffix: 'totali dall\'avvio',
       system_db_label: 'Latenza database', system_db_error: 'Errore', system_db_mode_turso: 'Turso con replica locale', system_db_mode_local: 'File locale (non persistente)',
@@ -1113,6 +1127,20 @@
       timesheet_pay_wage_label: 'Hourly wage', timesheet_pay_hours_label: 'Hours clocked this month', timesheet_pay_estimate_label: 'Estimated pay this month',
       toast_clocked_in: 'Clocked in', toast_clocked_out: 'Clocked out',
       admin_system_title: 'Server status', admin_system_hint: 'Real-time indicators of platform load, memory and technical limits (admin only).',
+      admin_section_privacy: 'Data & Privacy',
+      admin_privacy_title: 'Data and privacy', admin_privacy_hint: 'Where company data is stored, for how long, and how it is protected.',
+      privacy_db_label: 'Database', privacy_db_turso: 'Turso (managed, persistent)', privacy_db_local: 'Local file (development only, not persistent)',
+      privacy_attachments_label: 'Ticket attachments', privacy_attachments_db: 'In the database',
+      privacy_backup_label: 'Backup', privacy_backup_pitr: 'Point-in-time recovery active (24 hours) + manual backup available',
+      privacy_backup_none: 'No automatic backup (development environment)',
+      privacy_categories_title: 'Categories of data handled and retention',
+      privacy_cat_identity: 'User directory (name, email, role, department)', privacy_cat_tickets: 'Tickets, comments and attachments',
+      privacy_cat_messages: 'Direct messages between colleagues', privacy_cat_notifications: 'Notifications (once read)',
+      privacy_cat_audit: 'Activity log (audit log)', privacy_cat_timesheet: 'Time tracking, leave and permissions',
+      privacy_ret_manual: 'Kept until an administrator deletes it',
+      privacy_ret_auto_after: 'Automatically deleted after', privacy_days_unit: 'days',
+      privacy_isolation_hint: 'Each company sees only its own data: isolation is enforced on every list, with an automatic check that blocks the response instead of returning it if a row outside the requester\'s scope were ever to appear.',
+      privacy_transport_hint: 'All traffic between device, application and database travels encrypted over HTTPS.',
       system_uptime_label: 'Up for', system_memory_label: 'Memory (RSS)', system_requests_label: 'API requests (15 min)',
       system_requests_reset_prefix: 'resets in', system_requests_reset_suffix: 'min', system_requests_total_suffix: 'total since start',
       system_db_label: 'Database latency', system_db_error: 'Error', system_db_mode_turso: 'Turso with local replica', system_db_mode_local: 'Local file (not persistent)',
@@ -4631,6 +4659,7 @@
       { key: 'roles', icon: 'shield', label: t('admin_section_roles') },
       { key: 'org', icon: 'globe', label: t('admin_section_org') },
       { key: 'system', icon: 'server', label: t('admin_section_system') },
+      { key: 'privacy', icon: 'lock', label: t('admin_section_privacy') },
       ...(state.user.is_super_admin ? [{ key: 'companies', icon: 'building', label: t('admin_section_companies') }] : []),
     ];
     const activeSection = isAdmin ? (ADMIN_SECTIONS.some((s) => s.key === state.adminSection) ? state.adminSection : 'overview') : 'users';
@@ -4905,6 +4934,11 @@
           <p class="hint">${t('admin_system_hint')}</p>
           <div id="systemStatusBody" class="spinner-row">${t('loading')}</div>
         </div>
+        <div class="card admin-grid-full" data-admin-panel="privacy" data-block-id="dataGovernance" ${activeSection === 'privacy' ? '' : 'hidden'}>
+          <h3 class="section-title" style="margin-top:0">${icon('lock')} ${t('admin_privacy_title')}</h3>
+          <p class="hint">${t('admin_privacy_hint')}</p>
+          <div id="dataGovernanceBody" class="spinner-row">${t('loading')}</div>
+        </div>
         ${state.user.is_super_admin ? `
         <div class="card admin-grid-full" data-admin-panel="companies" data-block-id="companiesManagement" ${activeSection === 'companies' ? '' : 'hidden'}>
           <h3 class="section-title" style="margin-top:0">${icon('building')} ${t('admin_companies_title')}</h3>
@@ -5149,6 +5183,49 @@
         teardownAdminSystemStatusPolling();
         adminSystemStatusTimer = setInterval(loadSystemStatus, 10000);
       }
+
+      async function loadDataGovernance() {
+        const bodyEl = document.getElementById('dataGovernanceBody');
+        if (!bodyEl) return;
+        try {
+          const status = await api('/admin/status');
+          const gov = status.dataGovernance;
+          const retentionRow = (label, days) => `<div class="storage-row"><span>${label}</span><strong>${t('privacy_ret_auto_after')} ${days} ${t('privacy_days_unit')}</strong></div>`;
+          const manualRow = (label) => `<div class="storage-row"><span>${label}</span><strong>${t('privacy_ret_manual')}</strong></div>`;
+          bodyEl.className = '';
+          bodyEl.innerHTML = `
+            <div class="system-status-grid">
+              <div class="system-status-card system-status-card-ok">
+                <div class="system-status-card-head">${statusIconHtml('server')}<span class="system-status-label">${t('privacy_db_label')}</span></div>
+                <span class="system-status-value">${gov.database.provider === 'turso' ? t('privacy_db_turso') : t('privacy_db_local')}</span>
+              </div>
+              <div class="system-status-card system-status-card-ok">
+                <div class="system-status-card-head">${statusIconHtml('paperclip')}<span class="system-status-label">${t('privacy_attachments_label')}</span></div>
+                <span class="system-status-value">${gov.attachmentStorage.external ? escapeHtml(gov.attachmentStorage.endpointHost) : t('privacy_attachments_db')}</span>
+              </div>
+              <div class="system-status-card system-status-card-ok">
+                <div class="system-status-card-head">${statusIconHtml('download')}<span class="system-status-label">${t('privacy_backup_label')}</span></div>
+                <span class="system-status-value">${gov.database.pointInTimeRecovery ? t('privacy_backup_pitr') : t('privacy_backup_none')}</span>
+              </div>
+            </div>
+            <h4 class="section-title">${t('privacy_categories_title')}</h4>
+            <div class="storage-table">
+              ${manualRow(t('privacy_cat_identity'))}
+              ${manualRow(t('privacy_cat_tickets'))}
+              ${retentionRow(t('privacy_cat_messages'), gov.retentionDays.directMessages)}
+              ${retentionRow(t('privacy_cat_notifications'), gov.retentionDays.readNotifications)}
+              ${retentionRow(t('privacy_cat_audit'), gov.retentionDays.auditLog)}
+              ${manualRow(t('privacy_cat_timesheet'))}
+            </div>
+            <p class="hint">${t('privacy_isolation_hint')}</p>
+            <p class="hint">${t('privacy_transport_hint')}</p>`;
+        } catch (err) {
+          bodyEl.className = '';
+          bodyEl.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
+        }
+      }
+
+      if (activeSection === 'privacy') loadDataGovernance();
 
       async function loadAdminOverviewCounts() {
         try {
