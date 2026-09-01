@@ -240,7 +240,8 @@
   function formatFileSize(bytes) {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
   }
 
   function attachmentIconName(mimeType) {
@@ -672,6 +673,13 @@
       system_eventloop_label: 'Ritardo event loop', system_eventloop_hint: 'Indicatore diretto di sovraccarico del server',
       system_load_label: 'Carico CPU (1 min)', system_load_hint: 'su',
       system_online_users_label: 'Utenti online', system_online_staff_prefix: 'Staff:', system_online_customers_prefix: 'Utenti:',
+      system_storage_title: 'Spazio e utilizzo', system_storage_hint: 'Dimensione del database e conteggio delle righe per le tabelle principali, per tenere sotto controllo la crescita nel tempo.',
+      system_storage_db_size_label: 'Dimensione database', system_storage_attachments_label: 'Allegati (ticket + onboarding)',
+      system_storage_retention_hint: 'Pulizia automatica in corso: messaggi diretti dopo 14 giorni, notifiche lette dopo 90 giorni, registro attività dopo 365 giorni.',
+      storage_table_tickets: 'Ticket', storage_table_comments: 'Commenti', storage_table_ticket_events: 'Eventi ticket',
+      storage_table_ticket_attachments: 'Allegati ticket', storage_table_onboarding_attachments: 'Allegati onboarding',
+      storage_table_notifications: 'Notifiche', storage_table_audit_log: 'Registro attività', storage_table_direct_messages: 'Messaggi diretti',
+      storage_table_users: 'Utenti',
       admin_roles_title: 'Ruoli personalizzati', admin_roles_hint: 'Crea ruoli con permessi specifici da assegnare al personale, oltre ad Agente e Amministratore.',
       field_color: 'Colore', field_role_read_only: 'Sola lettura (non può modificare i ticket)', field_role_permissions: 'Permessi',
       btn_add_role: 'Crea ruolo', no_roles_hint: 'Nessun ruolo personalizzato ancora creato.',
@@ -1051,6 +1059,13 @@
       system_eventloop_label: 'Event loop lag', system_eventloop_hint: 'Direct indicator of server overload',
       system_load_label: 'CPU load (1 min)', system_load_hint: 'of',
       system_online_users_label: 'Online users', system_online_staff_prefix: 'Staff:', system_online_customers_prefix: 'Users:',
+      system_storage_title: 'Storage and usage', system_storage_hint: 'Database size and row counts for the main tables, to keep growth under control over time.',
+      system_storage_db_size_label: 'Database size', system_storage_attachments_label: 'Attachments (tickets + onboarding)',
+      system_storage_retention_hint: 'Automatic cleanup in place: direct messages after 14 days, read notifications after 90 days, activity log after 365 days.',
+      storage_table_tickets: 'Tickets', storage_table_comments: 'Comments', storage_table_ticket_events: 'Ticket events',
+      storage_table_ticket_attachments: 'Ticket attachments', storage_table_onboarding_attachments: 'Onboarding attachments',
+      storage_table_notifications: 'Notifications', storage_table_audit_log: 'Activity log', storage_table_direct_messages: 'Direct messages',
+      storage_table_users: 'Users',
       admin_roles_title: 'Custom roles', admin_roles_hint: 'Create roles with specific permissions to assign to staff, beyond Agent and Administrator.',
       field_color: 'Color', field_role_read_only: 'Read-only (cannot modify tickets)', field_role_permissions: 'Permissions',
       btn_add_role: 'Create role', no_roles_hint: 'No custom roles created yet.',
@@ -4811,6 +4826,38 @@
         </svg>`;
       }
 
+      function storageStatsHtml(storage) {
+        if (!storage) return '';
+        const tableLabels = {
+          tickets: t('storage_table_tickets'), comments: t('storage_table_comments'),
+          ticket_events: t('storage_table_ticket_events'), ticket_attachments: t('storage_table_ticket_attachments'),
+          onboarding_attachments: t('storage_table_onboarding_attachments'), notifications: t('storage_table_notifications'),
+          audit_log: t('storage_table_audit_log'), direct_messages: t('storage_table_direct_messages'),
+          users: t('storage_table_users'),
+        };
+        const rows = Object.entries(storage.rowCounts || {})
+          .filter(([, n]) => n !== null)
+          .map(([key, n]) => `<div class="storage-row"><span>${tableLabels[key] || key}</span><strong>${n.toLocaleString('it-IT')}</strong></div>`)
+          .join('');
+        return `
+          <div class="system-storage">
+            <h4 class="section-title">${t('system_storage_title')}</h4>
+            <p class="hint">${t('system_storage_hint')}</p>
+            <div class="system-status-grid">
+              <div class="system-status-card">
+                <span class="system-status-label">${t('system_storage_db_size_label')}</span>
+                <span class="system-status-value">${storage.dbSizeBytes !== null ? formatFileSize(storage.dbSizeBytes) : t('system_db_error')}</span>
+              </div>
+              <div class="system-status-card">
+                <span class="system-status-label">${t('system_storage_attachments_label')}</span>
+                <span class="system-status-value">${formatFileSize(storage.attachmentBytes)}</span>
+              </div>
+            </div>
+            <div class="storage-table">${rows}</div>
+            <p class="hint">${t('system_storage_retention_hint')}</p>
+          </div>`;
+      }
+
       async function loadSystemStatus() {
         const bodyEl = document.getElementById('systemStatusBody');
         if (!bodyEl) return;
@@ -4892,7 +4939,8 @@
             ${onlineUsers.length ? `
             <div class="online-users-list">
               ${onlineUsers.map((u) => `<span class="role-tag role-tag-active"><span class="online-dot"></span> ${escapeHtml(u.name)}</span>`).join('')}
-            </div>` : ''}`;
+            </div>` : ''}
+            ${storageStatsHtml(status.storage)}`;
         } catch (err) {
           bodyEl.className = '';
           bodyEl.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
