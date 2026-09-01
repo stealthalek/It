@@ -638,7 +638,7 @@ router.patch(
             const workStart = ticket.work_start_hour ?? 9;
             const workEnd = ticket.work_end_hour ?? 18;
             const since = new Date(ticket.waiting_since.replace(' ', 'T') + 'Z').getTime();
-            const pausedNow = businessMillisBetween(since, Date.now(), workStart, workEnd);
+            const pausedNow = businessMillisBetween(since, Date.now(), workStart, workEnd, ticket.company_id);
             updates.push('sla_paused_ms = sla_paused_ms + ?');
             params.push(pausedNow);
             updates.push('waiting_since = NULL');
@@ -910,7 +910,7 @@ router.post(
       const workStart = ticket.work_start_hour ?? 9;
       const workEnd = ticket.work_end_hour ?? 18;
       const since = ticket.waiting_since ? new Date(ticket.waiting_since.replace(' ', 'T') + 'Z').getTime() : Date.now();
-      const pausedNow = businessMillisBetween(since, Date.now(), workStart, workEnd);
+      const pausedNow = businessMillisBetween(since, Date.now(), workStart, workEnd, ticket.company_id);
       await db.run(
         "UPDATE tickets SET status = 'in_progress', waiting_since = NULL, sla_paused_ms = sla_paused_ms + ? WHERE id = ?",
         [pausedNow, ticket.id]
