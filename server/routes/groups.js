@@ -1,8 +1,9 @@
 const express = require('express');
 const db = require('../db/database');
-const { authenticate, requireRole } = require('../middleware/auth');
+const { authenticate } = require('../middleware/auth');
 const asyncHandler = require('../middleware/asyncHandler');
 const { logAudit } = require('../audit');
+const { requirePermission } = require('../lib/permissions');
 
 const router = express.Router();
 router.use(authenticate);
@@ -52,7 +53,7 @@ router.get(
 
 router.post(
   '/',
-  requireRole('admin'),
+  requirePermission('groups_manage'),
   asyncHandler(async (req, res) => {
     const { name, parentId, slaResponseHours, slaResolveHours, workStartHour, workEndHour, managerId, displayName, companyId } = req.body || {};
     if (!name || !name.trim()) {
@@ -110,7 +111,7 @@ router.post(
 
 router.patch(
   '/:id',
-  requireRole('admin'),
+  requirePermission('groups_manage'),
   asyncHandler(async (req, res) => {
     const group = await db.get('SELECT * FROM groups WHERE id = ?', [req.params.id]);
     if (!group) {
@@ -203,7 +204,7 @@ router.patch(
 
 router.delete(
   '/:id',
-  requireRole('admin'),
+  requirePermission('groups_manage'),
   asyncHandler(async (req, res) => {
     const group = await db.get('SELECT * FROM groups WHERE id = ?', [req.params.id]);
     if (!group) {
