@@ -249,17 +249,21 @@
     return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
   }
 
+  function pctSeverity(pct) { return pct >= 90 ? 'danger' : pct >= 70 ? 'warning' : 'ok'; }
+  function dbLatencySeverity(ms) { return ms === null ? 'danger' : ms > 1500 ? 'danger' : ms > 600 ? 'warning' : 'ok'; }
+  function eventLoopLagSeverity(ms) { return ms > 150 ? 'danger' : ms > 50 ? 'warning' : 'ok'; }
+  function loadRatioSeverity(ratio) { return ratio > 1 ? 'danger' : ratio > 0.7 ? 'warning' : 'ok'; }
+
   function computeOverallSeverity(status) {
     const memPct = Math.min(100, Math.round((status.memory.rssMb / 512) * 100));
     const reqPct = Math.min(100, Math.round((status.requestWindow.windowCount / status.requestWindow.windowMax) * 100));
     const loadRatio = status.loadAvg1m / status.cpuCount;
-    const pctSeverity = (pct) => (pct >= 90 ? 'danger' : pct >= 70 ? 'warning' : 'ok');
     const severities = [
       pctSeverity(memPct),
       pctSeverity(reqPct),
-      status.db.latencyMs === null || status.db.latencyMs > 400 ? 'danger' : status.db.latencyMs > 100 ? 'warning' : 'ok',
-      status.eventLoopLagMs > 100 ? 'danger' : status.eventLoopLagMs > 30 ? 'warning' : 'ok',
-      loadRatio > 1 ? 'danger' : loadRatio > 0.7 ? 'warning' : 'ok',
+      dbLatencySeverity(status.db.latencyMs),
+      eventLoopLagSeverity(status.eventLoopLagMs),
+      loadRatioSeverity(loadRatio),
     ];
     if (severities.includes('danger')) return 'danger';
     if (severities.includes('warning')) return 'warning';
@@ -351,6 +355,10 @@
       message_ttl_hint: 'I messaggi vengono eliminati automaticamente dopo 14 giorni per non appesantire il server.',
       message_edited_label: 'modificato', message_edit_btn: 'Modifica messaggio', message_delete_btn: 'Elimina messaggio',
       message_edit_prompt: 'Modifica il messaggio', confirm_delete_message: 'Eliminare questo messaggio?',
+      delete_conversation_title: 'Elimina chat', confirm_delete_conversation: 'Eliminare l\'intera chat con questa persona? Verranno rimossi tutti i messaggi in entrambe le direzioni, in modo permanente.',
+      toast_conversation_deleted: 'Chat eliminata',
+      confirm_bulk_delete_conversations_prefix: 'Eliminare definitivamente', confirm_bulk_delete_conversations_suffix: ' chat selezionate? Tutti i messaggi verranno rimossi in modo permanente.',
+      toast_bulk_conversations_deleted: 'Chat eliminate',
       close_btn: 'Chiudi',
       leave_requests_hint: 'Richiedi ferie o permessi e tieni traccia delle tue richieste.',
       leave_new_request_title: 'Nuova richiesta', leave_field_type: 'Tipo', leave_field_start: 'Dal', leave_field_end: 'Al', leave_field_note: 'Motivo (facoltativo)',
@@ -753,6 +761,10 @@
       message_ttl_hint: 'Messages are automatically deleted after 14 days to keep the server light.',
       message_edited_label: 'edited', message_edit_btn: 'Edit message', message_delete_btn: 'Delete message',
       message_edit_prompt: 'Edit the message', confirm_delete_message: 'Delete this message?',
+      delete_conversation_title: 'Delete chat', confirm_delete_conversation: 'Delete the entire chat with this person? All messages in both directions will be permanently removed.',
+      toast_conversation_deleted: 'Chat deleted',
+      confirm_bulk_delete_conversations_prefix: 'Permanently delete', confirm_bulk_delete_conversations_suffix: ' selected chats? All messages will be permanently removed.',
+      toast_bulk_conversations_deleted: 'Chats deleted',
       close_btn: 'Close',
       leave_requests_hint: 'Request vacation or personal leave and track your requests.',
       leave_new_request_title: 'New request', leave_field_type: 'Type', leave_field_start: 'From', leave_field_end: 'To', leave_field_note: 'Reason (optional)',
@@ -1893,6 +1905,9 @@
       });
       socket.on('message:deleted', (payload) => {
         if (location.hash === `#/messages/${payload.senderId}`) route();
+      });
+      socket.on('conversation:deleted', (payload) => {
+        if (location.hash === `#/messages/${payload.otherUserId}` || location.hash === '#/messages') route();
       });
       notifSocket = socket;
     } catch {}
@@ -4932,6 +4947,12 @@
         return 'ok';
       }
 
+      function severityToBarClass(sev) {
+        if (sev === 'danger') return 'system-bar-danger';
+        if (sev === 'warning') return 'system-bar-warning';
+        return 'system-bar-ok';
+      }
+
       function worstSeverity(...severities) {
         if (severities.includes('danger')) return 'danger';
         if (severities.includes('warning')) return 'warning';
@@ -5021,11 +5042,11 @@
           const status = await api('/admin/status');
           const memPct = Math.min(100, Math.round((status.memory.rssMb / 512) * 100));
           const reqPct = Math.min(100, Math.round((status.requestWindow.windowCount / status.requestWindow.windowMax) * 100));
-          const latencyClass = status.db.latencyMs === null ? 'system-bar-danger' : status.db.latencyMs > 400 ? 'system-bar-danger' : status.db.latencyMs > 100 ? 'system-bar-warning' : 'system-bar-ok';
-          const lagClass = status.eventLoopLagMs > 100 ? 'system-bar-danger' : status.eventLoopLagMs > 30 ? 'system-bar-warning' : 'system-bar-ok';
+          const latencyClass = severityToBarClass(dbLatencySeverity(status.db.latencyMs));
+          const lagClass = severityToBarClass(eventLoopLagSeverity(status.eventLoopLagMs));
           const lagPct = Math.min(100, Math.round((status.eventLoopLagMs / 200) * 100));
           const loadRatio = status.loadAvg1m / status.cpuCount;
-          const loadClass = loadRatio > 1 ? 'system-bar-danger' : loadRatio > 0.7 ? 'system-bar-warning' : 'system-bar-ok';
+          const loadClass = severityToBarClass(loadRatioSeverity(loadRatio));
           const loadPct = Math.min(100, Math.round(loadRatio * 100));
 
           systemStatusHistory.push({
@@ -5093,7 +5114,7 @@
               <div class="system-status-card system-status-card-${dbSeverity}">
                 <div class="system-status-card-head">${statusIconHtml('server')}<span class="system-status-label">${t('system_db_label')}</span></div>
                 <span class="system-status-value">${status.db.latencyMs !== null ? `${status.db.latencyMs} ms` : t('system_db_error')}</span>
-                <div class="system-bar"><div class="system-bar-fill ${latencyClass}" style="width:${status.db.latencyMs !== null ? Math.min(100, Math.round((status.db.latencyMs / 500) * 100)) : 100}%"></div></div>
+                <div class="system-bar"><div class="system-bar-fill ${latencyClass}" style="width:${status.db.latencyMs !== null ? Math.min(100, Math.round((status.db.latencyMs / 1500) * 100)) : 100}%"></div></div>
                 <span class="hint">${status.db.mode === 'turso' ? t('system_db_mode_turso') : t('system_db_mode_local')}</span>
               </div>
               <div class="system-status-card system-status-card-${lagSeverity}">
@@ -7552,6 +7573,7 @@
   }
 
   async function renderMessagesInbox() {
+    const isAdmin = state.user.role === 'admin';
     appEl.innerHTML = `
       <div class="view-header">
         <div>
@@ -7559,17 +7581,34 @@
           <p class="hint">${t('messages_inbox_hint')}</p>
         </div>
       </div>
+      ${isAdmin ? `
+      <div id="convBulkBar" class="bulk-action-bar" hidden>
+        <span id="convBulkCount" class="hint"></span>
+        <button type="button" id="convBulkDeleteBtn" class="btn btn-outline-danger btn-sm">${icon('trash')} ${t('bulk_delete_btn')}</button>
+        <button type="button" id="convBulkClearBtn" class="btn btn-ghost btn-sm">${t('bulk_clear_selection')}</button>
+      </div>` : ''}
       <div id="messagesInboxWrap" class="card-list spinner-row">${t('loading')}</div>`;
 
     const impersonatingId = state.viewAs && !state.viewAs.roleOnly && state.viewAs.id ? state.viewAs.id : null;
     const viewerId = impersonatingId || state.user.id;
+    const selectedConvIds = new Set();
 
     const wrap = document.getElementById('messagesInboxWrap');
+    const bulkBar = document.getElementById('convBulkBar');
+    const bulkCount = document.getElementById('convBulkCount');
+
+    function updateBulkBar() {
+      if (!bulkBar) return;
+      bulkBar.hidden = selectedConvIds.size === 0;
+      bulkCount.textContent = `${t('bulk_selected_count')} ${selectedConvIds.size}`;
+    }
+
     try {
       const { conversations } = await api(`/messages/conversations${impersonatingId ? `?asUserId=${impersonatingId}` : ''}`);
       wrap.className = 'card-list';
       wrap.innerHTML = conversations.length ? conversations.map((c) => `
-        <a href="#/messages/${c.user_id}" class="card directory-card ${c.unread_count ? 'announcement-unread' : ''}">
+        <div class="card directory-card ${c.unread_count ? 'announcement-unread' : ''}" data-user-id="${c.user_id}" style="cursor:pointer">
+          ${isAdmin && !impersonatingId ? `<input type="checkbox" class="convSelectBox" data-id="${c.user_id}" />` : ''}
           <div class="directory-card-main">
             <h3>${escapeHtml(c.user_name)}</h3>
             <p class="hint">${c.last_sender_id === viewerId ? `${t('messages_you_prefix')} ` : ''}${escapeHtml(c.last_body.slice(0, 90))}</p>
@@ -7578,7 +7617,66 @@
             <span class="hint">${formatDate(c.last_created_at)}</span>
             ${c.unread_count ? `<span class="role-tag">${c.unread_count}</span>` : ''}
           </div>
-        </a>`).join('') : `<p class="hint">${t('no_messages_yet')}</p>`;
+          ${isAdmin && !impersonatingId ? `<button type="button" class="icon-btn convDeleteBtn" data-id="${c.user_id}" data-name="${escapeHtml(c.user_name)}" title="${t('delete_conversation_title')}">${icon('trash')}</button>` : ''}
+        </div>`).join('') : `<p class="hint">${t('no_messages_yet')}</p>`;
+
+      wrap.querySelectorAll('.directory-card').forEach((card) => {
+        card.addEventListener('click', (e) => {
+          if (e.target.closest('input, button')) return;
+          location.hash = `#/messages/${card.dataset.userId}`;
+        });
+      });
+
+      async function deleteConversation(userId) {
+        await api(`/messages/conversation/${userId}`, { method: 'DELETE' });
+      }
+
+      if (isAdmin && !impersonatingId) {
+        wrap.querySelectorAll('.convSelectBox').forEach((box) => {
+          box.addEventListener('click', (e) => e.stopPropagation());
+          box.addEventListener('change', () => {
+            const id = Number(box.dataset.id);
+            if (box.checked) selectedConvIds.add(id); else selectedConvIds.delete(id);
+            updateBulkBar();
+          });
+        });
+        wrap.querySelectorAll('.convDeleteBtn').forEach((btn) => {
+          btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            if (!confirm(t('confirm_delete_conversation'))) return;
+            try {
+              await deleteConversation(btn.dataset.id);
+              showToast(t('toast_conversation_deleted'), 'success');
+              renderMessagesInbox();
+            } catch (err) {
+              showToast(err.message, 'error');
+            }
+          });
+        });
+        const bulkDeleteBtn = document.getElementById('convBulkDeleteBtn');
+        const bulkClearBtn = document.getElementById('convBulkClearBtn');
+        if (bulkDeleteBtn) {
+          bulkDeleteBtn.addEventListener('click', async () => {
+            if (!selectedConvIds.size) return;
+            if (!confirm(`${t('confirm_bulk_delete_conversations_prefix')} ${selectedConvIds.size}${t('confirm_bulk_delete_conversations_suffix')}`)) return;
+            try {
+              await Promise.all([...selectedConvIds].map((id) => deleteConversation(id)));
+              showToast(t('toast_bulk_conversations_deleted'), 'success');
+              selectedConvIds.clear();
+              renderMessagesInbox();
+            } catch (err) {
+              showToast(err.message, 'error');
+            }
+          });
+        }
+        if (bulkClearBtn) {
+          bulkClearBtn.addEventListener('click', () => {
+            selectedConvIds.clear();
+            wrap.querySelectorAll('.convSelectBox').forEach((box) => { box.checked = false; });
+            updateBulkBar();
+          });
+        }
+      }
     } catch (err) {
       wrap.className = '';
       wrap.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
@@ -7610,7 +7708,10 @@
     appEl.innerHTML = `
       <div class="view-header">
         <h1>${icon('mail')} ${escapeHtml(otherUser.name)}</h1>
-        <a class="btn btn-ghost" href="#/messages">${icon('arrowLeft')} ${t('back_to_list')}</a>
+        <div style="display:flex;gap:0.5rem">
+          ${state.user.role === 'admin' && !impersonatingId ? `<button type="button" id="threadDeleteConvBtn" class="btn btn-outline-danger btn-sm">${icon('trash')} ${t('delete_conversation_title')}</button>` : ''}
+          <a class="btn btn-ghost" href="#/messages">${icon('arrowLeft')} ${t('back_to_list')}</a>
+        </div>
       </div>
       <div id="messageThreadWrap" class="card message-thread"></div>
       ${impersonatingId ? `<p class="hint">${t('viewas_readonly_suffix')}</p>` : `
@@ -7621,6 +7722,20 @@
       <p class="hint">${t('message_ttl_hint')}</p>`}`;
 
     const threadWrap = document.getElementById('messageThreadWrap');
+
+    const threadDeleteConvBtn = document.getElementById('threadDeleteConvBtn');
+    if (threadDeleteConvBtn) {
+      threadDeleteConvBtn.addEventListener('click', async () => {
+        if (!confirm(t('confirm_delete_conversation'))) return;
+        try {
+          await api(`/messages/conversation/${otherUser.id}`, { method: 'DELETE' });
+          showToast(t('toast_conversation_deleted'), 'success');
+          location.hash = '#/messages';
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      });
+    }
 
     function messageBubbleHtml(m) {
       const mine = m.sender_id === viewerId;

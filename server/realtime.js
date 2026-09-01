@@ -136,7 +136,12 @@ function broadcastDirectMessageDelete(userId, payload) {
   io.to(`user:${userId}`).emit('message:deleted', payload);
 }
 
+function broadcastConversationDelete(userId, payload) {
+  if (!io) return;
+  io.to(`user:${userId}`).emit('conversation:deleted', payload);
+}
+
 module.exports = {
   initRealtime, broadcastActivityItem, broadcastTicketUpdate, broadcastNotification, getOnlineUsers,
-  broadcastDirectMessage, broadcastDirectMessageEdit, broadcastDirectMessageDelete,
+  broadcastDirectMessage, broadcastDirectMessageEdit, broadcastDirectMessageDelete, broadcastConversationDelete,
 };
