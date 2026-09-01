@@ -291,7 +291,7 @@
 
   const TRANSLATIONS = {
     it: {
-      nav_dashboard: 'Ticket', nav_new: 'Nuovo ticket', nav_search: 'Ricerca',
+      nav_dashboard: 'Ticket', nav_new: 'Nuovo ticket', nav_search: 'Ricerca', nav_announcements: 'Bacheca',
       nav_assets: 'Asset', nav_onboarding: 'Onboarding', nav_timesheet: 'Timbratura', nav_report: 'Report', nav_audit: 'Audit', nav_admin: 'Amministrazione', nav_profile: 'Profilo', logout: 'Esci',
       login_title: 'Accedi', login_hint: 'Entra nella piattaforma di ticketing.', login_email: 'Email', login_password: 'Password',
       login_submit: 'Accedi', login_no_account: 'Non hai un account?', login_register_link: 'Registrati',
@@ -624,6 +624,13 @@
       toast_role_created: 'Ruolo creato', toast_role_deleted: 'Ruolo eliminato',
       perm_automations_manage: 'Gestire automazioni', perm_holidays_manage: 'Gestire festività e orari',
       perm_canned_responses_manage: 'Gestire risposte rapide', perm_templates_manage: 'Gestire modelli di ticket',
+      perm_announcements_manage: 'Gestire la bacheca annunci',
+      announcements_hint: 'Comunicazioni ufficiali dalla tua azienda.', btn_new_announcement: 'Nuovo annuncio',
+      field_announcement_title: 'Titolo', field_announcement_body: 'Testo dell\'annuncio', announcement_pinned_label: 'Metti in evidenza (in cima alla bacheca)',
+      btn_pin: 'Metti in evidenza', btn_unpin: 'Rimuovi dall\'evidenza', btn_edit: 'Modifica',
+      no_announcements_found: 'Nessun annuncio pubblicato.',
+      toast_announcement_created: 'Annuncio pubblicato', toast_announcement_updated: 'Annuncio aggiornato', toast_announcement_deleted: 'Annuncio eliminato',
+      confirm_delete_announcement: 'Eliminare definitivamente questo annuncio?',
       perm_onboarding_catalog_manage: 'Gestire catalogo onboarding', perm_assets_delete: 'Eliminare risorse',
       perm_audit_view: 'Vedere audit', perm_reports_view: 'Vedere report', perm_tickets_delete: 'Eliminare ticket',
       onboarding_license_options_label: 'Licenze selezionabili', onboarding_license_options_placeholder: 'Nessuna, E5, F3, F3_1...',
@@ -636,7 +643,7 @@
       admin_block_drag_hint: 'Trascina per riordinare',
     },
     en: {
-      nav_dashboard: 'Tickets', nav_new: 'New ticket', nav_search: 'Search',
+      nav_dashboard: 'Tickets', nav_new: 'New ticket', nav_search: 'Search', nav_announcements: 'Announcements',
       nav_assets: 'Assets', nav_onboarding: 'Onboarding', nav_timesheet: 'Time clock', nav_report: 'Report', nav_audit: 'Audit', nav_admin: 'Administration', nav_profile: 'Profile', logout: 'Log out',
       login_title: 'Sign in', login_hint: 'Enter the ticketing platform.', login_email: 'Email', login_password: 'Password',
       login_submit: 'Sign in', login_no_account: "Don't have an account?", login_register_link: 'Register',
@@ -969,6 +976,13 @@
       toast_role_created: 'Role created', toast_role_deleted: 'Role deleted',
       perm_automations_manage: 'Manage automations', perm_holidays_manage: 'Manage holidays and hours',
       perm_canned_responses_manage: 'Manage canned responses', perm_templates_manage: 'Manage ticket templates',
+      perm_announcements_manage: 'Manage the announcements board',
+      announcements_hint: 'Official communications from your company.', btn_new_announcement: 'New announcement',
+      field_announcement_title: 'Title', field_announcement_body: 'Announcement text', announcement_pinned_label: 'Pin to top of the board',
+      btn_pin: 'Pin', btn_unpin: 'Unpin', btn_edit: 'Edit',
+      no_announcements_found: 'No announcements published yet.',
+      toast_announcement_created: 'Announcement published', toast_announcement_updated: 'Announcement updated', toast_announcement_deleted: 'Announcement deleted',
+      confirm_delete_announcement: 'Permanently delete this announcement?',
       perm_onboarding_catalog_manage: 'Manage onboarding catalog', perm_assets_delete: 'Delete assets',
       perm_audit_view: 'View audit', perm_reports_view: 'View reports', perm_tickets_delete: 'Delete tickets',
       onboarding_license_options_label: 'Selectable licenses', onboarding_license_options_placeholder: 'None, E5, F3, F3_1...',
@@ -997,11 +1011,11 @@
   }
 
   const NAV_KEY_BY_ROUTE = {
-    dashboard: 'nav_dashboard', new: 'nav_new', search: 'nav_search',
+    dashboard: 'nav_dashboard', new: 'nav_new', search: 'nav_search', announcements: 'nav_announcements',
     assets: 'nav_assets', onboarding: 'nav_onboarding', timesheet: 'nav_timesheet', orgchart: 'nav_orgchart', report: 'nav_insights', admin: 'nav_admin', profile: 'nav_profile',
   };
   const NAV_ICON_BY_ROUTE = {
-    dashboard: 'ticket', new: 'plus', search: 'inbox',
+    dashboard: 'ticket', new: 'plus', search: 'inbox', announcements: 'megaphone',
     assets: 'monitor', onboarding: 'userCircle', timesheet: 'clock', orgchart: 'globe', report: 'activity', admin: 'shield', profile: 'userCircle',
   };
 
@@ -1009,9 +1023,19 @@
     document.querySelectorAll('.main-nav a[data-nav]').forEach((a) => {
       const key = NAV_KEY_BY_ROUTE[a.dataset.nav];
       const iconName = NAV_ICON_BY_ROUTE[a.dataset.nav];
-      if (key) a.innerHTML = `${icon(iconName, 'nav-icon')}<span class="nav-label">${t(key)}</span>`;
+      if (key) a.innerHTML = `${icon(iconName, 'nav-icon')}<span class="nav-label">${t(key)}</span><span class="nav-dot" hidden></span>`;
     });
     logoutBtn.innerHTML = `${icon('logout')} <span class="nav-label">${t('logout')}</span>`;
+    refreshAnnouncementsNavDot();
+  }
+
+  async function refreshAnnouncementsNavDot() {
+    const dot = document.querySelector('.main-nav a[data-nav="announcements"] .nav-dot');
+    if (!dot || !state.user) return;
+    try {
+      const { unreadCount } = await api('/announcements/unread-count');
+      dot.hidden = !unreadCount;
+    } catch {}
   }
 
   const ACCENT_PRESETS = {
@@ -1157,6 +1181,7 @@
         loadNotifications();
         connectNotifSocket();
       }
+      refreshAnnouncementsNavDot();
     } else {
       userBadge.style.display = 'none';
       logoutBtn.style.display = 'none';
@@ -1753,6 +1778,7 @@
         case 'register': return renderRegister();
         case 'dashboard': return renderDashboard();
         case 'new': return renderNewTicket();
+        case 'announcements': return renderAnnouncements(param);
         case 'ticket': return renderTicketDetail(param);
         case 'admin': return renderAdmin();
         case 'users': return renderUserDetail(param);
@@ -6548,6 +6574,159 @@
     });
 
     loadAssets();
+  }
+
+  function canManageAnnouncements() {
+    return !!(state.user && (state.user.role === 'admin' || state.user.is_super_admin || (Array.isArray(state.user.permissions) && state.user.permissions.includes('announcements_manage'))));
+  }
+
+  async function renderAnnouncements(param) {
+    if (param === 'new') return renderAnnouncementForm();
+    if (param && param !== 'new') return renderAnnouncementDetail(param);
+    return renderAnnouncementsList();
+  }
+
+  async function renderAnnouncementsList() {
+    appEl.innerHTML = `
+      <div class="view-header">
+        <div>
+          <h1>${icon('megaphone')} ${t('nav_announcements')}</h1>
+          <p class="hint">${t('announcements_hint')}</p>
+        </div>
+        ${canManageAnnouncements() ? `<a href="#/announcements/new" class="btn btn-sm">${icon('plus')} ${t('btn_new_announcement')}</a>` : ''}
+      </div>
+      <div id="announcementsWrap" class="card spinner-row">${t('loading')}</div>`;
+
+    const wrap = document.getElementById('announcementsWrap');
+    try {
+      const { announcements } = await api('/announcements');
+      wrap.className = 'card-list';
+      wrap.innerHTML = announcements.length ? announcements.map((a) => `
+        <a href="#/announcements/${a.id}" class="card announcement-card ${a.is_read ? '' : 'announcement-unread'} ${a.pinned ? 'announcement-pinned' : ''}">
+          <div class="announcement-card-head">
+            <h3>${a.pinned ? icon('star', 'badge-icon') : ''} ${escapeHtml(a.title)}</h3>
+            <span class="hint">${formatDate(a.created_at)}</span>
+          </div>
+          <p class="announcement-preview">${escapeHtml(a.body.slice(0, 180))}${a.body.length > 180 ? '…' : ''}</p>
+          <p class="hint">${escapeHtml(a.created_by_name || '')}</p>
+        </a>`).join('') : `<p class="hint">${t('no_announcements_found')}</p>`;
+    } catch (err) {
+      wrap.className = '';
+      wrap.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
+    }
+    refreshAnnouncementsNavDot();
+  }
+
+  async function renderAnnouncementDetail(id) {
+    appEl.innerHTML = `<div class="card spinner-row">${t('loading')}</div>`;
+    let announcement;
+    try {
+      ({ announcement } = await api(`/announcements/${id}`));
+    } catch (err) {
+      appEl.innerHTML = `<div class="card"><p class="error-text">${escapeHtml(err.message)}</p></div>`;
+      return;
+    }
+    if (!announcement.is_read) {
+      api(`/announcements/${id}/read`, { method: 'POST' }).then(refreshAnnouncementsNavDot).catch(() => {});
+    }
+
+    appEl.innerHTML = `
+      <div class="view-header">
+        <div>
+          <h1>${announcement.pinned ? icon('star') : icon('megaphone')} ${escapeHtml(announcement.title)}</h1>
+          <p class="hint">${escapeHtml(announcement.created_by_name || '')} · ${formatDate(announcement.created_at)}</p>
+        </div>
+        <a href="#/announcements" class="btn btn-ghost btn-sm">${icon('arrowLeft')} ${t('back_to_list')}</a>
+      </div>
+      <div class="card">
+        <p class="announcement-body">${escapeHtml(announcement.body).replace(/\n/g, '<br>')}</p>
+        ${canManageAnnouncements() ? `
+          <div class="announcement-admin-actions">
+            <button type="button" class="btn btn-ghost btn-sm" id="announcementPinBtn">${announcement.pinned ? t('btn_unpin') : t('btn_pin')}</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="announcementEditBtn">${icon('edit', 'badge-icon')} ${t('btn_edit')}</button>
+            <button type="button" class="btn btn-ghost btn-sm error-text" id="announcementDeleteBtn">${icon('trash', 'badge-icon')} ${t('btn_delete')}</button>
+          </div>` : ''}
+      </div>`;
+
+    if (canManageAnnouncements()) {
+      document.getElementById('announcementPinBtn').addEventListener('click', async () => {
+        try {
+          await api(`/announcements/${announcement.id}`, { method: 'PATCH', body: { pinned: !announcement.pinned } });
+          renderAnnouncementDetail(id);
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      });
+      document.getElementById('announcementEditBtn').addEventListener('click', () => {
+        renderAnnouncementForm(announcement);
+      });
+      document.getElementById('announcementDeleteBtn').addEventListener('click', async () => {
+        if (!confirm(t('confirm_delete_announcement'))) return;
+        try {
+          await api(`/announcements/${announcement.id}`, { method: 'DELETE' });
+          showToast(t('toast_announcement_deleted'), 'success');
+          location.hash = '#/announcements';
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      });
+    }
+  }
+
+  function renderAnnouncementForm(existing) {
+    if (!canManageAnnouncements()) {
+      appEl.innerHTML = `<div class="card"><p class="error-text">Accesso non consentito.</p></div>`;
+      return;
+    }
+    appEl.innerHTML = `
+      <div class="view-header">
+        <h1>${icon('megaphone')} ${existing ? t('btn_edit') : t('btn_new_announcement')}</h1>
+      </div>
+      <div class="card">
+        <form id="announcementForm" class="form-grid">
+          <div class="field">
+            <label for="announcementTitle">${t('field_announcement_title')}</label>
+            <input id="announcementTitle" type="text" required value="${existing ? escapeHtml(existing.title) : ''}" />
+          </div>
+          <div class="field">
+            <label for="announcementBody">${t('field_announcement_body')}</label>
+            <textarea id="announcementBody" rows="8" required>${existing ? escapeHtml(existing.body) : ''}</textarea>
+          </div>
+          <label class="checkbox-field">
+            <input id="announcementPinned" type="checkbox" ${existing && existing.pinned ? 'checked' : ''} />
+            <span>${t('announcement_pinned_label')}</span>
+          </label>
+          <p class="error-text" id="announcementFormError"></p>
+          <div style="display:flex; gap:0.6rem;">
+            <button class="btn" type="submit">${t('btn_save')}</button>
+            <a href="#/announcements${existing ? `/${existing.id}` : ''}" class="btn btn-ghost">${t('btn_cancel')}</a>
+          </div>
+        </form>
+      </div>`;
+
+    guardForm(document.getElementById('announcementForm'), async () => {
+      const errEl = document.getElementById('announcementFormError');
+      errEl.textContent = '';
+      const body = {
+        title: document.getElementById('announcementTitle').value.trim(),
+        body: document.getElementById('announcementBody').value.trim(),
+        pinned: document.getElementById('announcementPinned').checked,
+      };
+      try {
+        if (existing) {
+          await api(`/announcements/${existing.id}`, { method: 'PATCH', body });
+          showToast(t('toast_announcement_updated'), 'success');
+          location.hash = `#/announcements/${existing.id}`;
+        } else {
+          const { announcement } = await api('/announcements', { method: 'POST', body });
+          showToast(t('toast_announcement_created'), 'success');
+          location.hash = `#/announcements/${announcement.id}`;
+        }
+        route();
+      } catch (err) {
+        errEl.textContent = err.message;
+      }
+    });
   }
 
   async function renderOnboarding(param) {
