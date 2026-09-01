@@ -957,11 +957,16 @@ async function migrate() {
 
   const settingsCols2 = await all('PRAGMA table_info(app_settings)');
   if (!settingsCols2.some((c) => c.name === 'flexible_time_entry')) {
-    await run('ALTER TABLE app_settings ADD COLUMN flexible_time_entry INTEGER NOT NULL DEFAULT 0');
+    await run('ALTER TABLE app_settings ADD COLUMN flexible_time_entry INTEGER NOT NULL DEFAULT 1');
   }
   const companyCols = await all('PRAGMA table_info(companies)');
   if (companyCols.length && !companyCols.some((c) => c.name === 'flexible_time_entry')) {
-    await run('ALTER TABLE companies ADD COLUMN flexible_time_entry INTEGER NOT NULL DEFAULT 0');
+    await run('ALTER TABLE companies ADD COLUMN flexible_time_entry INTEGER NOT NULL DEFAULT 1');
+  }
+  if (!settingsCols2.some((c) => c.name === 'flexible_time_entry_defaulted')) {
+    await run('ALTER TABLE app_settings ADD COLUMN flexible_time_entry_defaulted INTEGER NOT NULL DEFAULT 0');
+    await run('UPDATE app_settings SET flexible_time_entry = 1, flexible_time_entry_defaulted = 1 WHERE id = 1');
+    await run('UPDATE companies SET flexible_time_entry = 1');
   }
 }
 

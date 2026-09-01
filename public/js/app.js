@@ -611,6 +611,7 @@
       device_request_type_problem: 'Ho un problema', device_request_type_new_device: 'Nuovo dispositivo', device_request_type_replacement: 'Sostituzione', device_request_type_loan: 'Prestito temporaneo', device_request_type_lost_stolen: 'Smarrito o rubato',
       field_template: 'Parti da un modello', template_blank_option: 'Nessun modello (parti da zero)',
       field_on_behalf_of: 'Apri per conto di', on_behalf_of_none: 'Per me stesso', on_behalf_of_label: 'per conto di',
+      on_behalf_of_search_placeholder: 'Cerca una persona…',
       field_category: 'Categoria', field_subject_placeholder: 'Un breve titolo per il problema', field_urgency: 'Quanto è urgente?',
       field_impact: 'Chi riguarda questo problema?',
       impact_low: 'Solo me', impact_medium: 'Il mio ufficio/team', impact_high: 'Tutti/più uffici',
@@ -1031,6 +1032,7 @@
       device_request_type_problem: 'I have a problem', device_request_type_new_device: 'New device', device_request_type_replacement: 'Replacement', device_request_type_loan: 'Temporary loan', device_request_type_lost_stolen: 'Lost or stolen',
       field_template: 'Start from a template', template_blank_option: 'No template (start from scratch)',
       field_on_behalf_of: 'Open on behalf of', on_behalf_of_none: 'For myself', on_behalf_of_label: 'on behalf of',
+      on_behalf_of_search_placeholder: 'Search for a person…',
       field_category: 'Category', field_subject_placeholder: 'A short title for the issue', field_urgency: 'How urgent is it?',
       field_impact: 'Who does this issue affect?',
       impact_low: 'Just me', impact_medium: 'My office/team', impact_high: 'Everyone/multiple offices',
@@ -3555,6 +3557,15 @@
       </a>` : ''}
       <div class="card" style="max-width:720px">
         <form id="newTicketForm" class="form-grid" style="max-width:none">
+          ${otherUsers.length ? `
+          <div class="field">
+            <label for="onBehalfOfSearch">${t('field_on_behalf_of')}</label>
+            <div class="person-combobox">
+              <input type="text" id="onBehalfOfSearch" autocomplete="off" placeholder="${t('on_behalf_of_search_placeholder')}" value="${escapeHtml(t('on_behalf_of_none'))}" />
+              <input type="hidden" id="onBehalfOfSelect" value="" />
+              <div id="onBehalfOfResults" class="person-combobox-results" hidden></div>
+            </div>
+          </div>` : ''}
           ${templates.length ? `
           <div class="field">
             <label for="templateSelect">${t('field_template')}</label>
@@ -3593,14 +3604,6 @@
             <p class="hint">${t('device_request_type_hint')}</p>
           </div>
           <div id="customFieldsContainer"></div>
-          ${otherUsers.length ? `
-          <div class="field">
-            <label for="onBehalfOfSelect">${t('field_on_behalf_of')}</label>
-            <select id="onBehalfOfSelect">
-              <option value="">${t('on_behalf_of_none')}</option>
-              ${otherUsers.map((u) => `<option value="${u.id}">${escapeHtml(u.name)} · ${escapeHtml(u.email)}</option>`).join('')}
-            </select>
-          </div>` : ''}
           <div class="field">
             <label for="subject">${t('field_subject')}</label>
             <input id="subject" type="text" required maxlength="200" placeholder="${t('field_subject_placeholder')}" />
@@ -3628,6 +3631,45 @@
     if (expandedMacroId) {
       const firstSubs = subsByParent.get(expandedMacroId) || [];
       selectedCategory = firstSubs.length ? firstSubs[0].name : macroCategories[0].name;
+    }
+
+    const onBehalfOfSearch = document.getElementById('onBehalfOfSearch');
+    const onBehalfOfHidden = document.getElementById('onBehalfOfSelect');
+    const onBehalfOfResults = document.getElementById('onBehalfOfResults');
+    if (onBehalfOfSearch) {
+      function renderOnBehalfResults(list) {
+        const rows = [`<button type="button" class="person-combobox-option" data-user-id="" data-user-name="${escapeHtml(t('on_behalf_of_none'))}"><span>${t('on_behalf_of_none')}</span></button>`]
+          .concat(list.slice(0, 8).map((u) => `
+            <button type="button" class="person-combobox-option" data-user-id="${u.id}" data-user-name="${escapeHtml(u.name)}">
+              <span>${escapeHtml(u.name)}</span><span class="hint">${escapeHtml(u.email)}</span>
+            </button>`));
+        onBehalfOfResults.innerHTML = rows.join('');
+        onBehalfOfResults.hidden = false;
+        onBehalfOfResults.querySelectorAll('.person-combobox-option').forEach((btn) => {
+          btn.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            onBehalfOfHidden.value = btn.dataset.userId;
+            onBehalfOfSearch.value = btn.dataset.userName;
+            onBehalfOfResults.hidden = true;
+          });
+        });
+      }
+      onBehalfOfSearch.addEventListener('focus', () => {
+        onBehalfOfSearch.select();
+        renderOnBehalfResults(otherUsers);
+      });
+      onBehalfOfSearch.addEventListener('input', () => {
+        onBehalfOfHidden.value = '';
+        const q = onBehalfOfSearch.value.trim().toLowerCase();
+        const filtered = q ? otherUsers.filter((u) => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)) : otherUsers;
+        renderOnBehalfResults(filtered);
+      });
+      onBehalfOfSearch.addEventListener('blur', () => {
+        setTimeout(() => {
+          onBehalfOfResults.hidden = true;
+          if (!onBehalfOfHidden.value) onBehalfOfSearch.value = t('on_behalf_of_none');
+        }, 150);
+      });
     }
 
     const treeEl = document.getElementById('categoryTree');
@@ -7820,9 +7862,9 @@
         <div class="message-bubble ${mine ? 'message-bubble-mine' : ''}" data-id="${m.id}">
           <p class="message-bubble-body"></p>
           <span class="hint message-bubble-meta">${formatDate(m.created_at)}${m.edited_at ? ` · ${t('message_edited_label')}` : ''}</span>
-          ${mine && !impersonatingId ? `
+          ${!impersonatingId ? `
           <div class="message-bubble-actions">
-            <button type="button" class="icon-btn messageEditBtn" data-id="${m.id}" title="${t('message_edit_btn')}">${icon('edit')}</button>
+            ${mine ? `<button type="button" class="icon-btn messageEditBtn" data-id="${m.id}" title="${t('message_edit_btn')}">${icon('edit')}</button>` : ''}
             <button type="button" class="icon-btn messageDeleteBtn" data-id="${m.id}" title="${t('message_delete_btn')}">${icon('trash')}</button>
           </div>` : ''}
         </div>`;
