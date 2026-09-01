@@ -690,6 +690,8 @@
       perm_announcements_manage: 'Gestire la bacheca annunci',
       announcements_hint: 'Comunicazioni ufficiali dalla tua azienda.', btn_new_announcement: 'Nuovo annuncio',
       field_announcement_title: 'Titolo', field_announcement_body: 'Testo dell\'annuncio', announcement_pinned_label: 'Metti in evidenza (in cima alla bacheca)',
+      announcement_targets_label: 'Destinatari', announcement_targets_hint: 'Scegli gruppi e/o persone specifiche a cui inviare la notifica. Lascia vuoto per inviarla a tutta l\'azienda.',
+      announcement_files_title: 'File allegati', dropzone_hint: 'Trascina qui i file o clicca per selezionarli',
       btn_pin: 'Metti in evidenza', btn_unpin: 'Rimuovi dall\'evidenza', btn_edit: 'Modifica',
       no_announcements_found: 'Nessun annuncio pubblicato.',
       toast_announcement_created: 'Annuncio pubblicato', toast_announcement_updated: 'Annuncio aggiornato', toast_announcement_deleted: 'Annuncio eliminato',
@@ -1076,6 +1078,8 @@
       perm_announcements_manage: 'Manage the announcements board',
       announcements_hint: 'Official communications from your company.', btn_new_announcement: 'New announcement',
       field_announcement_title: 'Title', field_announcement_body: 'Announcement text', announcement_pinned_label: 'Pin to top of the board',
+      announcement_targets_label: 'Recipients', announcement_targets_hint: 'Choose specific groups and/or people to notify. Leave empty to send it to the whole company.',
+      announcement_files_title: 'Attached files', dropzone_hint: 'Drag files here or click to select',
       btn_pin: 'Pin', btn_unpin: 'Unpin', btn_edit: 'Edit',
       no_announcements_found: 'No announcements published yet.',
       toast_announcement_created: 'Announcement published', toast_announcement_updated: 'Announcement updated', toast_announcement_deleted: 'Announcement deleted',
@@ -1700,7 +1704,7 @@
       </div>
       <div class="notif-list">
         ${notifItems.length ? notifItems.map((n) => `
-          <button type="button" class="notif-item ${n.is_read ? '' : 'unread'}" data-id="${n.id}" data-ticket-id="${n.ticket_id || ''}">
+          <button type="button" class="notif-item ${n.is_read ? '' : 'unread'}" data-id="${n.id}" data-ticket-id="${n.ticket_id || ''}" data-kind="${n.kind || 'ticket'}" data-sender-id="${n.senderId || ''}">
             <span>${escapeHtml(n.message)}</span>
             <span class="notif-time">${formatDate(n.created_at)}</span>
           </button>`).join('') : `<p class="hint" style="padding:0.75rem">${t('no_notifications')}</p>`}
@@ -1721,11 +1725,16 @@
       btn.addEventListener('click', async () => {
         const id = btn.dataset.id;
         const ticketId = btn.dataset.ticketId;
-        try { await api(`/notifications/${id}/read`, { method: 'PATCH' }); } catch {}
+        const kind = btn.dataset.kind;
+        const senderId = btn.dataset.senderId;
+        if (kind !== 'message') {
+          try { await api(`/notifications/${id}/read`, { method: 'PATCH' }); } catch {}
+        }
         notifItems = notifItems.map((n) => (String(n.id) === id ? { ...n, is_read: 1 } : n));
         updateNotifBadge();
         notifDropdown.hidden = true;
-        if (ticketId) location.hash = `#/ticket/${ticketId}`;
+        if (kind === 'message' && senderId) location.hash = `#/messages/${senderId}`;
+        else if (ticketId) location.hash = `#/ticket/${ticketId}`;
       });
     });
   }
@@ -1766,6 +1775,12 @@
       socket.on('message:new', (message) => {
         showMessagePopup(message);
         refreshMessagesNavDot();
+        notifItems = [{
+          id: `msg-${message.id}`, kind: 'message', senderId: message.sender_id,
+          message: `${message.sender_name}: ${message.body}`, is_read: 0, created_at: message.created_at,
+        }, ...notifItems].slice(0, 30);
+        updateNotifBadge();
+        renderNotifDropdown();
         if (location.hash === `#/messages/${message.sender_id}`) route();
       });
       socket.on('message:edited', (message) => {
@@ -7017,7 +7032,22 @@
             <button type="button" class="btn btn-ghost btn-sm" id="announcementEditBtn">${icon('edit', 'badge-icon')} ${t('btn_edit')}</button>
             <button type="button" class="btn btn-ghost btn-sm error-text" id="announcementDeleteBtn">${icon('trash', 'badge-icon')} ${t('btn_delete')}</button>
           </div>` : ''}
+      </div>
+      <div class="card">
+        <h3 class="section-title" style="margin-top:0">${t('announcement_files_title')}</h3>
+        <div id="announcementFilesWrap" class="spinner-row">${t('loading')}</div>
       </div>`;
+
+    (async () => {
+      const filesWrap = document.getElementById('announcementFilesWrap');
+      try {
+        const { attachments } = await api(`/announcements/${id}/attachments`);
+        renderAnnouncementFilesList(filesWrap, id, attachments, canManageAnnouncements());
+      } catch (err) {
+        filesWrap.className = '';
+        filesWrap.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
+      }
+    })();
 
     if (canManageAnnouncements()) {
       document.getElementById('announcementPinBtn').addEventListener('click', async () => {
@@ -7044,11 +7074,91 @@
     }
   }
 
-  function renderAnnouncementForm(existing) {
+  function renderAnnouncementFilesList(wrap, announcementId, attachments, canManage) {
+    wrap.className = 'attachments-list';
+    wrap.innerHTML = attachments.length ? attachments.map((a) => `
+      <div class="attachment-row" data-id="${a.id}">
+        ${icon(attachmentIconName(a.mime_type), 'attachment-icon')}
+        <div class="attachment-info">
+          <span class="attachment-name">${escapeHtml(a.file_name)}</span>
+          <span class="attachment-meta">${formatFileSize(a.size_bytes)} · ${escapeHtml(a.uploader_name || '')} · ${formatDate(a.created_at)}</span>
+        </div>
+        <button type="button" class="icon-btn announcementFileDownloadBtn" data-id="${a.id}" title="${t('btn_download')}">${icon('download')}</button>
+        ${canManage ? `<button type="button" class="icon-btn announcementFileDeleteBtn" data-id="${a.id}" title="${t('btn_delete')}">${icon('trash')}</button>` : ''}
+      </div>`).join('') : `<p class="hint">${t('no_attachments_hint')}</p>`;
+
+    wrap.querySelectorAll('.announcementFileDownloadBtn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        try {
+          const { attachment } = await api(`/announcements/${announcementId}/attachments/${btn.dataset.id}`);
+          const res = await fetch(attachment.data);
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = attachment.file_name;
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          URL.revokeObjectURL(url);
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      });
+    });
+    wrap.querySelectorAll('.announcementFileDeleteBtn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        try {
+          await api(`/announcements/${announcementId}/attachments/${btn.dataset.id}`, { method: 'DELETE' });
+          showToast(t('toast_attachment_deleted'), 'success');
+          const { attachments: fresh } = await api(`/announcements/${announcementId}/attachments`);
+          renderAnnouncementFilesList(wrap, announcementId, fresh, canManage);
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      });
+    });
+  }
+
+  function wireDropzone(zoneEl, inputEl, onFiles) {
+    zoneEl.addEventListener('click', () => inputEl.click());
+    zoneEl.addEventListener('dragover', (e) => { e.preventDefault(); zoneEl.classList.add('dropzone-active'); });
+    zoneEl.addEventListener('dragleave', () => zoneEl.classList.remove('dropzone-active'));
+    zoneEl.addEventListener('drop', (e) => {
+      e.preventDefault();
+      zoneEl.classList.remove('dropzone-active');
+      if (e.dataTransfer.files.length) onFiles([...e.dataTransfer.files]);
+    });
+    inputEl.addEventListener('change', () => {
+      if (inputEl.files.length) onFiles([...inputEl.files]);
+      inputEl.value = '';
+    });
+  }
+
+  function fileToDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function renderAnnouncementForm(existing) {
     if (!canManageAnnouncements()) {
       appEl.innerHTML = `<div class="card"><p class="error-text">Accesso non consentito.</p></div>`;
       return;
     }
+    const [groups, users] = await Promise.all([
+      api('/groups').then((r) => r.groups).catch(() => []),
+      api('/users').then((r) => r.users).catch(() => []),
+    ]);
+    const existingGroupIds = new Set((existing && existing.targets || []).filter((t2) => t2.target_type === 'group').map((t2) => t2.target_id));
+    const existingUserIds = new Set((existing && existing.targets || []).filter((t2) => t2.target_type === 'user').map((t2) => t2.target_id));
+
+    let stagedFiles = [];
+    let existingAttachments = existing ? await api(`/announcements/${existing.id}/attachments`).then((r) => r.attachments).catch(() => []) : [];
+
     appEl.innerHTML = `
       <div class="view-header">
         <h1>${icon('megaphone')} ${existing ? t('btn_edit') : t('btn_new_announcement')}</h1>
@@ -7067,6 +7177,29 @@
             <input id="announcementPinned" type="checkbox" ${existing && existing.pinned ? 'checked' : ''} />
             <span>${t('announcement_pinned_label')}</span>
           </label>
+          <div class="field">
+            <label>${t('announcement_targets_label')}</label>
+            <span class="hint">${t('announcement_targets_hint')}</span>
+            <div class="announcement-target-groups">
+              ${groups.map((g) => `
+                <label class="checkbox-field">
+                  <input type="checkbox" class="announcementTargetGroup" value="${g.id}" ${existingGroupIds.has(g.id) ? 'checked' : ''} />
+                  <span>${escapeHtml(g.name)}</span>
+                </label>`).join('') || `<p class="hint">${t('no_groups_hint')}</p>`}
+            </div>
+            <input id="announcementUserSearch" type="search" placeholder="${t('search_person_placeholder')}" style="margin-top:0.5rem" />
+            <select id="announcementTargetUsers" multiple size="6" style="margin-top:0.4rem">
+              ${users.map((u) => `<option value="${u.id}" ${existingUserIds.has(u.id) ? 'selected' : ''}>${escapeHtml(u.name)} · ${escapeHtml(u.email)}</option>`).join('')}
+            </select>
+          </div>
+          <div class="field">
+            <label>${t('announcement_files_title')}</label>
+            <div id="announcementDropzone" class="dropzone">
+              ${icon('paperclip', 'badge-icon')} <span>${t('dropzone_hint')}</span>
+              <input type="file" id="announcementFileInput" hidden multiple />
+            </div>
+            <div id="announcementStagedFiles"></div>
+          </div>
           <p class="error-text" id="announcementFormError"></p>
           <div style="display:flex; gap:0.6rem;">
             <button class="btn" type="submit">${t('btn_save')}</button>
@@ -7075,24 +7208,80 @@
         </form>
       </div>`;
 
+    const userSearch = document.getElementById('announcementUserSearch');
+    const userSelect = document.getElementById('announcementTargetUsers');
+    userSearch.addEventListener('input', () => {
+      const q = userSearch.value.trim().toLowerCase();
+      [...userSelect.options].forEach((opt) => {
+        opt.hidden = q && !opt.textContent.toLowerCase().includes(q);
+      });
+    });
+
+    const stagedWrap = document.getElementById('announcementStagedFiles');
+    function renderStagedFiles() {
+      const existingHtml = existingAttachments.map((a) => `
+        <div class="attachment-row" data-id="${a.id}">
+          ${icon(attachmentIconName(a.mime_type), 'attachment-icon')}
+          <div class="attachment-info"><span class="attachment-name">${escapeHtml(a.file_name)}</span><span class="attachment-meta">${formatFileSize(a.size_bytes)}</span></div>
+          <button type="button" class="icon-btn announcementExistingFileDeleteBtn" data-id="${a.id}" title="${t('btn_delete')}">${icon('trash')}</button>
+        </div>`).join('');
+      const stagedHtml = stagedFiles.map((f, i) => `
+        <div class="attachment-row" data-staged="${i}">
+          ${icon(attachmentIconName(f.type), 'attachment-icon')}
+          <div class="attachment-info"><span class="attachment-name">${escapeHtml(f.name)}</span><span class="attachment-meta">${formatFileSize(f.size)}</span></div>
+          <button type="button" class="icon-btn announcementStagedFileRemoveBtn" data-index="${i}" title="${t('btn_delete')}">${icon('trash')}</button>
+        </div>`).join('');
+      stagedWrap.className = (existingAttachments.length || stagedFiles.length) ? 'attachments-list' : '';
+      stagedWrap.innerHTML = existingHtml + stagedHtml;
+      stagedWrap.querySelectorAll('.announcementExistingFileDeleteBtn').forEach((btn) => btn.addEventListener('click', async () => {
+        try {
+          await api(`/announcements/${existing.id}/attachments/${btn.dataset.id}`, { method: 'DELETE' });
+          existingAttachments = existingAttachments.filter((a) => String(a.id) !== btn.dataset.id);
+          renderStagedFiles();
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      }));
+      stagedWrap.querySelectorAll('.announcementStagedFileRemoveBtn').forEach((btn) => btn.addEventListener('click', () => {
+        stagedFiles.splice(Number(btn.dataset.index), 1);
+        renderStagedFiles();
+      }));
+    }
+    renderStagedFiles();
+
+    wireDropzone(document.getElementById('announcementDropzone'), document.getElementById('announcementFileInput'), (files) => {
+      stagedFiles.push(...files);
+      renderStagedFiles();
+    });
+
     guardForm(document.getElementById('announcementForm'), async () => {
       const errEl = document.getElementById('announcementFormError');
       errEl.textContent = '';
+      const targetGroupIds = [...document.querySelectorAll('.announcementTargetGroup:checked')].map((el) => Number(el.value));
+      const targetUserIds = [...userSelect.selectedOptions].map((opt) => Number(opt.value));
       const body = {
         title: document.getElementById('announcementTitle').value.trim(),
         body: document.getElementById('announcementBody').value.trim(),
         pinned: document.getElementById('announcementPinned').checked,
+        targetGroupIds,
+        targetUserIds,
       };
       try {
+        let announcementId;
         if (existing) {
           await api(`/announcements/${existing.id}`, { method: 'PATCH', body });
+          announcementId = existing.id;
           showToast(t('toast_announcement_updated'), 'success');
-          location.hash = `#/announcements/${existing.id}`;
         } else {
           const { announcement } = await api('/announcements', { method: 'POST', body });
+          announcementId = announcement.id;
           showToast(t('toast_announcement_created'), 'success');
-          location.hash = `#/announcements/${announcement.id}`;
         }
+        for (const file of stagedFiles) {
+          const dataUrl = await fileToDataUrl(file);
+          await api(`/announcements/${announcementId}/attachments`, { method: 'POST', body: { fileName: file.name, dataUrl } }).catch(() => {});
+        }
+        location.hash = `#/announcements/${announcementId}`;
         route();
       } catch (err) {
         errEl.textContent = err.message;
@@ -7173,15 +7362,18 @@
       </div>
       <div id="messagesInboxWrap" class="card-list spinner-row">${t('loading')}</div>`;
 
+    const impersonatingId = state.viewAs && !state.viewAs.roleOnly && state.viewAs.id ? state.viewAs.id : null;
+    const viewerId = impersonatingId || state.user.id;
+
     const wrap = document.getElementById('messagesInboxWrap');
     try {
-      const { conversations } = await api('/messages/conversations');
+      const { conversations } = await api(`/messages/conversations${impersonatingId ? `?asUserId=${impersonatingId}` : ''}`);
       wrap.className = 'card-list';
       wrap.innerHTML = conversations.length ? conversations.map((c) => `
         <a href="#/messages/${c.user_id}" class="card directory-card ${c.unread_count ? 'announcement-unread' : ''}">
           <div class="directory-card-main">
             <h3>${escapeHtml(c.user_name)}</h3>
-            <p class="hint">${c.last_sender_id === state.user.id ? `${t('messages_you_prefix')} ` : ''}${escapeHtml(c.last_body.slice(0, 90))}</p>
+            <p class="hint">${c.last_sender_id === viewerId ? `${t('messages_you_prefix')} ` : ''}${escapeHtml(c.last_body.slice(0, 90))}</p>
           </div>
           <div class="directory-card-contact">
             <span class="hint">${formatDate(c.last_created_at)}</span>
@@ -7195,6 +7387,9 @@
   }
 
   async function renderMessageThread(userId) {
+    const impersonatingId = state.viewAs && !state.viewAs.roleOnly && state.viewAs.id ? state.viewAs.id : null;
+    const viewerId = impersonatingId || state.user.id;
+
     appEl.innerHTML = `
       <div class="view-header">
         <h1>${icon('mail')} ${t('loading')}</h1>
@@ -7204,14 +7399,14 @@
 
     let messages, otherUser;
     try {
-      const data = await api(`/messages/thread/${userId}`);
+      const data = await api(`/messages/thread/${userId}${impersonatingId ? `?asUserId=${impersonatingId}` : ''}`);
       messages = data.messages;
       otherUser = data.otherUser;
     } catch (err) {
       document.getElementById('messageThreadWrap').innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
       return;
     }
-    refreshMessagesNavDot();
+    if (!impersonatingId) refreshMessagesNavDot();
 
     appEl.innerHTML = `
       <div class="view-header">
@@ -7219,21 +7414,22 @@
         <a class="btn btn-ghost" href="#/messages">${icon('arrowLeft')} ${t('back_to_list')}</a>
       </div>
       <div id="messageThreadWrap" class="card message-thread"></div>
+      ${impersonatingId ? `<p class="hint">${t('viewas_readonly_suffix')}</p>` : `
       <form id="messageComposeForm" class="message-compose">
         <textarea id="messageComposeInput" placeholder="${t('message_compose_placeholder')}" maxlength="2000" required></textarea>
         <button type="submit" class="btn btn-sm">${t('message_send_btn')}</button>
       </form>
-      <p class="hint">${t('message_ttl_hint')}</p>`;
+      <p class="hint">${t('message_ttl_hint')}</p>`}`;
 
     const threadWrap = document.getElementById('messageThreadWrap');
 
     function messageBubbleHtml(m) {
-      const mine = m.sender_id === state.user.id;
+      const mine = m.sender_id === viewerId;
       return `
         <div class="message-bubble ${mine ? 'message-bubble-mine' : ''}" data-id="${m.id}">
           <p class="message-bubble-body"></p>
           <span class="hint message-bubble-meta">${formatDate(m.created_at)}${m.edited_at ? ` · ${t('message_edited_label')}` : ''}</span>
-          ${mine ? `
+          ${mine && !impersonatingId ? `
           <div class="message-bubble-actions">
             <button type="button" class="icon-btn messageEditBtn" data-id="${m.id}" title="${t('message_edit_btn')}">${icon('edit')}</button>
             <button type="button" class="icon-btn messageDeleteBtn" data-id="${m.id}" title="${t('message_delete_btn')}">${icon('trash')}</button>
@@ -7275,19 +7471,22 @@
 
     renderThread(messages);
 
-    document.getElementById('messageComposeForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const input = document.getElementById('messageComposeInput');
-      if (!input.value.trim()) return;
-      try {
-        const { message } = await api('/messages', { method: 'POST', body: { recipientId: userId, body: input.value.trim() } });
-        messages.push(message);
-        renderThread(messages);
-        input.value = '';
-      } catch (err) {
-        showToast(err.message, 'error');
-      }
-    });
+    const composeForm = document.getElementById('messageComposeForm');
+    if (composeForm) {
+      composeForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const input = document.getElementById('messageComposeInput');
+        if (!input.value.trim()) return;
+        try {
+          const { message } = await api('/messages', { method: 'POST', body: { recipientId: userId, body: input.value.trim() } });
+          messages.push(message);
+          renderThread(messages);
+          input.value = '';
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      });
+    }
   }
 
   function leaveStatusLabels() {

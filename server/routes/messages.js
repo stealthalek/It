@@ -13,9 +13,17 @@ function outOfScope(target, requester) {
   return target.company_id !== requester.company_id;
 }
 
+async function resolveViewerId(req) {
+  const asUserId = req.query.asUserId ? Number(req.query.asUserId) : null;
+  if (!asUserId || !req.user.is_super_admin) return req.user.id;
+  const target = await db.get('SELECT id FROM users WHERE id = ?', [asUserId]);
+  return target ? target.id : req.user.id;
+}
+
 router.get(
   '/conversations',
   asyncHandler(async (req, res) => {
+    const viewerId = await resolveViewerId(req);
     const rows = await db.all(
       `SELECT
          other.id AS user_id, other.name AS user_name, other.email AS user_email,
@@ -30,7 +38,7 @@ router.get(
        JOIN users other ON other.id = t.other_id
        JOIN direct_messages lm ON lm.id = t.last_id
        ORDER BY lm.created_at DESC`,
-      [req.user.id, req.user.id, req.user.id, req.user.id]
+      [viewerId, viewerId, viewerId, viewerId]
     );
     res.json({ conversations: rows });
   })
@@ -39,7 +47,8 @@ router.get(
 router.get(
   '/unread-count',
   asyncHandler(async (req, res) => {
-    const row = await db.get('SELECT COUNT(*) AS n FROM direct_messages WHERE recipient_id = ? AND read_at IS NULL', [req.user.id]);
+    const viewerId = await resolveViewerId(req);
+    const row = await db.get('SELECT COUNT(*) AS n FROM direct_messages WHERE recipient_id = ? AND read_at IS NULL', [viewerId]);
     res.json({ unreadCount: row.n });
   })
 );
@@ -47,6 +56,8 @@ router.get(
 router.get(
   '/thread/:userId',
   asyncHandler(async (req, res) => {
+    const viewerId = await resolveViewerId(req);
+    const impersonating = viewerId !== req.user.id;
     const other = await db.get('SELECT id, name, is_super_admin, company_id FROM users WHERE id = ?', [req.params.userId]);
     if (!other || outOfScope(other, req.user)) {
       return res.status(404).json({ error: 'Utente non trovato' });
@@ -56,12 +67,14 @@ router.get(
        FROM direct_messages
        WHERE (sender_id = ? AND recipient_id = ?) OR (sender_id = ? AND recipient_id = ?)
        ORDER BY created_at ASC`,
-      [req.user.id, other.id, other.id, req.user.id]
+      [viewerId, other.id, other.id, viewerId]
     );
-    await db.run(
-      "UPDATE direct_messages SET read_at = datetime('now') WHERE recipient_id = ? AND sender_id = ? AND read_at IS NULL",
-      [req.user.id, other.id]
-    );
+    if (!impersonating) {
+      await db.run(
+        "UPDATE direct_messages SET read_at = datetime('now') WHERE recipient_id = ? AND sender_id = ? AND read_at IS NULL",
+        [viewerId, other.id]
+      );
+    }
     res.json({ messages, otherUser: { id: other.id, name: other.name } });
   })
 );
