@@ -507,6 +507,8 @@
       btn_reset_default: 'Ripristina predefinito', toast_template_reset: 'Modello ripristinato al predefinito', default_template_title: 'Modello predefinito',
       not_found_text: 'Pagina non trovata.', back_to_dashboard: 'Torna alla dashboard', placeholder_default: '(predefinito)',
       impersonate_search_label: 'Cerca una persona da vedere in sola lettura',
+      impersonate_role_label: 'Oppure visualizza per ruolo generico', impersonate_role_group_label: 'Team da simulare (opzionale)',
+      viewing_as_role_no_personal_counter: 'Anteprima per ruolo: nessun contatore personale, nessuna identità specifica.',
       notifications_title: 'Notifiche', mark_all_read: 'Segna tutte come lette', no_notifications: 'Nessuna notifica.',
       confirm_password_label: 'Conferma password', no_data_available: 'Nessun dato disponibile.', send_request_btn: 'Invia richiesta',
       show_password_label: 'Mostra password',
@@ -859,6 +861,8 @@
       btn_reset_default: 'Reset to default', toast_template_reset: 'Template reset to default', default_template_title: 'Default template',
       not_found_text: 'Page not found.', back_to_dashboard: 'Back to dashboard', placeholder_default: '(default)',
       impersonate_search_label: 'Search for a person to view read-only',
+      impersonate_role_label: 'Or view as a generic role', impersonate_role_group_label: 'Team to simulate (optional)',
+      viewing_as_role_no_personal_counter: 'Role preview: no personal counter, no specific identity.',
       notifications_title: 'Notifications', mark_all_read: 'Mark all as read', no_notifications: 'No notifications.',
       confirm_password_label: 'Confirm password', no_data_available: 'No data available.', send_request_btn: 'Send request',
       show_password_label: 'Show password',
@@ -1286,7 +1290,7 @@
   }
 
   function startImpersonation(user) {
-    state.viewAs = { id: user.id, name: user.name, role: user.role, group_id: user.group_id || null, is_super_admin: !!user.is_super_admin };
+    state.viewAs = { id: user.id ?? null, name: user.name, role: user.role, group_id: user.group_id || null, is_super_admin: !!user.is_super_admin, roleOnly: !!user.roleOnly };
     renderViewAsBanner();
     showToast(`${t('viewas_banner_text')} ${user.name}`, '');
     location.hash = '#/dashboard';
@@ -2308,8 +2312,38 @@
             <div class="field"><label for="impersonateSearch">${t('impersonate_search_label')}</label>
               <input id="impersonateSearch" type="search" placeholder="${t('search_person_placeholder')}" /></div>
             <div id="impersonateResults" class="impersonate-results"></div>
+            <div class="impersonate-role-section">
+              <label>${t('impersonate_role_label')}</label>
+              <div class="impersonate-role-buttons">
+                <button type="button" class="btn btn-ghost btn-sm" data-role="customer">${roleLabels().customer}</button>
+                <button type="button" class="btn btn-ghost btn-sm" data-role="agent">${roleLabels().agent}</button>
+                <button type="button" class="btn btn-ghost btn-sm" data-role="admin">${roleLabels().admin}</button>
+              </div>
+              <div id="impersonateRoleGroupWrap" class="field" hidden>
+                <label for="impersonateRoleGroup">${t('impersonate_role_group_label')}</label>
+                <select id="impersonateRoleGroup"></select>
+                <button type="button" id="impersonateRoleGroupConfirm" class="btn btn-sm" style="margin-top:0.5rem">${t('impersonate')}</button>
+              </div>
+            </div>
           </div>`;
         const { users } = await api('/users');
+        const roleGroups = await api('/groups').then((r) => r.groups).catch(() => []);
+        const roleGroupWrap = document.getElementById('impersonateRoleGroupWrap');
+        const roleGroupSelect = document.getElementById('impersonateRoleGroup');
+        panel.querySelectorAll('.impersonate-role-buttons button[data-role]').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const role = btn.dataset.role;
+            if (role === 'agent') {
+              roleGroupSelect.innerHTML = groupOptionsHtml(roleGroups, '', t('all_groups_option'));
+              roleGroupWrap.hidden = false;
+              return;
+            }
+            startImpersonation({ id: null, name: roleLabels()[role], role, group_id: null, is_super_admin: false, roleOnly: true });
+          });
+        });
+        document.getElementById('impersonateRoleGroupConfirm').addEventListener('click', () => {
+          startImpersonation({ id: null, name: roleLabels().agent, role: 'agent', group_id: roleGroupSelect.value ? Number(roleGroupSelect.value) : null, is_super_admin: false, roleOnly: true });
+        });
         const searchInput = document.getElementById('impersonateSearch');
         const resultsEl = document.getElementById('impersonateResults');
         function renderResults(list) {
@@ -2673,6 +2707,10 @@
     }
 
     function renderPersonalCounter(tickets) {
+      if (viewingAs && viewingAs.roleOnly) {
+        personalEl.innerHTML = `<p class="hint">${t('viewing_as_role_no_personal_counter')}</p>`;
+        return;
+      }
       let value, label;
       const asId = viewingAs ? viewingAs.id : state.user.id;
       const asStaff = viewingAs ? viewingAs.role !== 'customer' : isStaff();
@@ -2809,10 +2847,20 @@
     }
 
     async function renderScopedCharts() {
-      const targetId = viewingAs ? viewingAs.id : state.user.id;
       const targetRole = viewingAs ? viewingAs.role : state.user.role;
       if (targetRole === 'customer') { scopedChartsEl.innerHTML = ''; return; }
 
+      if (viewingAs && viewingAs.roleOnly) {
+        if (!viewingAs.group_id) { scopedChartsEl.innerHTML = ''; return; }
+        const { tickets } = await api(`/tickets?group=${viewingAs.group_id}`).catch(() => ({ tickets: [] }));
+        const teamRows = computeBreakdown(tickets, 'status');
+        const group = (await api('/groups').then((r) => r.groups).catch(() => [])).find((g) => g.id === viewingAs.group_id);
+        const groupName = group ? (group.parent_name ? `${group.parent_name} / ${group.name}` : group.name) : t('chart_team_title');
+        scopedChartsEl.innerHTML = scopedChartCard('status', groupName, teamRows, tickets.length, t('chart_no_team'));
+        return;
+      }
+
+      const targetId = viewingAs ? viewingAs.id : state.user.id;
       const usersPromise = api('/users').catch(() => ({ users: [] }));
       const minePromise = api(`/tickets?assigned=${targetId}`).catch(() => ({ tickets: [] }));
 
@@ -2893,13 +2941,15 @@
       if (activeFilters.priority) params.set('priority', activeFilters.priority);
       if (fAssigned && fAssigned.value) params.set('assigned', fAssigned.value);
       if (fQuery.value.trim()) params.set('q', fQuery.value.trim());
-      if (viewingAs && viewingAs.role === 'customer') {
+      if (viewingAs && viewingAs.role === 'customer' && viewingAs.id != null) {
         params.set('createdBy', viewingAs.id);
       }
 
       try {
-        const { tickets: fetched } = await api(`/tickets?${params.toString()}`);
-        const tickets = (viewingAs && viewingAs.role !== 'customer' && !viewingAs.is_super_admin)
+        const roleOnlyCustomerEmpty = viewingAs && viewingAs.role === 'customer' && viewingAs.id == null;
+        const { tickets: fetched } = roleOnlyCustomerEmpty ? { tickets: [] } : await api(`/tickets?${params.toString()}`);
+        const applyGroupFilter = viewingAs && viewingAs.role !== 'customer' && !viewingAs.is_super_admin && !(viewingAs.roleOnly && !viewingAs.group_id);
+        const tickets = applyGroupFilter
           ? fetched.filter((tk) => !tk.group_id || tk.group_id === viewingAs.group_id)
           : fetched;
         if (fAssigned && fAssigned.value === 'unassigned') {
