@@ -401,6 +401,16 @@ router.get(
     }
 
     const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+
+    if (req.query.page) {
+      const page = Math.max(1, Number(req.query.page) || 1);
+      const pageSize = Math.min(200, Math.max(1, Number(req.query.pageSize) || 50));
+      const offset = (page - 1) * pageSize;
+      const totalRow = await db.get(`SELECT COUNT(*) AS n FROM tickets t ${where}`, params);
+      const tickets = await db.all(`${TICKET_SELECT} ${where} ORDER BY t.updated_at DESC LIMIT ? OFFSET ?`, [...params, pageSize, offset]);
+      return res.json({ tickets: tickets.map(withSla), total: totalRow.n, page, pageSize });
+    }
+
     const tickets = await db.all(`${TICKET_SELECT} ${where} ORDER BY t.updated_at DESC LIMIT 2000`, params);
 
     res.json({ tickets: tickets.map(withSla) });

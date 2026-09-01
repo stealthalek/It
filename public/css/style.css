@@ -1726,6 +1726,16 @@ body.col-resizing-active { cursor: col-resize !important; user-select: none; }
 }
 .bulk-action-bar select { max-width: 12rem; }
 
+.pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 0.9rem 0;
+  flex-wrap: wrap;
+}
+.pagination-bar button:disabled { opacity: 0.45; cursor: not-allowed; }
+
 .tags-wrap, .tag-chips {
   display: flex;
   flex-wrap: wrap;
