@@ -770,6 +770,12 @@ async function migrate() {
   if (!ticketCols3.some((c) => c.name === 'cancelled_reason')) {
     await run('ALTER TABLE tickets ADD COLUMN cancelled_reason TEXT');
   }
+  if (!ticketCols3.some((c) => c.name === 'close_reason_kind')) {
+    await run("ALTER TABLE tickets ADD COLUMN close_reason_kind TEXT CHECK (close_reason_kind IN ('not_resolved', 'opened_by_mistake'))");
+  }
+  if (!ticketCols3.some((c) => c.name === 'close_reason_text')) {
+    await run('ALTER TABLE tickets ADD COLUMN close_reason_text TEXT');
+  }
 
   const groupCols3 = await all('PRAGMA table_info(groups)');
   if (!groupCols3.some((c) => c.name === 'manager_id')) {
