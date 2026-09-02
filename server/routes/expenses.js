@@ -33,10 +33,11 @@ async function reportIds(managerId) {
   return rows.map((r) => r.id);
 }
 
-async function canReview(reviewer, requestUserId) {
-  if (reviewer.role === 'admin' || reviewer.is_super_admin) return true;
+async function canReview(reviewer, record) {
+  if (reviewer.is_super_admin) return true;
+  if (reviewer.role === 'admin') return record.company_id === reviewer.company_id;
   const ids = await reportIds(reviewer.id);
-  return ids.includes(requestUserId);
+  return ids.includes(record.user_id);
 }
 
 router.get(
@@ -120,7 +121,7 @@ router.patch(
     if (!existing) {
       return res.status(404).json({ error: 'Nota spese non trovata' });
     }
-    if (!(await canReview(req.user, existing.user_id))) {
+    if (!(await canReview(req.user, existing))) {
       return res.status(403).json({ error: 'Permessi insufficienti' });
     }
     const { status, reviewNote } = req.body || {};

@@ -128,6 +128,9 @@ router.delete(
     if (!idea) {
       return res.status(404).json({ error: 'Idea non trovata' });
     }
+    if (!req.user.is_super_admin && idea.company_id !== req.user.company_id) {
+      return res.status(404).json({ error: 'Idea non trovata' });
+    }
     if (idea.author_id !== req.user.id && !hasPermission(req.user, 'ideas_manage')) {
       return res.status(403).json({ error: 'Permessi insufficienti' });
     }
