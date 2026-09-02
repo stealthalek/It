@@ -1059,7 +1059,7 @@ body:not(.role-customer):not(.role-agent):not(.role-admin) .nav-toggle { display
   transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
 }
 .category-choice .icon { color: var(--muted); }
-.category-choice:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(60, 40, 25, 0.08); }
+.category-choice:hover { border-color: var(--muted); box-shadow: 0 2px 6px rgba(60, 40, 25, 0.08); }
 .category-choice.active { border-color: var(--primary); background: var(--primary-soft); }
 .category-choice.active .icon { color: var(--primary); }
 
