@@ -6,7 +6,7 @@ const { authenticate, requireRole } = require('../middleware/auth');
 const asyncHandler = require('../middleware/asyncHandler');
 const { getStats, getEventLoopLagMs } = require('../lib/requestStats');
 const { getOnlineUsers } = require('../realtime');
-const { MESSAGE_TTL_DAYS, READ_NOTIFICATION_TTL_DAYS, AUDIT_LOG_TTL_DAYS } = require('../scheduler');
+const { MESSAGE_TTL_DAYS, READ_NOTIFICATION_TTL_DAYS, AUDIT_LOG_TTL_DAYS, SESSION_TTL_DAYS } = require('../scheduler');
 
 const router = express.Router();
 router.use(authenticate);
@@ -53,6 +53,7 @@ function getDataGovernance() {
       directMessages: MESSAGE_TTL_DAYS,
       readNotifications: READ_NOTIFICATION_TTL_DAYS,
       auditLog: AUDIT_LOG_TTL_DAYS,
+      sessions: SESSION_TTL_DAYS,
     },
   };
 }
