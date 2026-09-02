@@ -220,6 +220,48 @@
     }[c]));
   }
 
+  function parseUserImportCsv(text) {
+    const lines = text.split(/\r\n|\r|\n/).map((l) => l.trim()).filter((l) => l.length);
+    if (!lines.length) return [];
+    const splitLine = (line) => {
+      const cells = [];
+      let cur = '';
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i += 1) {
+        const c = line[i];
+        if (inQuotes) {
+          if (c === '"' && line[i + 1] === '"') { cur += '"'; i += 1; }
+          else if (c === '"') { inQuotes = false; }
+          else cur += c;
+        } else if (c === '"') {
+          inQuotes = true;
+        } else if (c === ',' || c === ';') {
+          cells.push(cur.trim());
+          cur = '';
+        } else {
+          cur += c;
+        }
+      }
+      cells.push(cur.trim());
+      return cells;
+    };
+    const header = splitLine(lines[0]).map((h) => h.toLowerCase());
+    const colIndex = (names) => names.map((n) => header.indexOf(n)).find((i) => i !== -1);
+    const nameCol = colIndex(['name', 'nome']);
+    const emailCol = colIndex(['email']);
+    const roleCol = colIndex(['role', 'ruolo']);
+    const groupCol = colIndex(['group', 'gruppo', 'groupname']);
+    const localeCol = colIndex(['locale', 'lingua']);
+    if (nameCol === undefined || emailCol === undefined || roleCol === undefined) return [];
+    return lines.slice(1).map((line) => {
+      const cells = splitLine(line);
+      const row = { name: cells[nameCol] || '', email: cells[emailCol] || '', role: (cells[roleCol] || '').toLowerCase() };
+      if (groupCol !== undefined && cells[groupCol]) row.groupName = cells[groupCol];
+      if (localeCol !== undefined && cells[localeCol]) row.locale = cells[localeCol].toLowerCase();
+      return row;
+    }).filter((r) => r.name || r.email);
+  }
+
   function resizeImageToDataUri(file, maxSize) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -573,6 +615,9 @@
       org_settings_group_identity: 'Identità', org_settings_group_sla: 'SLA e orario',
       admin_create_staff_title: 'Crea account staff', admin_group_optional_label: 'Gruppo di assegnazione (opzionale)',
       admin_group_hint: 'I membri dello stesso gruppo si vedono a vicenda nell\'assegnazione dei ticket',
+      admin_bulk_import_title: 'Importa utenti da CSV', admin_bulk_import_hint: 'Colonne: nome,email,ruolo (agent o admin), gruppo (facoltativo, nome esatto), locale (facoltativo, it o en).',
+      admin_bulk_import_file_label: 'File CSV', admin_bulk_import_btn: 'Importa', admin_bulk_import_empty: 'Nessuna riga valida trovata nel file (verifica le colonne nome/email/ruolo).',
+      admin_bulk_import_summary: '{created} creati, {failed} falliti.', admin_bulk_import_row_label: 'Riga', toast_bulk_import_done: 'Importazione completata',
       account_locale_label: 'Lingua account', account_locale_hint: 'Le email inviate a questo account useranno questa lingua',
       btn_create_account: 'Crea account', role_agent_option: 'Agente', role_admin_option: 'Amministratore',
       admin_categories_title: 'Categorie ticket', admin_categories_hint: 'Personalizza le categorie disponibili nel modulo di apertura ticket, la loro icona e il team a cui vengono assegnate di default.',
@@ -1034,6 +1079,9 @@
       org_settings_group_identity: 'Identity', org_settings_group_sla: 'SLA & hours',
       admin_create_staff_title: 'Create staff account', admin_group_optional_label: 'Assignment group (optional)',
       admin_group_hint: 'Members of the same group can see each other for ticket assignment',
+      admin_bulk_import_title: 'Import users from CSV', admin_bulk_import_hint: 'Columns: name,email,role (agent or admin), group (optional, exact name), locale (optional, it or en).',
+      admin_bulk_import_file_label: 'CSV file', admin_bulk_import_btn: 'Import', admin_bulk_import_empty: 'No valid rows found in the file (check the name/email/role columns).',
+      admin_bulk_import_summary: '{created} created, {failed} failed.', admin_bulk_import_row_label: 'Row', toast_bulk_import_done: 'Import complete',
       account_locale_label: 'Account language', account_locale_hint: 'Emails sent to this account will use this language',
       btn_create_account: 'Create account', role_agent_option: 'Agent', role_admin_option: 'Administrator',
       admin_categories_title: 'Ticket categories', admin_categories_hint: 'Customize the categories available in the ticket form, their icon, and the team they are assigned to by default.',
@@ -5202,6 +5250,19 @@
           </form>
           <div id="tempPasswordBox"></div>
         </div>
+        <div class="card" data-admin-panel="users" data-block-id="bulkImportUsers" ${activeSection === 'users' ? '' : 'hidden'}>
+          <h3 class="section-title" style="margin-top:0">${icon('download')} ${t('admin_bulk_import_title')}</h3>
+          <p class="hint">${t('admin_bulk_import_hint')}</p>
+          <div class="field">
+            <label for="bulkImportFile">${t('admin_bulk_import_file_label')}</label>
+            <input type="file" id="bulkImportFile" accept=".csv,text/csv" />
+          </div>
+          <div style="display:flex;gap:0.6rem;align-items:center;margin-top:0.6rem">
+            <button type="button" id="bulkImportBtn" class="btn btn-sm" disabled>${t('admin_bulk_import_btn')}</button>
+          </div>
+          <p class="error-text" id="bulkImportError"></p>
+          <div id="bulkImportResults"></div>
+        </div>
         <div class="card admin-grid-full" data-admin-panel="catalog" data-block-id="categories" ${activeSection === 'catalog' ? '' : 'hidden'}>
           <h3 class="section-title" style="margin-top:0">${icon('ticket')} ${t('admin_categories_title')}</h3>
           <p class="hint">${t('admin_categories_hint')}</p>
@@ -6497,6 +6558,49 @@
           errEl.textContent = err.message;
         }
       });
+
+      const bulkImportFile = document.getElementById('bulkImportFile');
+      const bulkImportBtn = document.getElementById('bulkImportBtn');
+      if (bulkImportFile && bulkImportBtn) {
+        bulkImportFile.addEventListener('change', () => {
+          bulkImportBtn.disabled = !bulkImportFile.files.length;
+          document.getElementById('bulkImportError').textContent = '';
+          document.getElementById('bulkImportResults').innerHTML = '';
+        });
+        bulkImportBtn.addEventListener('click', async () => {
+          const errEl = document.getElementById('bulkImportError');
+          const resultsEl = document.getElementById('bulkImportResults');
+          errEl.textContent = '';
+          resultsEl.innerHTML = '';
+          const file = bulkImportFile.files[0];
+          if (!file) return;
+          bulkImportBtn.disabled = true;
+          try {
+            const text = await file.text();
+            const rows = parseUserImportCsv(text);
+            if (!rows.length) {
+              errEl.textContent = t('admin_bulk_import_empty');
+              return;
+            }
+            const { results, summary } = await api('/users/bulk', { method: 'POST', body: { rows } });
+            resultsEl.innerHTML = `
+              <p class="hint">${t('admin_bulk_import_summary').replace('{created}', summary.created).replace('{failed}', summary.failed)}</p>
+              <ul class="plain-list">
+                ${results.map((r) => `<li>${r.success ? `${icon('check', 'badge-icon')} ${escapeHtml(r.name)} (${escapeHtml(r.email)})` : `${icon('x', 'badge-icon')} ${t('admin_bulk_import_row_label')} ${r.row}: ${escapeHtml(r.error)}`}</li>`).join('')}
+              </ul>`;
+            bulkImportFile.value = '';
+            if (summary.created > 0) {
+              showToast(t('toast_bulk_import_done'), 'success');
+              loadUsersTable();
+              loadManagerOptions();
+            }
+          } catch (err) {
+            errEl.textContent = err.message;
+          } finally {
+            bulkImportBtn.disabled = !bulkImportFile.files.length;
+          }
+        });
+      }
 
       let selectedNewCategoryIcon = 'ticket';
       function renderIconPicker(containerId, selected, onSelect) {
