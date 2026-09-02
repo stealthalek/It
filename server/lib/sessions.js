@@ -16,7 +16,7 @@ async function createSession(userId, req) {
 
 async function listSessions(userId) {
   return db.all(
-    'SELECT id, user_agent, ip_address, created_at, last_active_at FROM user_sessions WHERE user_id = ? AND revoked = 0 ORDER BY last_active_at DESC',
+    'SELECT id, user_agent, ip_address, created_at, last_active_at FROM user_sessions WHERE user_id = ? AND revoked = 0 ORDER BY last_active_at DESC LIMIT 50',
     [userId]
   );
 }
