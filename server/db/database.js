@@ -433,6 +433,23 @@ async function setupSchema() {
         updated_at TEXT NOT NULL DEFAULT (datetime('now'))
       )`,
       'CREATE INDEX IF NOT EXISTS idx_wiki_pages_company_id ON wiki_pages(company_id)',
+      `CREATE TABLE IF NOT EXISTS expense_reports (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        description TEXT NOT NULL,
+        amount REAL NOT NULL,
+        expense_date TEXT NOT NULL,
+        category TEXT NOT NULL DEFAULT 'other' CHECK (category IN ('travel', 'meals', 'accommodation', 'supplies', 'other')),
+        status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+        reviewed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        reviewed_at TEXT,
+        review_note TEXT,
+        company_id INTEGER REFERENCES companies(id) ON DELETE SET NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`,
+      'CREATE INDEX IF NOT EXISTS idx_expense_reports_user_id ON expense_reports(user_id)',
+      'CREATE INDEX IF NOT EXISTS idx_expense_reports_company_id ON expense_reports(company_id)',
+      'CREATE INDEX IF NOT EXISTS idx_expense_reports_status ON expense_reports(status)',
       'CREATE INDEX IF NOT EXISTS idx_announcements_company_id ON announcements(company_id)',
       'CREATE INDEX IF NOT EXISTS idx_announcements_pinned_created ON announcements(pinned, created_at)',
       'CREATE INDEX IF NOT EXISTS idx_announcement_reads_user_id ON announcement_reads(user_id)',

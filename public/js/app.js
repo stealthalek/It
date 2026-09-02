@@ -196,6 +196,7 @@
     building: '<rect x="4" y="2" width="16" height="20" rx="1"/><line x1="9" y1="6" x2="9" y2="6.01"/><line x1="15" y1="6" x2="15" y2="6.01"/><line x1="9" y1="10" x2="9" y2="10.01"/><line x1="15" y1="10" x2="15" y2="10.01"/><line x1="9" y1="14" x2="9" y2="14.01"/><line x1="15" y1="14" x2="15" y2="14.01"/><line x1="9" y1="22" x2="9" y2="18"/><line x1="15" y1="22" x2="15" y2="18"/>',
     clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
     calendar: '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
+    creditCard: '<rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/>',
   };
 
   const CATEGORY_ICON_CHOICES = ['ticket', 'wifi', 'globe', 'printer', 'mail', 'monitor', 'server', 'phone', 'grid', 'lock', 'shield', 'users', 'laptop', 'tablet', 'package', 'bulb', 'flame', 'truck', 'megaphone'];
@@ -402,6 +403,14 @@
       wiki_last_edited_by: 'Ultima modifica di', wiki_empty_page: 'Questa pagina non ha ancora contenuto.',
       confirm_delete_wiki_page: 'Eliminare questa pagina wiki?',
       toast_wiki_page_created: 'Pagina creata', toast_wiki_page_saved: 'Pagina salvata', toast_wiki_page_deleted: 'Pagina eliminata',
+      nav_expenses: 'Note spese', expenses_hint: 'Invia una nota spese e segui lo stato di approvazione.',
+      expense_new_title: 'Nuova nota spese', expense_field_description: 'Descrizione', expense_field_amount: 'Importo (€)', expense_field_date: 'Data spesa', expense_field_category: 'Categoria',
+      expense_submit_btn: 'Invia nota spese', expense_mine_title: 'Le mie note spese', expense_team_title: 'Note spese del team',
+      expense_none_found: 'Nessuna nota spese trovata.', expense_cancel_btn: 'Ritira', expense_approve_btn: 'Approva', expense_reject_btn: 'Respingi',
+      expense_review_note_label: 'Nota del revisore', confirm_cancel_expense: 'Ritirare questa nota spese?',
+      toast_expense_submitted: 'Nota spese inviata', toast_expense_cancelled: 'Nota spese ritirata', toast_expense_approved: 'Nota spese approvata', toast_expense_rejected: 'Nota spese respinta',
+      expense_status_pending: 'In attesa', expense_status_approved: 'Approvata', expense_status_rejected: 'Respinta',
+      expense_category_travel: 'Viaggio', expense_category_meals: 'Pasti', expense_category_accommodation: 'Alloggio', expense_category_supplies: 'Materiale', expense_category_other: 'Altro',
       nav_assets: 'Asset', nav_onboarding: 'Onboarding', nav_timesheet: 'Orari', nav_report: 'Report', nav_audit: 'Audit', nav_admin: 'Amministrazione', nav_profile: 'Profilo', logout: 'Esci',
       login_title: 'Accedi', login_hint: 'Entra nella piattaforma di ticketing.', login_email: 'Email', login_password: 'Password',
       login_submit: 'Accedi', login_no_account: 'Non hai un account?', login_register_link: 'Registrati',
@@ -855,6 +864,14 @@
       wiki_last_edited_by: 'Last edited by', wiki_empty_page: 'This page has no content yet.',
       confirm_delete_wiki_page: 'Delete this wiki page?',
       toast_wiki_page_created: 'Page created', toast_wiki_page_saved: 'Page saved', toast_wiki_page_deleted: 'Page deleted',
+      nav_expenses: 'Expense reports', expenses_hint: 'Submit an expense report and track its approval status.',
+      expense_new_title: 'New expense report', expense_field_description: 'Description', expense_field_amount: 'Amount (€)', expense_field_date: 'Expense date', expense_field_category: 'Category',
+      expense_submit_btn: 'Submit report', expense_mine_title: 'My expense reports', expense_team_title: 'Team expense reports',
+      expense_none_found: 'No expense reports found.', expense_cancel_btn: 'Withdraw', expense_approve_btn: 'Approve', expense_reject_btn: 'Reject',
+      expense_review_note_label: 'Reviewer note', confirm_cancel_expense: 'Withdraw this expense report?',
+      toast_expense_submitted: 'Expense report submitted', toast_expense_cancelled: 'Expense report withdrawn', toast_expense_approved: 'Expense report approved', toast_expense_rejected: 'Expense report rejected',
+      expense_status_pending: 'Pending', expense_status_approved: 'Approved', expense_status_rejected: 'Rejected',
+      expense_category_travel: 'Travel', expense_category_meals: 'Meals', expense_category_accommodation: 'Accommodation', expense_category_supplies: 'Supplies', expense_category_other: 'Other',
       nav_assets: 'Assets', nav_onboarding: 'Onboarding', nav_timesheet: 'Hours', nav_report: 'Report', nav_audit: 'Audit', nav_admin: 'Administration', nav_profile: 'Profile', logout: 'Log out',
       login_title: 'Sign in', login_hint: 'Enter the ticketing platform.', login_email: 'Email', login_password: 'Password',
       login_submit: 'Sign in', login_no_account: "Don't have an account?", login_register_link: 'Register',
@@ -1279,11 +1296,11 @@
 
   const NAV_KEY_BY_ROUTE = {
     dashboard: 'nav_dashboard', new: 'nav_new', search: 'nav_search', announcements: 'nav_announcements', directory: 'nav_directory', messages: 'nav_messages',
-    assets: 'nav_assets', onboarding: 'nav_onboarding', timesheet: 'nav_timesheet', orgchart: 'nav_orgchart', rooms: 'nav_rooms', ideas: 'nav_ideas', wiki: 'nav_wiki', report: 'nav_insights', admin: 'nav_admin', profile: 'nav_profile',
+    assets: 'nav_assets', onboarding: 'nav_onboarding', timesheet: 'nav_timesheet', orgchart: 'nav_orgchart', rooms: 'nav_rooms', ideas: 'nav_ideas', wiki: 'nav_wiki', expenses: 'nav_expenses', report: 'nav_insights', admin: 'nav_admin', profile: 'nav_profile',
   };
   const NAV_ICON_BY_ROUTE = {
     dashboard: 'ticket', new: 'plus', search: 'inbox', announcements: 'megaphone', directory: 'users', messages: 'mail',
-    assets: 'monitor', onboarding: 'userCircle', timesheet: 'clock', orgchart: 'globe', rooms: 'calendar', ideas: 'bulb', wiki: 'file', report: 'activity', admin: 'shield', profile: 'userCircle',
+    assets: 'monitor', onboarding: 'userCircle', timesheet: 'clock', orgchart: 'globe', rooms: 'calendar', ideas: 'bulb', wiki: 'file', expenses: 'creditCard', report: 'activity', admin: 'shield', profile: 'userCircle',
   };
 
   const NAV_SECTION_KEY = { work: 'nav_section_work', team: 'nav_section_team', tools: 'nav_section_tools' };
@@ -2154,6 +2171,7 @@
         case 'rooms': return renderRooms();
         case 'ideas': return renderIdeas();
         case 'wiki': return renderWiki(param);
+        case 'expenses': return renderExpenses();
         case 'search': return renderSearch();
         case 'report': return renderInsights('report');
         case 'audit': return renderInsights('audit');
@@ -8504,6 +8522,21 @@
   function canReviewLeaveRequests() {
     return !!(state.user && (isStaff() || state.user.is_manager));
   }
+  function expenseStatusLabels() {
+    return { pending: t('expense_status_pending'), approved: t('expense_status_approved'), rejected: t('expense_status_rejected') };
+  }
+  function expenseCategoryLabels() {
+    return {
+      travel: t('expense_category_travel'),
+      meals: t('expense_category_meals'),
+      accommodation: t('expense_category_accommodation'),
+      supplies: t('expense_category_supplies'),
+      other: t('expense_category_other'),
+    };
+  }
+  function canReviewExpenses() {
+    return !!(state.user && (isStaff() || state.user.is_manager));
+  }
 
   async function renderOnboarding(param) {
     if (!canAccessOnboarding()) {
@@ -10819,6 +10852,165 @@
   async function renderWiki(param) {
     if (param && /^\d+$/.test(param)) return renderWikiPage(param);
     return renderWikiList();
+  }
+
+  async function renderExpenses() {
+    appEl.innerHTML = `
+      <div class="view-header">
+        <h1>${icon('creditCard')} ${t('nav_expenses')}</h1>
+        <p class="hint">${t('expenses_hint')}</p>
+      </div>
+      <div class="two-col">
+        <div class="card">
+          <h3 class="section-title" style="margin-top:0">${icon('plus')} ${t('expense_new_title')}</h3>
+          <form id="newExpenseForm" class="form-grid" style="max-width:none">
+            <div class="field"><label for="expenseDescription">${t('expense_field_description')}</label><input id="expenseDescription" required maxlength="500" /></div>
+            <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+              <div class="field" style="flex:1 1 8rem"><label for="expenseAmount">${t('expense_field_amount')}</label><input id="expenseAmount" type="number" min="0.01" step="0.01" required /></div>
+              <div class="field" style="flex:1 1 9rem"><label for="expenseDate">${t('expense_field_date')}</label><input id="expenseDate" type="date" required /></div>
+            </div>
+            <div class="field">
+              <label for="expenseCategory">${t('expense_field_category')}</label>
+              <select id="expenseCategory">
+                ${Object.entries(expenseCategoryLabels()).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
+              </select>
+            </div>
+            <p class="error-text" id="expenseFormError"></p>
+            <button class="btn btn-sm" type="submit">${t('expense_submit_btn')}</button>
+          </form>
+        </div>
+        <div class="card">
+          <h3 class="section-title" style="margin-top:0">${t('expense_mine_title')}</h3>
+          <div id="expenseMineWrap" class="card-list spinner-row">${t('loading')}</div>
+        </div>
+      </div>
+      ${canReviewExpenses() ? `
+      <div class="card" style="margin-top:1rem">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.6rem">
+          <h3 class="section-title" style="margin:0">${t('expense_team_title')}</h3>
+          <select id="expenseTeamStatusFilter">
+            <option value="pending" selected>${expenseStatusLabels().pending}</option>
+            <option value="">${t('filter_all_statuses')}</option>
+            <option value="approved">${expenseStatusLabels().approved}</option>
+            <option value="rejected">${expenseStatusLabels().rejected}</option>
+          </select>
+        </div>
+        <div id="expenseTeamWrap" class="card-list spinner-row">${t('loading')}</div>
+      </div>` : ''}
+    `;
+
+    function expenseCardHtml(r, opts = {}) {
+      return `
+        <div class="card leave-card">
+          <div class="leave-card-main">
+            <h3>${opts.showUser ? `${escapeHtml(r.user_name)} · ` : ''}${escapeHtml(r.description)}</h3>
+            <p class="hint">${Number(r.amount).toFixed(2)} € · ${expenseCategoryLabels()[r.category] || r.category} · ${formatDate(r.expense_date)}</p>
+            ${r.review_note ? `<p class="hint">${t('expense_review_note_label')}: ${escapeHtml(r.review_note)}</p>` : ''}
+          </div>
+          <div class="leave-card-side">
+            <span class="badge badge-${r.status}">${expenseStatusLabels()[r.status] || r.status}</span>
+            ${opts.canCancel && r.status === 'pending' ? `<button type="button" class="btn btn-ghost btn-sm expenseCancelBtn" data-id="${r.id}">${t('expense_cancel_btn')}</button>` : ''}
+            ${opts.canReview && r.status === 'pending' ? `
+              <div style="display:flex; gap:0.4rem;">
+                <button type="button" class="btn btn-sm expenseApproveBtn" data-id="${r.id}">${t('expense_approve_btn')}</button>
+                <button type="button" class="btn btn-ghost btn-sm expenseRejectBtn" data-id="${r.id}">${t('expense_reject_btn')}</button>
+              </div>` : ''}
+          </div>
+        </div>`;
+    }
+
+    async function loadExpenseMine() {
+      const wrap = document.getElementById('expenseMineWrap');
+      wrap.className = 'card-list spinner-row';
+      wrap.textContent = t('loading');
+      try {
+        const { reports } = await api('/expenses');
+        wrap.className = 'card-list';
+        wrap.innerHTML = reports.length ? reports.map((r) => expenseCardHtml(r, { canCancel: true })).join('') : `<p class="hint">${t('expense_none_found')}</p>`;
+        wrap.querySelectorAll('.expenseCancelBtn').forEach((btn) => {
+          btn.addEventListener('click', async () => {
+            if (!confirm(t('confirm_cancel_expense'))) return;
+            try {
+              await api(`/expenses/${btn.dataset.id}`, { method: 'DELETE' });
+              showToast(t('toast_expense_cancelled'), 'success');
+              loadExpenseMine();
+            } catch (err) {
+              showToast(err.message, 'error');
+            }
+          });
+        });
+      } catch (err) {
+        wrap.className = '';
+        wrap.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
+      }
+    }
+
+    async function loadExpenseTeam() {
+      const wrap = document.getElementById('expenseTeamWrap');
+      if (!wrap) return;
+      const statusFilter = document.getElementById('expenseTeamStatusFilter');
+      wrap.className = 'card-list spinner-row';
+      wrap.textContent = t('loading');
+      try {
+        const params = new URLSearchParams();
+        if (statusFilter.value) params.set('status', statusFilter.value);
+        const { reports } = await api(`/expenses/team?${params.toString()}`);
+        wrap.className = 'card-list';
+        wrap.innerHTML = reports.length ? reports.map((r) => expenseCardHtml(r, { showUser: true, canReview: true })).join('') : `<p class="hint">${t('expense_none_found')}</p>`;
+        wrap.querySelectorAll('.expenseApproveBtn').forEach((btn) => {
+          btn.addEventListener('click', async () => {
+            try {
+              await api(`/expenses/${btn.dataset.id}/status`, { method: 'PATCH', body: { status: 'approved' } });
+              showToast(t('toast_expense_approved'), 'success');
+              loadExpenseTeam();
+            } catch (err) {
+              showToast(err.message, 'error');
+            }
+          });
+        });
+        wrap.querySelectorAll('.expenseRejectBtn').forEach((btn) => {
+          btn.addEventListener('click', async () => {
+            try {
+              await api(`/expenses/${btn.dataset.id}/status`, { method: 'PATCH', body: { status: 'rejected' } });
+              showToast(t('toast_expense_rejected'), 'success');
+              loadExpenseTeam();
+            } catch (err) {
+              showToast(err.message, 'error');
+            }
+          });
+        });
+      } catch (err) {
+        wrap.className = '';
+        wrap.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
+      }
+    }
+
+    guardForm(document.getElementById('newExpenseForm'), async () => {
+      const errEl = document.getElementById('expenseFormError');
+      errEl.textContent = '';
+      try {
+        await api('/expenses', {
+          method: 'POST',
+          body: {
+            description: document.getElementById('expenseDescription').value,
+            amount: document.getElementById('expenseAmount').value,
+            expenseDate: document.getElementById('expenseDate').value,
+            category: document.getElementById('expenseCategory').value,
+          },
+        });
+        document.getElementById('newExpenseForm').reset();
+        showToast(t('toast_expense_submitted'), 'success');
+        loadExpenseMine();
+      } catch (err) {
+        errEl.textContent = err.message;
+      }
+    });
+
+    if (canReviewExpenses()) {
+      document.getElementById('expenseTeamStatusFilter').addEventListener('change', loadExpenseTeam);
+      loadExpenseTeam();
+    }
+    loadExpenseMine();
   }
 
   function renderTwoFaCard() {
