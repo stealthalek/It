@@ -5608,6 +5608,9 @@
         });
       });
 
+      const activeTabBtn = document.querySelector('.admin-tab.active');
+      if (activeTabBtn) activeTabBtn.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+
       if (activeSection !== 'overview') {
         const adminSelector = `.admin-grid .card[data-admin-panel="${activeSection}"]`;
         const adminScope = `admin_block_order_${activeSection}`;
