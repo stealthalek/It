@@ -663,6 +663,7 @@
       org_drop_root_hint: 'Trascina qui un gruppo per renderlo di primo livello', toast_group_reparented: 'Gruppo riorganizzato',
       toast_member_moved: 'Persona spostata di team', org_member_drag_hint: 'Trascina su un altro team per spostare la persona', org_no_members: 'Nessuna persona in questo team',
       assign_to_me_btn: 'Assegna a me', toast_ticket_assigned_to_you: 'Ticket assegnato a te',
+      quick_resolve_btn: 'Chiudi ticket', toast_ticket_resolved_quick: 'Ticket chiuso',
       group_by_team_label: 'Raggruppa per team',
       widgets_section_title: 'Cruscotto di gestione', widgets_customize_btn: 'Personalizza',
       widgets_collapse_all_btn: 'Comprimi tutto', widgets_expand_all_btn: 'Espandi tutto', widget_collapse_toggle_title: 'Comprimi/espandi',
@@ -1130,6 +1131,7 @@
       org_drop_root_hint: 'Drag a group here to make it top-level', toast_group_reparented: 'Group reorganized',
       toast_member_moved: 'Person moved to another team', org_member_drag_hint: 'Drag onto another team to move this person', org_no_members: 'No one in this team yet',
       assign_to_me_btn: 'Assign to me', toast_ticket_assigned_to_you: 'Ticket assigned to you',
+      quick_resolve_btn: 'Close ticket', toast_ticket_resolved_quick: 'Ticket closed',
       group_by_team_label: 'Group by team',
       widgets_section_title: 'Management dashboard', widgets_customize_btn: 'Customize',
       widgets_collapse_all_btn: 'Collapse all', widgets_expand_all_btn: 'Expand all', widget_collapse_toggle_title: 'Collapse/expand',
@@ -4222,7 +4224,9 @@
     appEl.innerHTML = `
       <div class="view-header">
         <h1>#${formatTicketNumber(ticket.id)} ${escapeHtml(ticket.subject)}</h1>
-        <div style="display:flex;gap:0.5rem">
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+          ${isStaff() && !readOnly && ticket.assigned_to !== state.user.id ? `<button type="button" id="quickAssignMeBtn" class="btn btn-ghost">${icon('userCircle')} ${t('assign_to_me_btn')}</button>` : ''}
+          ${isStaff() && !readOnly && !['resolved', 'closed'].includes(ticket.status) ? `<button type="button" id="quickResolveBtn" class="btn btn-ghost">${icon('check')} ${t('quick_resolve_btn')}</button>` : ''}
           ${isStaff() && !readOnly ? `<button type="button" id="watchToggleBtn" class="btn btn-ghost">${icon(isWatching ? 'eyeOff' : 'eye')} <span id="watchToggleLabel">${isWatching ? t('btn_unwatch') : t('btn_watch')}</span>${ticketWatchers.length ? ` (${ticketWatchers.length})` : ''}</button>` : ''}
           <a class="btn btn-ghost" href="#/dashboard">${icon('arrowLeft')} ${t('back_to_list')}</a>
         </div>
@@ -4592,6 +4596,38 @@
           similarTicketsList.innerHTML = '';
         }
       })();
+    }
+
+    const quickAssignMeBtn = document.getElementById('quickAssignMeBtn');
+    if (quickAssignMeBtn) {
+      quickAssignMeBtn.addEventListener('click', async () => {
+        quickAssignMeBtn.disabled = true;
+        try {
+          const body = { assigned_to: state.user.id };
+          if (ticket.status !== 'in_progress') body.status = 'in_progress';
+          await api(`/tickets/${ticket.id}`, { method: 'PATCH', body });
+          showToast(t('toast_ticket_assigned_to_you'), 'success');
+          renderTicketDetail(id);
+        } catch (err) {
+          showToast(err.message, 'error');
+          quickAssignMeBtn.disabled = false;
+        }
+      });
+    }
+
+    const quickResolveBtn = document.getElementById('quickResolveBtn');
+    if (quickResolveBtn) {
+      quickResolveBtn.addEventListener('click', async () => {
+        quickResolveBtn.disabled = true;
+        try {
+          await api(`/tickets/${ticket.id}`, { method: 'PATCH', body: { status: 'resolved' } });
+          showToast(t('toast_ticket_resolved_quick'), 'success');
+          renderTicketDetail(id);
+        } catch (err) {
+          showToast(err.message, 'error');
+          quickResolveBtn.disabled = false;
+        }
+      });
     }
 
     const watchToggleBtn = document.getElementById('watchToggleBtn');
