@@ -212,6 +212,9 @@ router.delete(
     if (!booking) {
       return res.status(404).json({ error: 'Prenotazione non trovata' });
     }
+    if (!req.user.is_super_admin && booking.company_id !== req.user.company_id) {
+      return res.status(404).json({ error: 'Prenotazione non trovata' });
+    }
     if (booking.user_id !== req.user.id && !hasPermission(req.user, 'rooms_manage')) {
       return res.status(403).json({ error: 'Permessi insufficienti' });
     }
