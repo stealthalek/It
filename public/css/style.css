@@ -2209,6 +2209,20 @@ body.col-resizing-active { cursor: col-resize !important; user-select: none; }
 .role-tag-external { background: var(--warning-soft); color: var(--warning-text); border-color: transparent; }
 .role-tag-active { background: var(--success-soft); color: var(--success-text); border-color: transparent; }
 .role-tag-danger { background: var(--danger-soft); color: var(--danger-text); border-color: transparent; }
+.idea-status-under_review { background: var(--warning-soft); color: var(--warning-text); border-color: transparent; }
+.idea-status-implemented { background: var(--success-soft); color: var(--success-text); border-color: transparent; }
+.idea-status-rejected { background: var(--danger-soft); color: var(--danger-text); border-color: transparent; }
+
+.ideaVoteBtn {
+  flex-direction: column;
+  gap: 0.1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  padding: 0.4rem 0.7rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.ideaVoteBtn.active { background: var(--warning-soft); color: var(--warning-text); border-color: transparent; }
 .plain-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.88rem; }
 
 .totp-secret-code {

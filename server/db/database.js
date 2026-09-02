@@ -402,6 +402,26 @@ async function setupSchema() {
       'CREATE INDEX IF NOT EXISTS idx_room_bookings_user_id ON room_bookings(user_id)',
       'CREATE INDEX IF NOT EXISTS idx_room_bookings_company_id ON room_bookings(company_id)',
       'CREATE INDEX IF NOT EXISTS idx_room_bookings_start_at ON room_bookings(start_at)',
+      `CREATE TABLE IF NOT EXISTS ideas (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        description TEXT,
+        author_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        status TEXT NOT NULL DEFAULT 'new',
+        company_id INTEGER REFERENCES companies(id) ON DELETE SET NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS idea_votes (
+        idea_id INTEGER NOT NULL REFERENCES ideas(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        PRIMARY KEY (idea_id, user_id)
+      )`,
+      'CREATE INDEX IF NOT EXISTS idx_ideas_company_id ON ideas(company_id)',
+      'CREATE INDEX IF NOT EXISTS idx_ideas_author_id ON ideas(author_id)',
+      'CREATE INDEX IF NOT EXISTS idx_ideas_status ON ideas(status)',
+      'CREATE INDEX IF NOT EXISTS idx_idea_votes_idea_id ON idea_votes(idea_id)',
       'CREATE INDEX IF NOT EXISTS idx_announcements_company_id ON announcements(company_id)',
       'CREATE INDEX IF NOT EXISTS idx_announcements_pinned_created ON announcements(pinned, created_at)',
       'CREATE INDEX IF NOT EXISTS idx_announcement_reads_user_id ON announcement_reads(user_id)',
