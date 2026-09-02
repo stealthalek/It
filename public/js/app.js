@@ -8591,7 +8591,7 @@
             ${c.unread_count ? `<span class="role-tag">${c.unread_count}</span>` : ''}
           </div>
           ${isAdmin && !impersonatingId ? `<button type="button" class="icon-btn convDeleteBtn" data-id="${c.user_id}" data-name="${escapeHtml(c.user_name)}" title="${t('delete_conversation_title')}">${icon('trash')}</button>` : ''}
-        </div>`).join('') : `<p class="hint">${t('no_messages_yet')}</p>`;
+        </div>`).join('') : `<div class="empty-state">${icon('mail')}<span>${t('no_messages_yet')}</span></div>`;
 
       wrap.querySelectorAll('.directory-card').forEach((card) => {
         card.addEventListener('click', (e) => {
@@ -8860,7 +8860,7 @@
                   </tr>`).join('')}
               </tbody>
             </table>
-          </div>` : `<p class="hint">${t('no_onboarding_found')}</p>`;
+          </div>` : `<div class="empty-state">${icon('userCircle')}<span>${t('no_onboarding_found')}</span></div>`;
         wrap.querySelectorAll('.clickable-row').forEach((row) => {
           row.addEventListener('click', () => { location.hash = `#/onboarding/${row.dataset.id}`; });
         });
