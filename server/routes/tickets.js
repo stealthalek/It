@@ -320,90 +320,97 @@ async function listActivity(ticketId, includeInternal) {
   return [...comments, ...events].sort((a, b) => (a.created_at < b.created_at ? -1 : a.created_at > b.created_at ? 1 : 0));
 }
 
+function buildTicketFilters(req) {
+  const { status, priority, type, q, assigned, group } = req.query;
+  const clauses = [];
+  const params = [];
+
+  if (!isStaff(req.user)) {
+    clauses.push('(t.created_by = ? OR t.on_behalf_of = ?)');
+    params.push(req.user.id, req.user.id);
+  } else if (assigned === 'me') {
+    clauses.push('t.assigned_to = ?');
+    params.push(req.user.id);
+  } else if (assigned === 'unassigned') {
+    clauses.push('t.assigned_to IS NULL');
+  } else if (assigned && /^\d+$/.test(assigned)) {
+    clauses.push('t.assigned_to = ?');
+    params.push(Number(assigned));
+  }
+
+  if (isStaff(req.user) && req.query.createdBy && /^\d+$/.test(req.query.createdBy)) {
+    clauses.push('t.created_by = ?');
+    params.push(Number(req.query.createdBy));
+  }
+
+  if (isStaff(req.user) && !req.user.is_super_admin) {
+    clauses.push('(t.company_id IS NULL OR t.company_id = ?)');
+    params.push(req.user.company_id);
+    if (req.user.group_id) {
+      clauses.push('(t.group_id IS NULL OR t.group_id = ?)');
+      params.push(req.user.group_id);
+    } else {
+      clauses.push('t.group_id IS NULL');
+    }
+  }
+
+  if (status && STATUSES.includes(status)) {
+    clauses.push('t.status = ?');
+    params.push(status);
+  }
+  if (priority && PRIORITIES.includes(priority)) {
+    clauses.push('t.priority = ?');
+    params.push(priority);
+  }
+  if (type && TYPES.includes(type)) {
+    clauses.push('t.type = ?');
+    params.push(type);
+  }
+  if (group === 'unassigned') {
+    clauses.push('t.group_id IS NULL');
+  } else if (group && /^\d+$/.test(group)) {
+    clauses.push('t.group_id = ?');
+    params.push(Number(group));
+  }
+  if (req.query.tag && req.query.tag.trim()) {
+    clauses.push('t.id IN (SELECT tt.ticket_id FROM ticket_tags tt JOIN tags tg ON tg.id = tt.tag_id WHERE tg.name = ?)');
+    params.push(req.query.tag.trim());
+  }
+  if (req.query.category && req.query.category.trim()) {
+    clauses.push('t.category = ?');
+    params.push(req.query.category.trim());
+  }
+  if (req.query.excludeId && /^\d+$/.test(req.query.excludeId)) {
+    clauses.push('t.id != ?');
+    params.push(Number(req.query.excludeId));
+  }
+  if (q && q.trim()) {
+    const trimmed = q.trim();
+    const normalizedId = trimmed.replace(/^#/, '').replace(/^tck-?/i, '').replace(/^0+(?=\d)/, '');
+    const asId = /^\d+$/.test(normalizedId) ? Number(normalizedId) : null;
+    const requesterMatch = isStaff(req.user) ? ' OR creator.name LIKE ? OR creator.email LIKE ?' : '';
+    if (asId !== null) {
+      clauses.push(`(t.subject LIKE ? OR t.description LIKE ? OR t.id = ?${requesterMatch})`);
+      params.push(`%${trimmed}%`, `%${trimmed}%`, asId);
+    } else {
+      clauses.push(`(t.subject LIKE ? OR t.description LIKE ?${requesterMatch})`);
+      params.push(`%${trimmed}%`, `%${trimmed}%`);
+    }
+    if (isStaff(req.user)) {
+      params.push(`%${trimmed}%`, `%${trimmed}%`);
+    }
+  }
+
+  const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+  return { where, params };
+}
+
+const UNPAGINATED_LIMIT = 2000;
+
 router.get(
   '/',
   asyncHandler(async (req, res) => {
-    const { status, priority, type, q, assigned, group } = req.query;
-    const clauses = [];
-    const params = [];
-
-    if (!isStaff(req.user)) {
-      clauses.push('(t.created_by = ? OR t.on_behalf_of = ?)');
-      params.push(req.user.id, req.user.id);
-    } else if (assigned === 'me') {
-      clauses.push('t.assigned_to = ?');
-      params.push(req.user.id);
-    } else if (assigned === 'unassigned') {
-      clauses.push('t.assigned_to IS NULL');
-    } else if (assigned && /^\d+$/.test(assigned)) {
-      clauses.push('t.assigned_to = ?');
-      params.push(Number(assigned));
-    }
-
-    if (isStaff(req.user) && req.query.createdBy && /^\d+$/.test(req.query.createdBy)) {
-      clauses.push('t.created_by = ?');
-      params.push(Number(req.query.createdBy));
-    }
-
-    if (isStaff(req.user) && !req.user.is_super_admin) {
-      clauses.push('(t.company_id IS NULL OR t.company_id = ?)');
-      params.push(req.user.company_id);
-      if (req.user.group_id) {
-        clauses.push('(t.group_id IS NULL OR t.group_id = ?)');
-        params.push(req.user.group_id);
-      } else {
-        clauses.push('t.group_id IS NULL');
-      }
-    }
-
-    if (status && STATUSES.includes(status)) {
-      clauses.push('t.status = ?');
-      params.push(status);
-    }
-    if (priority && PRIORITIES.includes(priority)) {
-      clauses.push('t.priority = ?');
-      params.push(priority);
-    }
-    if (type && TYPES.includes(type)) {
-      clauses.push('t.type = ?');
-      params.push(type);
-    }
-    if (group === 'unassigned') {
-      clauses.push('t.group_id IS NULL');
-    } else if (group && /^\d+$/.test(group)) {
-      clauses.push('t.group_id = ?');
-      params.push(Number(group));
-    }
-    if (req.query.tag && req.query.tag.trim()) {
-      clauses.push('t.id IN (SELECT tt.ticket_id FROM ticket_tags tt JOIN tags tg ON tg.id = tt.tag_id WHERE tg.name = ?)');
-      params.push(req.query.tag.trim());
-    }
-    if (req.query.category && req.query.category.trim()) {
-      clauses.push('t.category = ?');
-      params.push(req.query.category.trim());
-    }
-    if (req.query.excludeId && /^\d+$/.test(req.query.excludeId)) {
-      clauses.push('t.id != ?');
-      params.push(Number(req.query.excludeId));
-    }
-    if (q && q.trim()) {
-      const trimmed = q.trim();
-      const normalizedId = trimmed.replace(/^#/, '').replace(/^tck-?/i, '').replace(/^0+(?=\d)/, '');
-      const asId = /^\d+$/.test(normalizedId) ? Number(normalizedId) : null;
-      const requesterMatch = isStaff(req.user) ? ' OR creator.name LIKE ? OR creator.email LIKE ?' : '';
-      if (asId !== null) {
-        clauses.push(`(t.subject LIKE ? OR t.description LIKE ? OR t.id = ?${requesterMatch})`);
-        params.push(`%${trimmed}%`, `%${trimmed}%`, asId);
-      } else {
-        clauses.push(`(t.subject LIKE ? OR t.description LIKE ?${requesterMatch})`);
-        params.push(`%${trimmed}%`, `%${trimmed}%`);
-      }
-      if (isStaff(req.user)) {
-        params.push(`%${trimmed}%`, `%${trimmed}%`);
-      }
-    }
-
-    const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+    const { where, params } = buildTicketFilters(req);
 
     if (req.query.page) {
       const page = Math.max(1, Number(req.query.page) || 1);
@@ -415,10 +422,50 @@ router.get(
       return res.json({ tickets: tickets.map(withSla), total: totalRow.n, page, pageSize });
     }
 
-    const tickets = await db.all(`${TICKET_SELECT} ${where} ORDER BY t.updated_at DESC LIMIT 2000`, params);
+    const tickets = await db.all(`${TICKET_SELECT} ${where} ORDER BY t.updated_at DESC LIMIT ${UNPAGINATED_LIMIT}`, params);
     assertCompanyScoped(tickets, req.user);
 
-    res.json({ tickets: tickets.map(withSla) });
+    let total = tickets.length;
+    let truncated = false;
+    if (tickets.length === UNPAGINATED_LIMIT) {
+      const totalRow = await db.get(`SELECT COUNT(*) AS n FROM tickets t ${where}`, params);
+      total = totalRow.n;
+      truncated = total > UNPAGINATED_LIMIT;
+    }
+
+    res.json({ tickets: tickets.map(withSla), total, truncated });
+  })
+);
+
+router.get(
+  '/stats',
+  asyncHandler(async (req, res) => {
+    const { where, params } = buildTicketFilters(req);
+
+    const [byStatus, byType, urgentRow, personalRow] = await Promise.all([
+      db.all(`SELECT t.status AS k, COUNT(*) AS n FROM tickets t ${where} GROUP BY t.status`, params),
+      db.all(`SELECT t.type AS k, COUNT(*) AS n FROM tickets t ${where} GROUP BY t.type`, params),
+      db.get(
+        `SELECT COUNT(*) AS n FROM tickets t ${where} ${where ? 'AND' : 'WHERE'} t.priority = 'urgent' AND t.status NOT IN ('resolved', 'closed')`,
+        params
+      ),
+      isStaff(req.user)
+        ? db.get(
+            `SELECT COUNT(*) AS n FROM tickets t ${where} ${where ? 'AND' : 'WHERE'} t.assigned_to = ? AND t.status NOT IN ('resolved', 'closed')`,
+            [...params, req.user.id]
+          )
+        : db.get(
+            `SELECT COUNT(*) AS n FROM tickets t ${where} ${where ? 'AND' : 'WHERE'} t.status IN ('open', 'in_progress')`,
+            params
+          ),
+    ]);
+
+    const counts = { open: 0, in_progress: 0, waiting_customer: 0, resolved: 0, closed: 0, incident: 0, task: 0 };
+    byStatus.forEach((row) => { if (row.k in counts) counts[row.k] = row.n; });
+    byType.forEach((row) => { if (row.k in counts) counts[row.k] = row.n; });
+    counts.urgent = urgentRow.n;
+
+    res.json({ counts, personalCount: personalRow.n });
   })
 );
 

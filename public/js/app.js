@@ -590,6 +590,7 @@
       widgets_section_title: 'Cruscotto di gestione', widgets_customize_btn: 'Personalizza',
       widgets_collapse_all_btn: 'Comprimi tutto', widgets_expand_all_btn: 'Espandi tutto', widget_collapse_toggle_title: 'Comprimi/espandi',
       widgets_all_hidden_hint: 'Nessun widget visibile. Usa "Personalizza" per riattivarli.',
+      ticket_list_truncated_hint: 'Vengono mostrati solo i ticket più recenti: affina i filtri per una vista completa.',
       widget_unassigned_by_group_title: 'Non assegnati per gruppo', widget_unassigned_by_group_empty: 'Nessun ticket non assegnato al momento.',
       widget_sla_watch_title: 'Ticket a rischio SLA', widget_sla_watch_empty: 'Nessun ticket a rischio SLA al momento.',
       widget_sla_overdue_label: 'SLA superata', widget_sla_elapsed_label: 'del tempo SLA trascorso',
@@ -1030,6 +1031,7 @@
       widgets_section_title: 'Management dashboard', widgets_customize_btn: 'Customize',
       widgets_collapse_all_btn: 'Collapse all', widgets_expand_all_btn: 'Expand all', widget_collapse_toggle_title: 'Collapse/expand',
       widgets_all_hidden_hint: 'No widgets visible. Use "Customize" to turn them back on.',
+      ticket_list_truncated_hint: 'Only the most recent tickets are shown: refine the filters for a complete view.',
       widget_unassigned_by_group_title: 'Unassigned by group', widget_unassigned_by_group_empty: 'No unassigned tickets right now.',
       widget_sla_watch_title: 'SLA at-risk tickets', widget_sla_watch_empty: 'No tickets at SLA risk right now.',
       widget_sla_overdue_label: 'SLA breached', widget_sla_elapsed_label: 'of SLA time elapsed',
@@ -2694,6 +2696,7 @@
         ${state.user.role === 'admin' ? `<button type="button" id="bulkDeleteBtn" class="btn btn-outline-danger btn-sm">${icon('trash')} ${t('bulk_delete_btn')}</button>` : ''}
         <button type="button" id="bulkClearBtn" class="btn btn-ghost btn-sm">${t('bulk_clear_selection')}</button>
       </div>` : ''}
+      <div id="ticketTruncatedHint" class="hint" hidden></div>
       <div id="ticketList" class="skeleton-grid">
         ${Array(4).fill('<div class="skeleton-card"></div>').join('')}
       </div>`;
@@ -2778,6 +2781,7 @@
     }
 
     const listEl = document.getElementById('ticketList');
+    const truncatedHintEl = document.getElementById('ticketTruncatedHint');
     const statsEl = document.getElementById('statsRow');
     const personalEl = document.getElementById('personalCounter');
     const chartsEl = document.getElementById('chartsRow');
@@ -3094,13 +3098,18 @@
       loadWidgetsData();
     }
 
-    function renderStats(tickets) {
+    function statsCountsFromTickets(tickets) {
       const counts = { open: 0, in_progress: 0, waiting_customer: 0, resolved: 0, closed: 0, urgent: 0, incident: 0, task: 0 };
       tickets.forEach((tk) => {
         counts[tk.status] = (counts[tk.status] || 0) + 1;
         counts[tk.type] = (counts[tk.type] || 0) + 1;
         if (tk.priority === 'urgent' && tk.status !== 'closed' && tk.status !== 'resolved') counts.urgent += 1;
       });
+      return counts;
+    }
+
+    function renderStats(tickets, overrideCounts) {
+      const counts = overrideCounts || statsCountsFromTickets(tickets);
       statsEl.innerHTML = `
         <button type="button" class="stat-card accent-open" data-status="open"><div class="stat-value">${counts.open}</div><div class="stat-label">${t('stat_open')}</div></button>
         <button type="button" class="stat-card accent-in_progress" data-status="in_progress"><div class="stat-value">${counts.in_progress}</div><div class="stat-label">${t('stat_in_progress')}</div></button>
@@ -3119,7 +3128,7 @@
       });
     }
 
-    function renderPersonalCounter(tickets) {
+    function renderPersonalCounter(tickets, overrideValue) {
       if (viewingAs && viewingAs.roleOnly) {
         personalEl.innerHTML = `<p class="hint">${t('viewing_as_role_no_personal_counter')}</p>`;
         return;
@@ -3128,10 +3137,10 @@
       const asId = viewingAs ? viewingAs.id : state.user.id;
       const asStaff = viewingAs ? viewingAs.role !== 'customer' : isStaff();
       if (asStaff) {
-        value = tickets.filter((tk) => tk.assigned_to === asId && tk.status !== 'resolved' && tk.status !== 'closed').length;
+        value = overrideValue != null ? overrideValue : tickets.filter((tk) => tk.assigned_to === asId && tk.status !== 'resolved' && tk.status !== 'closed').length;
         label = viewingAs ? `${viewingAs.name} — ${t('personal_counter_staff')}` : t('personal_counter_staff');
       } else {
-        value = tickets.filter((tk) => tk.status === 'open' || tk.status === 'in_progress').length;
+        value = overrideValue != null ? overrideValue : tickets.filter((tk) => tk.status === 'open' || tk.status === 'in_progress').length;
         label = viewingAs ? `${viewingAs.name} — ${t('personal_counter_customer')}` : t('personal_counter_customer');
       }
       personalEl.innerHTML = `
@@ -3360,7 +3369,7 @@
 
       try {
         const roleOnlyCustomerEmpty = viewingAs && viewingAs.role === 'customer' && viewingAs.id == null;
-        const { tickets: fetched } = roleOnlyCustomerEmpty ? { tickets: [] } : await api(`/tickets?${params.toString()}`);
+        const { tickets: fetched, truncated } = roleOnlyCustomerEmpty ? { tickets: [] } : await api(`/tickets?${params.toString()}`);
         const applyGroupFilter = viewingAs && viewingAs.role !== 'customer' && !viewingAs.is_super_admin && !(viewingAs.roleOnly && !viewingAs.group_id);
         const tickets = applyGroupFilter
           ? fetched.filter((tk) => !tk.group_id || tk.group_id === viewingAs.group_id)
@@ -3379,6 +3388,18 @@
         renderPersonalCounter(tickets);
         renderCharts(tickets);
         renderScopedCharts();
+        if (truncatedHintEl) {
+          truncatedHintEl.hidden = !truncated || !!viewingAs;
+          if (truncated && !viewingAs) truncatedHintEl.textContent = t('ticket_list_truncated_hint');
+        }
+        if (!viewingAs && !roleOnlyCustomerEmpty) {
+          api(`/tickets/stats?${params.toString()}`)
+            .then(({ counts, personalCount }) => {
+              renderStats(tickets, counts);
+              renderPersonalCounter(tickets, personalCount);
+            })
+            .catch(() => {});
+        }
         const showClosed = activeFilters.status === 'resolved' || activeFilters.status === 'closed';
         const listTickets = showClosed ? tickets : tickets.filter((tk) => tk.status !== 'resolved' && tk.status !== 'closed');
         if (bulkBar) {
