@@ -611,6 +611,8 @@
       admin_title: 'Amministrazione', access_denied: 'Accesso non consentito.', person_card_title: 'Scheda persona',
       org_open_tickets: 'aperti', org_sla_breach: 'in ritardo', org_node_hint: 'Clic per vedere i ticket del team',
       org_member_count: 'persone', org_no_manager: 'Nessun responsabile', org_toggle_branch: 'Espandi/comprimi ramo',
+      org_drag_handle_hint: 'Trascina per spostare il team', org_add_child_title: 'Aggiungi sotto-team',
+      toast_add_child_group_hint: 'Compila il nome: verrà creato sotto "{name}"',
       org_settings_toggle: 'Impostazioni team', org_expand_all: 'Espandi tutto', org_collapse_all: 'Comprimi tutto',
       org_settings_group_identity: 'Identità', org_settings_group_sla: 'SLA e orario',
       admin_create_staff_title: 'Crea account staff', admin_group_optional_label: 'Gruppo di assegnazione (opzionale)',
@@ -1075,6 +1077,8 @@
       admin_title: 'Administration', access_denied: 'Access not allowed.', person_card_title: 'Person profile',
       org_open_tickets: 'open', org_sla_breach: 'overdue', org_node_hint: 'Click to see the team\'s tickets',
       org_member_count: 'people', org_no_manager: 'No manager', org_toggle_branch: 'Expand/collapse branch',
+      org_drag_handle_hint: 'Drag to move this team', org_add_child_title: 'Add sub-team',
+      toast_add_child_group_hint: 'Fill in the name: it will be created under "{name}"',
       org_settings_toggle: 'Team settings', org_expand_all: 'Expand all', org_collapse_all: 'Collapse all',
       org_settings_group_identity: 'Identity', org_settings_group_sla: 'SLA & hours',
       admin_create_staff_title: 'Create staff account', admin_group_optional_label: 'Assignment group (optional)',
@@ -5836,11 +5840,13 @@
           <div class="org-branch">
             <div class="org-node" draggable="true" data-group-id="${node.id}" data-group-name="${escapeHtml(node.name)}" title="${t('org_node_hint')}">
               <div class="org-node-head">
+                <span class="org-node-drag-handle" title="${t('org_drag_handle_hint')}">${icon('grip')}</span>
                 ${hasChildren ? `<button type="button" class="org-collapse-toggle" data-branch-toggle title="${t('org_toggle_branch')}">${icon('chevronDown')}</button>` : '<span class="org-collapse-spacer"></span>'}
                 <div class="org-node-title">
                   <span class="org-node-name">${escapeHtml(node.name)}</span>
                   <span class="org-node-manager">${icon('userCircle', 'badge-icon')}${node.manager_name ? escapeHtml(node.manager_name) : t('org_no_manager')}</span>
                 </div>
+                <button type="button" class="icon-btn addChildGroupBtn" data-id="${node.id}" data-name="${escapeHtml(node.name)}" title="${t('org_add_child_title')}">${icon('plus')}</button>
                 <button type="button" class="icon-btn deleteGroupBtn" data-id="${node.id}" title="${t('delete_group_title')}">${icon('trash')}</button>
               </div>
               <div class="org-node-stats">
@@ -5945,6 +5951,7 @@
           let draggedGroupId = null;
           let draggedUserId = null;
           let draggedUserOriginGroup = null;
+          let dragHandleArmed = null;
           async function reparentGroup(sourceId, parentId) {
             try {
               await api(`/groups/${sourceId}`, { method: 'PATCH', body: { parentId } });
@@ -5982,7 +5989,17 @@
             });
           });
           listEl.querySelectorAll('.org-node').forEach((nodeEl) => {
+            const dragHandle = nodeEl.querySelector('.org-node-drag-handle');
+            if (dragHandle) {
+              dragHandle.addEventListener('mousedown', () => { dragHandleArmed = nodeEl.dataset.groupId; });
+              dragHandle.addEventListener('mouseup', () => { dragHandleArmed = null; });
+            }
             nodeEl.addEventListener('dragstart', (e) => {
+              if (dragHandle && dragHandleArmed !== nodeEl.dataset.groupId) {
+                e.preventDefault();
+                return;
+              }
+              dragHandleArmed = null;
               draggedGroupId = nodeEl.dataset.groupId;
               nodeEl.classList.add('dragging');
               e.dataTransfer.effectAllowed = 'move';
@@ -6130,6 +6147,19 @@
               } catch (err) {
                 showToast(err.message, 'error');
               }
+            });
+          });
+
+          listEl.querySelectorAll('.addChildGroupBtn').forEach((btn) => {
+            btn.addEventListener('click', () => {
+              const parentSelect = document.getElementById('newGroupParent');
+              const nameInput = document.getElementById('newGroupName');
+              if (parentSelect) parentSelect.value = btn.dataset.id;
+              if (nameInput) {
+                nameInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                nameInput.focus();
+              }
+              showToast(t('toast_add_child_group_hint').replace('{name}', btn.dataset.name), 'success');
             });
           });
         } catch (err) {
