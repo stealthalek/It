@@ -396,6 +396,12 @@
       ideas_vote_btn: 'Vota', ideas_delete_title: 'Elimina idea', confirm_delete_idea: 'Eliminare questa idea?',
       toast_idea_submitted: 'Idea inviata', toast_idea_deleted: 'Idea eliminata', toast_idea_status_updated: 'Stato idea aggiornato',
       idea_status_new: 'Nuova', idea_status_under_review: 'In valutazione', idea_status_planned: 'Pianificata', idea_status_implemented: 'Realizzata', idea_status_rejected: 'Non accolta',
+      nav_wiki: 'Wiki interno', wiki_hint: 'Documentazione e procedure interne, consultabili da tutta l\'azienda.',
+      wiki_new_page_btn: 'Nuova pagina', wiki_search_placeholder: 'Cerca una pagina...', wiki_field_title: 'Titolo', wiki_field_content: 'Contenuto',
+      wiki_save_btn: 'Salva', wiki_none: 'Nessuna pagina ancora.', wiki_back_to_list: 'Torna al wiki', wiki_edit_btn: 'Modifica', wiki_delete_btn: 'Elimina',
+      wiki_last_edited_by: 'Ultima modifica di', wiki_empty_page: 'Questa pagina non ha ancora contenuto.',
+      confirm_delete_wiki_page: 'Eliminare questa pagina wiki?',
+      toast_wiki_page_created: 'Pagina creata', toast_wiki_page_saved: 'Pagina salvata', toast_wiki_page_deleted: 'Pagina eliminata',
       nav_assets: 'Asset', nav_onboarding: 'Onboarding', nav_timesheet: 'Orari', nav_report: 'Report', nav_audit: 'Audit', nav_admin: 'Amministrazione', nav_profile: 'Profilo', logout: 'Esci',
       login_title: 'Accedi', login_hint: 'Entra nella piattaforma di ticketing.', login_email: 'Email', login_password: 'Password',
       login_submit: 'Accedi', login_no_account: 'Non hai un account?', login_register_link: 'Registrati',
@@ -843,6 +849,12 @@
       ideas_vote_btn: 'Vote', ideas_delete_title: 'Delete idea', confirm_delete_idea: 'Delete this idea?',
       toast_idea_submitted: 'Idea submitted', toast_idea_deleted: 'Idea deleted', toast_idea_status_updated: 'Idea status updated',
       idea_status_new: 'New', idea_status_under_review: 'Under review', idea_status_planned: 'Planned', idea_status_implemented: 'Implemented', idea_status_rejected: 'Not accepted',
+      nav_wiki: 'Internal wiki', wiki_hint: 'Internal documentation and procedures, available to the whole company.',
+      wiki_new_page_btn: 'New page', wiki_search_placeholder: 'Search a page...', wiki_field_title: 'Title', wiki_field_content: 'Content',
+      wiki_save_btn: 'Save', wiki_none: 'No pages yet.', wiki_back_to_list: 'Back to wiki', wiki_edit_btn: 'Edit', wiki_delete_btn: 'Delete',
+      wiki_last_edited_by: 'Last edited by', wiki_empty_page: 'This page has no content yet.',
+      confirm_delete_wiki_page: 'Delete this wiki page?',
+      toast_wiki_page_created: 'Page created', toast_wiki_page_saved: 'Page saved', toast_wiki_page_deleted: 'Page deleted',
       nav_assets: 'Assets', nav_onboarding: 'Onboarding', nav_timesheet: 'Hours', nav_report: 'Report', nav_audit: 'Audit', nav_admin: 'Administration', nav_profile: 'Profile', logout: 'Log out',
       login_title: 'Sign in', login_hint: 'Enter the ticketing platform.', login_email: 'Email', login_password: 'Password',
       login_submit: 'Sign in', login_no_account: "Don't have an account?", login_register_link: 'Register',
@@ -1267,11 +1279,11 @@
 
   const NAV_KEY_BY_ROUTE = {
     dashboard: 'nav_dashboard', new: 'nav_new', search: 'nav_search', announcements: 'nav_announcements', directory: 'nav_directory', messages: 'nav_messages',
-    assets: 'nav_assets', onboarding: 'nav_onboarding', timesheet: 'nav_timesheet', orgchart: 'nav_orgchart', rooms: 'nav_rooms', ideas: 'nav_ideas', report: 'nav_insights', admin: 'nav_admin', profile: 'nav_profile',
+    assets: 'nav_assets', onboarding: 'nav_onboarding', timesheet: 'nav_timesheet', orgchart: 'nav_orgchart', rooms: 'nav_rooms', ideas: 'nav_ideas', wiki: 'nav_wiki', report: 'nav_insights', admin: 'nav_admin', profile: 'nav_profile',
   };
   const NAV_ICON_BY_ROUTE = {
     dashboard: 'ticket', new: 'plus', search: 'inbox', announcements: 'megaphone', directory: 'users', messages: 'mail',
-    assets: 'monitor', onboarding: 'userCircle', timesheet: 'clock', orgchart: 'globe', rooms: 'calendar', ideas: 'bulb', report: 'activity', admin: 'shield', profile: 'userCircle',
+    assets: 'monitor', onboarding: 'userCircle', timesheet: 'clock', orgchart: 'globe', rooms: 'calendar', ideas: 'bulb', wiki: 'file', report: 'activity', admin: 'shield', profile: 'userCircle',
   };
 
   const NAV_SECTION_KEY = { work: 'nav_section_work', team: 'nav_section_team', tools: 'nav_section_tools' };
@@ -2141,6 +2153,7 @@
         case 'orgchart': return renderOrgChartPublic();
         case 'rooms': return renderRooms();
         case 'ideas': return renderIdeas();
+        case 'wiki': return renderWiki(param);
         case 'search': return renderSearch();
         case 'report': return renderInsights('report');
         case 'audit': return renderInsights('audit');
@@ -10620,6 +10633,192 @@
     });
 
     loadIdeas();
+  }
+
+  function canManageWiki() {
+    return !!(state.user && (state.user.role === 'admin' || state.user.is_super_admin || (Array.isArray(state.user.permissions) && state.user.permissions.includes('wiki_manage'))));
+  }
+
+  async function renderWikiList() {
+    appEl.innerHTML = `
+      <div class="view-header">
+        <div>
+          <h1>${icon('file')} ${t('nav_wiki')}</h1>
+          <p class="hint">${t('wiki_hint')}</p>
+        </div>
+        ${canManageWiki() ? `<button type="button" id="wikiNewPageBtn" class="btn">${icon('plus')} ${t('wiki_new_page_btn')}</button>` : ''}
+      </div>
+      <div class="filters">
+        <input id="wikiSearch" type="search" placeholder="${t('wiki_search_placeholder')}" />
+      </div>
+      ${canManageWiki() ? `
+      <div class="card" id="wikiNewPageCard" hidden>
+        <h3 class="section-title" style="margin-top:0">${icon('plus')} ${t('wiki_new_page_btn')}</h3>
+        <form id="newWikiPageForm" class="form-grid" style="max-width:none">
+          <div class="field"><label for="wikiNewTitle">${t('wiki_field_title')}</label><input id="wikiNewTitle" required maxlength="200" /></div>
+          <div class="field"><label for="wikiNewContent">${t('wiki_field_content')}</label><textarea id="wikiNewContent" rows="8"></textarea></div>
+          <p class="error-text" id="wikiNewError"></p>
+          <div><button class="btn btn-sm" type="submit">${t('wiki_save_btn')}</button></div>
+        </form>
+      </div>` : ''}
+      <div id="wikiPagesList" class="spinner-row">${t('loading')}</div>
+    `;
+
+    const searchInput = document.getElementById('wikiSearch');
+    const listEl = document.getElementById('wikiPagesList');
+
+    function pageRowHtml(p) {
+      return `
+        <a class="card" style="display:block;margin-bottom:0.6rem" href="#/wiki/${p.id}">
+          <strong>${escapeHtml(p.title)}</strong>
+          <p class="hint" style="margin:0.3rem 0 0">${icon('userCircle', 'badge-icon')} ${escapeHtml(p.updated_by_name || p.author_name || '—')} · ${formatDate(p.updated_at)}</p>
+        </a>`;
+    }
+
+    let debounceTimer;
+    async function loadPages() {
+      listEl.className = 'spinner-row';
+      listEl.textContent = t('loading');
+      try {
+        const q = searchInput.value.trim();
+        const { pages } = await api(`/wiki${q ? `?q=${encodeURIComponent(q)}` : ''}`);
+        listEl.className = '';
+        listEl.innerHTML = pages.length ? pages.map(pageRowHtml).join('') : `<p class="hint">${t('wiki_none')}</p>`;
+      } catch (err) {
+        listEl.className = '';
+        listEl.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
+      }
+    }
+    searchInput.addEventListener('input', () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(loadPages, 300);
+    });
+
+    const newPageBtn = document.getElementById('wikiNewPageBtn');
+    const newPageCard = document.getElementById('wikiNewPageCard');
+    if (newPageBtn) {
+      newPageBtn.addEventListener('click', () => {
+        newPageCard.hidden = !newPageCard.hidden;
+      });
+      guardForm(document.getElementById('newWikiPageForm'), async () => {
+        const errEl = document.getElementById('wikiNewError');
+        errEl.textContent = '';
+        try {
+          const { page } = await api('/wiki', {
+            method: 'POST',
+            body: {
+              title: document.getElementById('wikiNewTitle').value,
+              content: document.getElementById('wikiNewContent').value,
+            },
+          });
+          showToast(t('toast_wiki_page_created'), 'success');
+          location.hash = `#/wiki/${page.id}`;
+        } catch (err) {
+          errEl.textContent = err.message;
+        }
+      });
+    }
+
+    loadPages();
+  }
+
+  async function renderWikiPage(id) {
+    appEl.innerHTML = `
+      <div class="view-header">
+        <div>
+          <a href="#/wiki" class="hint">${icon('arrowLeft', 'badge-icon')} ${t('wiki_back_to_list')}</a>
+          <h1 id="wikiPageTitle"></h1>
+          <p class="hint" id="wikiPageMeta"></p>
+        </div>
+        ${canManageWiki() ? `
+        <div style="display:flex;gap:0.5rem">
+          <button type="button" id="wikiEditBtn" class="btn btn-ghost">${icon('edit')} ${t('wiki_edit_btn')}</button>
+          <button type="button" id="wikiDeleteBtn" class="btn btn-outline-danger">${icon('trash')} ${t('wiki_delete_btn')}</button>
+        </div>` : ''}
+      </div>
+      <div class="card" id="wikiPageBody"><div class="spinner-row">${t('loading')}</div></div>
+    `;
+
+    let currentPage = null;
+
+    async function load() {
+      try {
+        const { page } = await api(`/wiki/${id}`);
+        currentPage = page;
+        document.getElementById('wikiPageTitle').textContent = page.title;
+        document.getElementById('wikiPageMeta').textContent =
+          `${t('wiki_last_edited_by')} ${page.updated_by_name || page.author_name || '—'} · ${formatDate(page.updated_at)}`;
+        renderReadMode();
+      } catch (err) {
+        document.getElementById('wikiPageBody').innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
+      }
+    }
+
+    function renderReadMode() {
+      const body = document.getElementById('wikiPageBody');
+      body.innerHTML = currentPage.content
+        ? `<p style="white-space:pre-wrap">${escapeHtml(currentPage.content)}</p>`
+        : `<p class="hint">${t('wiki_empty_page')}</p>`;
+    }
+
+    function renderEditMode() {
+      const body = document.getElementById('wikiPageBody');
+      body.innerHTML = `
+        <form id="editWikiPageForm" class="form-grid" style="max-width:none">
+          <div class="field"><label for="wikiEditTitle">${t('wiki_field_title')}</label><input id="wikiEditTitle" required maxlength="200" value="${escapeHtml(currentPage.title)}" /></div>
+          <div class="field"><label for="wikiEditContent">${t('wiki_field_content')}</label><textarea id="wikiEditContent" rows="12">${escapeHtml(currentPage.content || '')}</textarea></div>
+          <p class="error-text" id="wikiEditError"></p>
+          <div style="display:flex;gap:0.5rem">
+            <button class="btn btn-sm" type="submit">${t('wiki_save_btn')}</button>
+            <button class="btn btn-ghost btn-sm" type="button" id="wikiCancelEditBtn">${t('btn_cancel')}</button>
+          </div>
+        </form>`;
+      document.getElementById('wikiCancelEditBtn').addEventListener('click', renderReadMode);
+      guardForm(document.getElementById('editWikiPageForm'), async () => {
+        const errEl = document.getElementById('wikiEditError');
+        errEl.textContent = '';
+        try {
+          const { page } = await api(`/wiki/${id}`, {
+            method: 'PATCH',
+            body: {
+              title: document.getElementById('wikiEditTitle').value,
+              content: document.getElementById('wikiEditContent').value,
+            },
+          });
+          currentPage = page;
+          document.getElementById('wikiPageTitle').textContent = page.title;
+          document.getElementById('wikiPageMeta').textContent =
+            `${t('wiki_last_edited_by')} ${page.updated_by_name || page.author_name || '—'} · ${formatDate(page.updated_at)}`;
+          showToast(t('toast_wiki_page_saved'), 'success');
+          renderReadMode();
+        } catch (err) {
+          errEl.textContent = err.message;
+        }
+      });
+    }
+
+    const editBtn = document.getElementById('wikiEditBtn');
+    if (editBtn) editBtn.addEventListener('click', renderEditMode);
+    const deleteBtn = document.getElementById('wikiDeleteBtn');
+    if (deleteBtn) {
+      deleteBtn.addEventListener('click', async () => {
+        if (!confirm(t('confirm_delete_wiki_page'))) return;
+        try {
+          await api(`/wiki/${id}`, { method: 'DELETE' });
+          showToast(t('toast_wiki_page_deleted'), 'success');
+          location.hash = '#/wiki';
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      });
+    }
+
+    load();
+  }
+
+  async function renderWiki(param) {
+    if (param && /^\d+$/.test(param)) return renderWikiPage(param);
+    return renderWikiList();
   }
 
   function renderTwoFaCard() {
