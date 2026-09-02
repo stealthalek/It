@@ -10,6 +10,13 @@ const READ_NOTIFICATION_TTL_DAYS = 90;
 const AUDIT_LOG_TTL_DAYS = 365;
 const SESSION_TTL_DAYS = 90;
 const CHECK_INTERVAL_MS = 10 * 60 * 1000;
+const BATCH_SIZE = 200;
+
+function chunk(arr, size) {
+  const chunks = [];
+  for (let i = 0; i < arr.length; i += size) chunks.push(arr.slice(i, i + size));
+  return chunks;
+}
 
 async function autoCloseResolvedTickets() {
   const candidates = await db.all(
@@ -19,28 +26,45 @@ async function autoCloseResolvedTickets() {
        AND resolved_at <= datetime('now', ?)`,
     [`-${AUTO_CLOSE_HOURS} hours`]
   );
+  if (!candidates.length) return;
 
-  for (const { id } of candidates) {
-    await db.run("UPDATE tickets SET status = 'closed', updated_at = datetime('now') WHERE id = ?", [id]);
-    const info = await db.run(
-      "INSERT INTO ticket_events (ticket_id, actor_id, message) VALUES (?, NULL, ?)",
-      [id, `Chiuso automaticamente dopo ${AUTO_CLOSE_HOURS} ore di inattività`]
+  const message = `Chiuso automaticamente dopo ${AUTO_CLOSE_HOURS} ore di inattività`;
+  for (const batch of chunk(candidates.map((c) => c.id), BATCH_SIZE)) {
+    const placeholders = batch.map(() => '?').join(',');
+
+    await db.run(`UPDATE tickets SET status = 'closed', updated_at = datetime('now') WHERE id IN (${placeholders})`, batch);
+
+    const insertValues = batch.map(() => '(?, NULL, ?)').join(', ');
+    await db.run(
+      `INSERT INTO ticket_events (ticket_id, actor_id, message) VALUES ${insertValues}`,
+      batch.flatMap((id) => [id, message])
     );
-    const row = await db.get(
-      `SELECT e.id, e.message, e.created_at, u.name AS actor_name
+
+    const events = await db.all(
+      `SELECT e.id, e.ticket_id, e.message, e.created_at, u.name AS actor_name
        FROM ticket_events e LEFT JOIN users u ON u.id = e.actor_id
-       WHERE e.id = ?`,
-      [Number(info.lastInsertRowid)]
+       WHERE e.ticket_id IN (${placeholders}) AND e.message = ?
+       ORDER BY e.id DESC`,
+      [...batch, message]
     );
-    realtime.broadcastActivityItem(id, { kind: 'event', ...row });
+    const latestEventByTicket = new Map();
+    for (const row of events) {
+      if (!latestEventByTicket.has(row.ticket_id)) latestEventByTicket.set(row.ticket_id, row);
+    }
+    for (const id of batch) {
+      const row = latestEventByTicket.get(id);
+      if (row) realtime.broadcastActivityItem(id, { kind: 'event', id: row.id, message: row.message, created_at: row.created_at, actor_name: row.actor_name });
+    }
 
-    const updated = await db.get(
+    const updated = await db.all(
       `SELECT t.*, grp.sla_resolve_hours AS sla_resolve_hours
        FROM tickets t LEFT JOIN groups grp ON grp.id = t.group_id
-       WHERE t.id = ?`,
-      [id]
+       WHERE t.id IN (${placeholders})`,
+      batch
     );
-    realtime.broadcastTicketUpdate(id, updated);
+    for (const ticket of updated) {
+      realtime.broadcastTicketUpdate(ticket.id, ticket);
+    }
   }
 }
 
@@ -54,36 +78,67 @@ async function checkSlaWarnings() {
        AND grp.sla_resolve_hours IS NOT NULL`
   );
 
-  for (const ticket of candidates) {
-    const status = computeSlaStatus(ticket);
-    if (status !== 'at_risk' && status !== 'breached') continue;
+  const flagged = candidates
+    .map((ticket) => ({ ticket, status: computeSlaStatus(ticket) }))
+    .filter(({ status }) => status === 'at_risk' || status === 'breached');
+  if (!flagged.length) return;
 
-    await db.run("UPDATE tickets SET sla_warned_at = datetime('now') WHERE id = ?", [ticket.id]);
+  for (const batch of chunk(flagged, BATCH_SIZE)) {
+    const ids = batch.map(({ ticket }) => ticket.id);
+    const placeholders = ids.map(() => '?').join(',');
 
-    const label = status === 'breached' ? 'SLA superata' : 'SLA a rischio (75% del tempo trascorso)';
-    const info = await db.run('INSERT INTO ticket_events (ticket_id, actor_id, message) VALUES (?, NULL, ?)', [
-      ticket.id, label,
+    await db.run(`UPDATE tickets SET sla_warned_at = datetime('now') WHERE id IN (${placeholders})`, ids);
+
+    const insertValues = batch.map(() => '(?, NULL, ?)').join(', ');
+    const insertParams = batch.flatMap(({ ticket, status }) => [
+      ticket.id,
+      status === 'breached' ? 'SLA superata' : 'SLA a rischio (75% del tempo trascorso)',
     ]);
-    const row = await db.get(
-      `SELECT e.id, e.message, e.created_at, u.name AS actor_name
-       FROM ticket_events e LEFT JOIN users u ON u.id = e.actor_id
-       WHERE e.id = ?`,
-      [Number(info.lastInsertRowid)]
-    );
-    realtime.broadcastActivityItem(ticket.id, { kind: 'event', ...row });
+    await db.run(`INSERT INTO ticket_events (ticket_id, actor_id, message) VALUES ${insertValues}`, insertParams);
 
-    const recipients = new Set();
-    if (ticket.assigned_to) {
-      recipients.add(ticket.assigned_to);
-    } else {
-      const groupStaff = await db.all("SELECT id FROM users WHERE group_id = ? AND role IN ('agent', 'admin')", [ticket.group_id]);
-      groupStaff.forEach((u) => recipients.add(u.id));
+    const events = await db.all(
+      `SELECT e.id, e.ticket_id, e.message, e.created_at, u.name AS actor_name
+       FROM ticket_events e LEFT JOIN users u ON u.id = e.actor_id
+       WHERE e.ticket_id IN (${placeholders})
+       ORDER BY e.id DESC`,
+      ids
+    );
+    const latestEventByTicket = new Map();
+    for (const row of events) {
+      if (!latestEventByTicket.has(row.ticket_id)) latestEventByTicket.set(row.ticket_id, row);
     }
-    const messageKey = status === 'breached'
-      ? { it: `SLA superata sul ticket #${formatTicketNumber(ticket.id)}: ${ticket.subject}`, en: `SLA breached on ticket #${formatTicketNumber(ticket.id)}: ${ticket.subject}` }
-      : { it: `SLA a rischio sul ticket #${formatTicketNumber(ticket.id)}: ${ticket.subject}`, en: `SLA at risk on ticket #${formatTicketNumber(ticket.id)}: ${ticket.subject}` };
-    for (const userId of recipients) {
-      notifyUser(userId, ticket.id, messageKey).catch(() => {});
+    for (const id of ids) {
+      const row = latestEventByTicket.get(id);
+      if (row) realtime.broadcastActivityItem(id, { kind: 'event', id: row.id, message: row.message, created_at: row.created_at, actor_name: row.actor_name });
+    }
+
+    const unassignedGroupIds = [...new Set(batch.filter(({ ticket }) => !ticket.assigned_to).map(({ ticket }) => ticket.group_id))];
+    const groupStaffByGroup = new Map();
+    if (unassignedGroupIds.length) {
+      const groupPlaceholders = unassignedGroupIds.map(() => '?').join(',');
+      const staffRows = await db.all(
+        `SELECT id, group_id FROM users WHERE group_id IN (${groupPlaceholders}) AND role IN ('agent', 'admin')`,
+        unassignedGroupIds
+      );
+      for (const row of staffRows) {
+        if (!groupStaffByGroup.has(row.group_id)) groupStaffByGroup.set(row.group_id, []);
+        groupStaffByGroup.get(row.group_id).push(row.id);
+      }
+    }
+
+    for (const { ticket, status } of batch) {
+      const recipients = new Set();
+      if (ticket.assigned_to) {
+        recipients.add(ticket.assigned_to);
+      } else {
+        (groupStaffByGroup.get(ticket.group_id) || []).forEach((id) => recipients.add(id));
+      }
+      const messageKey = status === 'breached'
+        ? { it: `SLA superata sul ticket #${formatTicketNumber(ticket.id)}: ${ticket.subject}`, en: `SLA breached on ticket #${formatTicketNumber(ticket.id)}: ${ticket.subject}` }
+        : { it: `SLA a rischio sul ticket #${formatTicketNumber(ticket.id)}: ${ticket.subject}`, en: `SLA at risk on ticket #${formatTicketNumber(ticket.id)}: ${ticket.subject}` };
+      for (const userId of recipients) {
+        notifyUser(userId, ticket.id, messageKey).catch(() => {});
+      }
     }
   }
 }
