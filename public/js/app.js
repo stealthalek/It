@@ -666,6 +666,12 @@
       toast_member_moved: 'Persona spostata di team', org_member_drag_hint: 'Trascina su un altro team per spostare la persona', org_no_members: 'Nessuna persona in questo team',
       assign_to_me_btn: 'Assegna a me', toast_ticket_assigned_to_you: 'Ticket assegnato a te',
       quick_resolve_btn: 'Chiudi ticket', toast_ticket_resolved_quick: 'Ticket chiuso',
+      skip_not_resolved_btn: 'Non risolto', skip_opened_by_mistake_btn: 'Aperto erroneamente',
+      skip_reason_title_not_resolved: 'Segna come non risolto', skip_reason_title_opened_by_mistake: 'Segna come aperto erroneamente',
+      skip_reason_placeholder_not_resolved: 'Spiega perché il ticket non è stato risolto...',
+      skip_reason_placeholder_opened_by_mistake: 'Indica come aprire correttamente questo tipo di richiesta...',
+      btn_confirm_skip: 'Chiudi ticket', toast_ticket_skipped: 'Ticket chiuso',
+      close_reason_banner_not_resolved: 'Ticket chiuso come non risolto', close_reason_banner_opened_by_mistake: 'Ticket chiuso come aperto erroneamente',
       group_by_team_label: 'Raggruppa per team',
       widgets_section_title: 'Cruscotto di gestione', widgets_customize_btn: 'Personalizza',
       widgets_collapse_all_btn: 'Comprimi tutto', widgets_expand_all_btn: 'Espandi tutto', widget_collapse_toggle_title: 'Comprimi/espandi',
@@ -1138,6 +1144,12 @@
       toast_member_moved: 'Person moved to another team', org_member_drag_hint: 'Drag onto another team to move this person', org_no_members: 'No one in this team yet',
       assign_to_me_btn: 'Assign to me', toast_ticket_assigned_to_you: 'Ticket assigned to you',
       quick_resolve_btn: 'Close ticket', toast_ticket_resolved_quick: 'Ticket closed',
+      skip_not_resolved_btn: 'Not resolved', skip_opened_by_mistake_btn: 'Opened by mistake',
+      skip_reason_title_not_resolved: 'Mark as not resolved', skip_reason_title_opened_by_mistake: 'Mark as opened by mistake',
+      skip_reason_placeholder_not_resolved: 'Explain why the ticket wasn\'t resolved...',
+      skip_reason_placeholder_opened_by_mistake: 'Explain how to open this kind of request correctly...',
+      btn_confirm_skip: 'Close ticket', toast_ticket_skipped: 'Ticket closed',
+      close_reason_banner_not_resolved: 'Ticket closed as not resolved', close_reason_banner_opened_by_mistake: 'Ticket closed as opened by mistake',
       group_by_team_label: 'Group by team',
       widgets_section_title: 'Management dashboard', widgets_customize_btn: 'Customize',
       widgets_collapse_all_btn: 'Collapse all', widgets_expand_all_btn: 'Expand all', widget_collapse_toggle_title: 'Collapse/expand',
@@ -4246,12 +4258,26 @@
         <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
           ${isStaff() && !readOnly && ticket.assigned_to !== state.user.id ? `<button type="button" id="quickAssignMeBtn" class="btn btn-ghost">${icon('userCircle')} ${t('assign_to_me_btn')}</button>` : ''}
           ${isStaff() && !readOnly && !['resolved', 'closed'].includes(ticket.status) ? `<button type="button" id="quickResolveBtn" class="btn btn-ghost">${icon('check')} ${t('quick_resolve_btn')}</button>` : ''}
+          ${isStaff() && !readOnly && !['resolved', 'closed'].includes(ticket.status) ? `<button type="button" id="skipNotResolvedBtn" class="btn btn-ghost" data-skip-kind="not_resolved">${icon('x')} ${t('skip_not_resolved_btn')}</button>` : ''}
+          ${isStaff() && !readOnly && !['resolved', 'closed'].includes(ticket.status) ? `<button type="button" id="skipOpenedByMistakeBtn" class="btn btn-ghost" data-skip-kind="opened_by_mistake">${icon('refresh')} ${t('skip_opened_by_mistake_btn')}</button>` : ''}
           ${isStaff() && !readOnly ? `<button type="button" id="watchToggleBtn" class="btn btn-ghost">${icon(isWatching ? 'eyeOff' : 'eye')} <span id="watchToggleLabel">${isWatching ? t('btn_unwatch') : t('btn_watch')}</span>${ticketWatchers.length ? ` (${ticketWatchers.length})` : ''}</button>` : ''}
           <a class="btn btn-ghost" href="#/dashboard">${icon('arrowLeft')} ${t('back_to_list')}</a>
         </div>
       </div>
       <div id="presenceBanner" class="presence-banner" hidden></div>
       ${ticket.cancelled_at ? `<div class="presence-banner ticket-cancelled-banner">${icon('trash', 'badge-icon')} <span><strong>${t('ticket_cancelled_banner')}</strong>${ticket.cancelled_reason ? ` — ${escapeHtml(ticket.cancelled_reason)}` : ''}</span></div>` : ''}
+      ${ticket.close_reason_kind ? `<div class="presence-banner ticket-cancelled-banner">${icon('activity', 'badge-icon')} <span><strong>${t(`close_reason_banner_${ticket.close_reason_kind}`)}</strong>${ticket.close_reason_text ? ` — ${escapeHtml(ticket.close_reason_text)}` : ''}</span></div>` : ''}
+      ${isStaff() && !readOnly && !['resolved', 'closed'].includes(ticket.status) ? `
+      <div class="card" id="skipReasonPanel" style="margin-bottom:1rem" hidden>
+        <h3 class="section-title" style="margin-top:0" id="skipReasonTitle"></h3>
+        <div class="field">
+          <textarea id="skipReasonInput" rows="3" placeholder=""></textarea>
+        </div>
+        <div style="display:flex;gap:0.5rem">
+          <button type="button" id="skipReasonConfirmBtn" class="btn btn-sm" disabled>${t('btn_confirm_skip')}</button>
+          <button type="button" id="skipReasonCancelBtn" class="btn btn-sm btn-ghost">${t('btn_cancel')}</button>
+        </div>
+      </div>` : ''}
       <div class="ticket-detail-grid">
         <div>
           <div class="card" style="margin-bottom:1rem">
@@ -4645,6 +4671,55 @@
         } catch (err) {
           showToast(err.message, 'error');
           quickResolveBtn.disabled = false;
+        }
+      });
+    }
+
+    const skipReasonPanel = document.getElementById('skipReasonPanel');
+    if (skipReasonPanel) {
+      const skipReasonTitle = document.getElementById('skipReasonTitle');
+      const skipReasonInput = document.getElementById('skipReasonInput');
+      const skipReasonConfirmBtn = document.getElementById('skipReasonConfirmBtn');
+      const skipReasonCancelBtn = document.getElementById('skipReasonCancelBtn');
+      let activeSkipKind = null;
+
+      function openSkipPanel(kind) {
+        activeSkipKind = kind;
+        skipReasonTitle.textContent = t(`skip_reason_title_${kind}`);
+        skipReasonInput.value = '';
+        skipReasonInput.placeholder = t(`skip_reason_placeholder_${kind}`);
+        skipReasonConfirmBtn.disabled = true;
+        skipReasonPanel.hidden = false;
+        skipReasonInput.focus();
+      }
+
+      [document.getElementById('skipNotResolvedBtn'), document.getElementById('skipOpenedByMistakeBtn')].forEach((btn) => {
+        if (btn) btn.addEventListener('click', () => openSkipPanel(btn.dataset.skipKind));
+      });
+
+      skipReasonInput.addEventListener('input', () => {
+        skipReasonConfirmBtn.disabled = !skipReasonInput.value.trim();
+      });
+
+      skipReasonCancelBtn.addEventListener('click', () => {
+        skipReasonPanel.hidden = true;
+        activeSkipKind = null;
+      });
+
+      skipReasonConfirmBtn.addEventListener('click', async () => {
+        const reasonText = skipReasonInput.value.trim();
+        if (!reasonText || !activeSkipKind) return;
+        skipReasonConfirmBtn.disabled = true;
+        try {
+          await api(`/tickets/${ticket.id}`, {
+            method: 'PATCH',
+            body: { status: 'closed', closeReasonKind: activeSkipKind, closeReasonText: reasonText },
+          });
+          showToast(t('toast_ticket_skipped'), 'success');
+          renderTicketDetail(id);
+        } catch (err) {
+          showToast(err.message, 'error');
+          skipReasonConfirmBtn.disabled = false;
         }
       });
     }

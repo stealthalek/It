@@ -23,6 +23,8 @@ const TYPES = ['incident', 'task'];
 const STATUS_LABELS = { open: 'Aperto', in_progress: 'In lavorazione', waiting_customer: 'In attesa del richiedente', resolved: 'Risolto', closed: 'Chiuso' };
 const PRIORITY_LABELS = { low: 'Bassa', medium: 'Media', high: 'Alta', urgent: 'Urgente' };
 const TYPE_LABELS = { incident: 'Incident', task: 'Task' };
+const CLOSE_REASON_KINDS = ['not_resolved', 'opened_by_mistake'];
+const CLOSE_REASON_LABELS = { not_resolved: 'Non risolto', opened_by_mistake: 'Aperto erroneamente' };
 
 const TICKET_SELECT = `
   SELECT
@@ -693,6 +695,9 @@ router.patch(
           if (ticket.cancelled_at) {
             updates.push('cancelled_at = NULL', 'cancelled_reason = NULL');
           }
+          if (ticket.close_reason_kind && body.closeReasonKind === undefined) {
+            updates.push('close_reason_kind = NULL', 'close_reason_text = NULL');
+          }
           if (body.status === 'waiting_customer') {
             updates.push("waiting_since = datetime('now')");
             justSetWaiting = true;
@@ -706,6 +711,21 @@ router.patch(
             updates.push('waiting_since = NULL');
           }
         }
+      }
+      if (body.closeReasonKind !== undefined) {
+        if (!CLOSE_REASON_KINDS.includes(body.closeReasonKind)) {
+          return res.status(400).json({ error: 'Motivo di chiusura non valido' });
+        }
+        if (body.status !== 'closed' && ticket.status !== 'closed') {
+          return res.status(400).json({ error: 'Il motivo di chiusura richiede lo stato "Chiuso"' });
+        }
+        const reasonText = typeof body.closeReasonText === 'string' ? body.closeReasonText.trim() : '';
+        if (!reasonText) {
+          return res.status(400).json({ error: 'Indica una motivazione' });
+        }
+        updates.push('close_reason_kind = ?', 'close_reason_text = ?');
+        params.push(body.closeReasonKind, reasonText);
+        events.push(`Ticket chiuso come "${CLOSE_REASON_LABELS[body.closeReasonKind]}": ${reasonText}`);
       }
       if (body.priority !== undefined) {
         if (!PRIORITIES.includes(body.priority)) {
