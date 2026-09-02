@@ -148,10 +148,28 @@ router.patch(
       return res.status(404).json({ error: 'Asset non trovato' });
     }
 
-    const { status, assignmentType, assignedTo, dueDate } = req.body || {};
+    const { name, assetType, tag, status, assignmentType, assignedTo, dueDate } = req.body || {};
     const updates = [];
     const params = [];
 
+    if (name !== undefined) {
+      if (!name || !name.trim()) {
+        return res.status(400).json({ error: 'Il nome è obbligatorio' });
+      }
+      updates.push('name = ?');
+      params.push(name.trim());
+    }
+    if (assetType !== undefined) {
+      if (!TYPES.includes(assetType)) {
+        return res.status(400).json({ error: 'Tipo asset non valido' });
+      }
+      updates.push('asset_type = ?');
+      params.push(assetType);
+    }
+    if (tag !== undefined) {
+      updates.push('tag = ?');
+      params.push(tag ? tag.trim() : null);
+    }
     if (status !== undefined) {
       if (!STATUSES.includes(status)) {
         return res.status(400).json({ error: 'Stato non valido' });

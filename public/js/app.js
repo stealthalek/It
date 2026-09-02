@@ -552,6 +552,7 @@
       table_type: 'Tipo', table_tag: 'Tag', table_status: 'Stato', table_assignment: 'Assegnazione', table_due_date: 'Scadenza',
       assignment_permanent: 'Permanente', assignment_loan: 'Prestito', none_option: 'Nessuno', no_assets_found: 'Nessun asset trovato.',
       toast_asset_status_updated: 'Stato asset aggiornato', toast_assignment_updated: 'Assegnazione aggiornata',
+      toast_asset_updated: 'Asset aggiornato', asset_name_required_error: 'Il nome dell\'asset è obbligatorio',
       toast_assignee_updated: 'Assegnatario aggiornato', toast_due_date_updated: 'Scadenza aggiornata',
       confirm_delete_asset: 'Eliminare questo asset?', toast_asset_deleted: 'Asset eliminato', delete_asset_title: 'Elimina asset',
       search_hint: 'Cerca per numero ticket, parola chiave o richiedente: i risultati compaiono mentre scrivi.',
@@ -1020,6 +1021,7 @@
       field_name: 'Name', field_tag: 'Tag/asset number', btn_add_asset: 'Add asset',
       table_type: 'Type', table_tag: 'Tag', table_status: 'Status', table_assignment: 'Assignment', table_due_date: 'Due date',
       assignment_permanent: 'Permanent', assignment_loan: 'Loan', none_option: 'None', no_assets_found: 'No assets found.',
+      toast_asset_updated: 'Asset updated', asset_name_required_error: 'Asset name is required',
       toast_asset_status_updated: 'Asset status updated', toast_assignment_updated: 'Assignment updated',
       toast_assignee_updated: 'Assignee updated', toast_due_date_updated: 'Due date updated',
       confirm_delete_asset: 'Delete this asset?', toast_asset_deleted: 'Asset deleted', delete_asset_title: 'Delete asset',
@@ -7856,9 +7858,13 @@
                 ${assets.map((a) => `
                   <tr>
                     <td><input type="checkbox" class="assetSelectBox" data-id="${a.id}" /></td>
-                    <td>${escapeHtml(a.name)}</td>
-                    <td>${assetTypeLabels()[a.asset_type] || a.asset_type}</td>
-                    <td>${escapeHtml(a.tag || '—')}</td>
+                    <td><input type="text" class="assetNameInput" data-id="${a.id}" value="${escapeHtml(a.name)}" /></td>
+                    <td>
+                      <select class="assetTypeSel" data-id="${a.id}">
+                        ${Object.entries(assetTypeLabels()).map(([v, l]) => `<option value="${v}" ${a.asset_type === v ? 'selected' : ''}>${l}</option>`).join('')}
+                      </select>
+                    </td>
+                    <td><input type="text" class="assetTagInput" data-id="${a.id}" value="${escapeHtml(a.tag || '')}" placeholder="—" /></td>
                     <td>
                       <select class="assetStatusSel groupSel" data-id="${a.id}">
                         ${Object.entries(assetStatusLabels()).map(([v, l]) => `<option value="${v}" ${a.status === v ? 'selected' : ''}>${l}</option>`).join('')}
@@ -7883,6 +7889,25 @@
             </table>
           </div>` : `<p class="hint">${t('no_assets_found')}</p>`;
 
+        wrap.querySelectorAll('.assetNameInput').forEach((input) => input.addEventListener('change', async () => {
+          if (!input.value.trim()) { showToast(t('asset_name_required_error'), 'error'); loadAssets(); return; }
+          try {
+            await api(`/assets/${input.dataset.id}`, { method: 'PATCH', body: { name: input.value.trim() } });
+            showToast(t('toast_asset_updated'), 'success');
+          } catch (err) { showToast(err.message, 'error'); loadAssets(); }
+        }));
+        wrap.querySelectorAll('.assetTypeSel').forEach((sel) => sel.addEventListener('change', async () => {
+          try {
+            await api(`/assets/${sel.dataset.id}`, { method: 'PATCH', body: { assetType: sel.value } });
+            showToast(t('toast_asset_updated'), 'success');
+          } catch (err) { showToast(err.message, 'error'); loadAssets(); }
+        }));
+        wrap.querySelectorAll('.assetTagInput').forEach((input) => input.addEventListener('change', async () => {
+          try {
+            await api(`/assets/${input.dataset.id}`, { method: 'PATCH', body: { tag: input.value.trim() || null } });
+            showToast(t('toast_asset_updated'), 'success');
+          } catch (err) { showToast(err.message, 'error'); loadAssets(); }
+        }));
         wrap.querySelectorAll('.assetStatusSel').forEach((sel) => sel.addEventListener('change', async () => {
           try {
             await api(`/assets/${sel.dataset.id}`, { method: 'PATCH', body: { status: sel.value } });
