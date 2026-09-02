@@ -2462,7 +2462,7 @@ body.col-resizing-active { cursor: col-resize !important; user-select: none; }
 
 .org-chart {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: flex-start;
   gap: 2rem;
   overflow-x: auto;
@@ -2492,6 +2492,23 @@ body.col-resizing-active { cursor: col-resize !important; user-select: none; }
   cursor: pointer;
 }
 .org-node:hover { border-color: var(--primary); }
+.org-node-drag-handle {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: grab;
+  border-radius: 4px;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.org-node-drag-handle:hover { background: var(--primary-soft); color: var(--primary); }
+.org-node-drag-handle:active { cursor: grabbing; }
 .org-chart > .org-branch > .org-node { border-top-color: var(--primary); }
 .org-node.dragging { opacity: 0.4; }
 .org-node.drop-target { border-color: var(--primary); background: var(--primary-soft); box-shadow: 0 0 0 2px var(--primary-soft); }
