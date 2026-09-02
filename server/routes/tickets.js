@@ -7,7 +7,7 @@ const realtime = require('../realtime');
 const storage = require('../storage');
 const { assertCompanyScoped } = require('../lib/companyGuard');
 const mailer = require('../mailer');
-const { notifyUser } = require('../notifications');
+const { notifyUser, notifyUsers } = require('../notifications');
 const { businessMillisBetween, computeSlaStatus, computeSlaRemaining, withSla } = require('../sla');
 const { formatTicketNumber } = require('../lib/ticketNumber');
 const { hasPermission } = require('../lib/permissions');
@@ -167,12 +167,10 @@ async function notifyStaffOfNewTicket(ticket) {
   const recipients = staff.filter((u) => u.id !== ticket.created_by
     && (u.is_super_admin || (!ticket.company_id || u.company_id === ticket.company_id))
     && (u.is_super_admin || !ticket.group_id || u.group_id === ticket.group_id));
-  for (const u of recipients) {
-    notifyUser(u.id, ticket.id, {
-      it: `Nuovo ticket #${formatTicketNumber(ticket.id)}: ${ticket.subject}`,
-      en: `New ticket #${formatTicketNumber(ticket.id)}: ${ticket.subject}`,
-    }).catch(() => {});
-  }
+  notifyUsers(recipients.map((u) => u.id), ticket.id, {
+    it: `Nuovo ticket #${formatTicketNumber(ticket.id)}: ${ticket.subject}`,
+    en: `New ticket #${formatTicketNumber(ticket.id)}: ${ticket.subject}`,
+  }).catch(() => {});
 }
 
 async function logEvent(ticketId, actorId, message) {
@@ -924,12 +922,11 @@ router.patch(
     }
     if (events.length) {
       const watchers = await listWatchers(ticket.id);
-      watchers.filter((w) => w.id !== req.user.id).forEach((w) => {
-        notifyUser(w.id, ticket.id, {
-          it: `Il ticket #${formatTicketNumber(ticket.id)} che segui è stato aggiornato: ${ticket.subject}`,
-          en: `Ticket #${formatTicketNumber(ticket.id)} you follow was updated: ${ticket.subject}`,
-        }).catch(() => {});
-      });
+      const watcherIds = watchers.filter((w) => w.id !== req.user.id).map((w) => w.id);
+      notifyUsers(watcherIds, ticket.id, {
+        it: `Il ticket #${formatTicketNumber(ticket.id)} che segui è stato aggiornato: ${ticket.subject}`,
+        en: `Ticket #${formatTicketNumber(ticket.id)} you follow was updated: ${ticket.subject}`,
+      }).catch(() => {});
     }
     res.json({ ticket: updated });
   })
