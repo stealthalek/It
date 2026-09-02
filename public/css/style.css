@@ -1697,7 +1697,8 @@ body:not(.role-customer):not(.role-agent):not(.role-admin) .nav-toggle { display
 }
 .report-export-bar .hint { margin: 0; }
 
-.audit-list { display: flex; flex-direction: column; gap: 0.6rem; }
+.audit-list { display: flex; flex-direction: column; gap: 0.6rem; max-height: 65vh; overflow-y: auto; }
+#directoryWrap.card-list, #announcementsWrap.card-list, #messagesInboxWrap.card-list { max-height: 65vh; overflow-y: auto; }
 .audit-row {
   display: flex;
   gap: 1rem;

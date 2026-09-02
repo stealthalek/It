@@ -817,6 +817,7 @@
       privacy_cat_identity: 'Anagrafica utenti (nome, email, ruolo, reparto)', privacy_cat_tickets: 'Ticket, commenti e allegati',
       privacy_cat_messages: 'Messaggi diretti tra colleghi', privacy_cat_notifications: 'Notifiche (una volta lette)',
       privacy_cat_audit: 'Registro attività (audit log)', privacy_cat_timesheet: 'Timbrature, ferie e permessi',
+      privacy_cat_sessions: 'Sessioni di accesso',
       privacy_ret_manual: 'Conservato finché non lo elimina un amministratore',
       privacy_ret_auto_after: 'Eliminato automaticamente dopo', privacy_days_unit: 'giorni',
       privacy_isolation_hint: 'Ogni azienda vede solo i propri dati: l\'isolamento è applicato su ogni lista, con un controllo automatico che blocca la risposta se una riga fuori perimetro dovesse comunque comparire, invece di restituirla.',
@@ -1287,6 +1288,7 @@
       privacy_cat_identity: 'User directory (name, email, role, department)', privacy_cat_tickets: 'Tickets, comments and attachments',
       privacy_cat_messages: 'Direct messages between colleagues', privacy_cat_notifications: 'Notifications (once read)',
       privacy_cat_audit: 'Activity log (audit log)', privacy_cat_timesheet: 'Time tracking, leave and permissions',
+      privacy_cat_sessions: 'Login sessions',
       privacy_ret_manual: 'Kept until an administrator deletes it',
       privacy_ret_auto_after: 'Automatically deleted after', privacy_days_unit: 'days',
       privacy_isolation_hint: 'Each company sees only its own data: isolation is enforced on every list, with an automatic check that blocks the response instead of returning it if a row outside the requester\'s scope were ever to appear.',
@@ -5858,6 +5860,7 @@
               ${retentionRow(t('privacy_cat_notifications'), gov.retentionDays.readNotifications)}
               ${retentionRow(t('privacy_cat_audit'), gov.retentionDays.auditLog)}
               ${manualRow(t('privacy_cat_timesheet'))}
+              ${retentionRow(t('privacy_cat_sessions'), gov.retentionDays.sessions)}
             </div>
             <p class="hint">${t('privacy_isolation_hint')}</p>
             <p class="hint">${t('privacy_transport_hint')}</p>`;

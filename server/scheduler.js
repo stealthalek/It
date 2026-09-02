@@ -8,6 +8,7 @@ const AUTO_CLOSE_HOURS = 72;
 const MESSAGE_TTL_DAYS = 14;
 const READ_NOTIFICATION_TTL_DAYS = 90;
 const AUDIT_LOG_TTL_DAYS = 365;
+const SESSION_TTL_DAYS = 90;
 const CHECK_INTERVAL_MS = 10 * 60 * 1000;
 
 async function autoCloseResolvedTickets() {
@@ -102,12 +103,20 @@ async function purgeOldAuditLog() {
   await db.run("DELETE FROM audit_log WHERE created_at <= datetime('now', ?)", [`-${AUDIT_LOG_TTL_DAYS} days`]);
 }
 
+async function purgeOldSessions() {
+  await db.run(
+    "DELETE FROM user_sessions WHERE revoked = 1 OR last_active_at <= datetime('now', ?)",
+    [`-${SESSION_TTL_DAYS} days`]
+  );
+}
+
 function runMaintenanceJobs() {
   autoCloseResolvedTickets().catch((err) => console.error('Auto-chiusura ticket fallita:', err.message));
   checkSlaWarnings().catch((err) => console.error('Verifica SLA fallita:', err.message));
   purgeExpiredMessages().catch((err) => console.error('Pulizia messaggi diretti fallita:', err.message));
   purgeOldNotifications().catch((err) => console.error('Pulizia notifiche fallita:', err.message));
   purgeOldAuditLog().catch((err) => console.error('Pulizia registro attività fallita:', err.message));
+  purgeOldSessions().catch((err) => console.error('Pulizia sessioni fallita:', err.message));
 }
 
 function startAutoCloseScheduler() {
@@ -117,6 +126,6 @@ function startAutoCloseScheduler() {
 
 module.exports = {
   startAutoCloseScheduler, autoCloseResolvedTickets, checkSlaWarnings, purgeExpiredMessages,
-  purgeOldNotifications, purgeOldAuditLog,
-  MESSAGE_TTL_DAYS, READ_NOTIFICATION_TTL_DAYS, AUDIT_LOG_TTL_DAYS,
+  purgeOldNotifications, purgeOldAuditLog, purgeOldSessions,
+  MESSAGE_TTL_DAYS, READ_NOTIFICATION_TTL_DAYS, AUDIT_LOG_TTL_DAYS, SESSION_TTL_DAYS,
 };
