@@ -173,7 +173,7 @@ async function createStaffUser(actingUser, payload) {
   }
 
   const tempPassword = crypto.randomBytes(6).toString('base64url');
-  const hash = bcrypt.hashSync(tempPassword, 10);
+  const hash = await bcrypt.hash(tempPassword, 10);
 
   const info = await db.run(
     'INSERT INTO users (name, email, password, role, group_id, locale, is_external, manager_id, role_id, company_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
