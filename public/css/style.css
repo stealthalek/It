@@ -2389,6 +2389,7 @@ body.col-resizing-active { cursor: col-resize !important; user-select: none; }
 .two-col {
   display: grid;
   gap: 1.5rem;
+  align-items: start;
 }
 @media (min-width: 700px) {
   .two-col { grid-template-columns: 1fr 1fr; }
@@ -2472,6 +2473,7 @@ body.col-resizing-active { cursor: col-resize !important; user-select: none; }
   display: grid;
   gap: 1.5rem;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  align-items: start;
 }
 .admin-grid-full { grid-column: 1 / -1; }
 .admin-grid > .card { min-width: 0; }
