@@ -101,79 +101,137 @@ router.get(
   })
 );
 
+class ValidationError extends Error {
+  constructor(status, message) {
+    super(message);
+    this.status = status;
+  }
+}
+
+async function createStaffUser(actingUser, payload) {
+  const { name, email, role, groupId, groupName, locale, isExternal, managerId, roleId, companyId } = payload || {};
+
+  if (!name || !name.trim()) {
+    throw new ValidationError(400, 'Il nome è obbligatorio');
+  }
+  if (!email || !EMAIL_RE.test(email)) {
+    throw new ValidationError(400, 'Email non valida');
+  }
+  if (!['agent', 'admin'].includes(role)) {
+    throw new ValidationError(400, 'Ruolo non valido: usa agent o admin');
+  }
+  if (role === 'admin' && !(actingUser.role === 'admin' || actingUser.is_super_admin)) {
+    throw new ValidationError(403, 'Permessi insufficienti per creare un account admin');
+  }
+
+  const existing = await db.get('SELECT id FROM users WHERE email = ?', [email.toLowerCase()]);
+  if (existing) {
+    throw new ValidationError(409, 'Email già registrata');
+  }
+
+  let finalCompanyId = actingUser.company_id;
+  if (actingUser.is_super_admin && companyId) {
+    const company = await db.get('SELECT id FROM companies WHERE id = ?', [companyId]);
+    if (!company) {
+      throw new ValidationError(400, 'Azienda non valida');
+    }
+    finalCompanyId = company.id;
+  }
+
+  let finalGroupId = null;
+  if (groupId) {
+    const group = await db.get('SELECT id, company_id FROM groups WHERE id = ?', [groupId]);
+    if (!group || group.company_id !== finalCompanyId) {
+      throw new ValidationError(400, 'Gruppo non valido');
+    }
+    finalGroupId = group.id;
+  } else if (groupName && groupName.trim()) {
+    const group = await db.get('SELECT id FROM groups WHERE company_id = ? AND LOWER(name) = LOWER(?)', [finalCompanyId, groupName.trim()]);
+    if (!group) {
+      throw new ValidationError(400, `Gruppo "${groupName.trim()}" non trovato`);
+    }
+    finalGroupId = group.id;
+  }
+  const finalLocale = LOCALES.includes(locale) ? locale : 'it';
+
+  let finalManagerId = null;
+  if (managerId) {
+    const manager = await db.get('SELECT id, company_id FROM users WHERE id = ?', [managerId]);
+    if (!manager || manager.company_id !== finalCompanyId) {
+      throw new ValidationError(400, 'Manager non valido');
+    }
+    finalManagerId = manager.id;
+  }
+
+  let finalRoleId = null;
+  if (roleId) {
+    const roleRow = await db.get('SELECT id, company_id FROM roles WHERE id = ?', [roleId]);
+    if (!roleRow || (!actingUser.is_super_admin && roleRow.company_id && roleRow.company_id !== finalCompanyId)) {
+      throw new ValidationError(400, 'Ruolo specifico non valido');
+    }
+    finalRoleId = roleRow.id;
+  }
+
+  const tempPassword = crypto.randomBytes(6).toString('base64url');
+  const hash = bcrypt.hashSync(tempPassword, 10);
+
+  const info = await db.run(
+    'INSERT INTO users (name, email, password, role, group_id, locale, is_external, manager_id, role_id, company_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [name.trim(), email.toLowerCase(), hash, role, finalGroupId, finalLocale, isExternal ? 1 : 0, finalManagerId, finalRoleId, finalCompanyId]
+  );
+
+  const user = await db.get(`${USER_SELECT} WHERE u.id = ?`, [Number(info.lastInsertRowid)]);
+  mailer.sendInvite(user, tempPassword).catch((err) => console.error('Invio email di invito fallito:', err.message));
+  logAudit(actingUser.id, 'user', user.id, `Creato account staff "${user.name}" (${email.toLowerCase()}), ruolo ${role}`).catch(() => {});
+  return { user, tempPassword };
+}
+
 router.post(
   '/',
   requirePermission('users_manage'),
   asyncHandler(async (req, res) => {
-    const { name, email, role, groupId, locale, isExternal, managerId, roleId, companyId } = req.body || {};
-
-    if (!name || !name.trim()) {
-      return res.status(400).json({ error: 'Il nome è obbligatorio' });
-    }
-    if (!email || !EMAIL_RE.test(email)) {
-      return res.status(400).json({ error: 'Email non valida' });
-    }
-    if (!['agent', 'admin'].includes(role)) {
-      return res.status(400).json({ error: 'Ruolo non valido: usa agent o admin' });
-    }
-    if (role === 'admin' && !(req.user.role === 'admin' || req.user.is_super_admin)) {
-      return res.status(403).json({ error: 'Permessi insufficienti per creare un account admin' });
-    }
-
-    const existing = await db.get('SELECT id FROM users WHERE email = ?', [email.toLowerCase()]);
-    if (existing) {
-      return res.status(409).json({ error: 'Email già registrata' });
-    }
-
-    let finalCompanyId = req.user.company_id;
-    if (req.user.is_super_admin && companyId) {
-      const company = await db.get('SELECT id FROM companies WHERE id = ?', [companyId]);
-      if (!company) {
-        return res.status(400).json({ error: 'Azienda non valida' });
+    try {
+      const { user, tempPassword } = await createStaffUser(req.user, req.body);
+      res.status(201).json({ user, tempPassword });
+    } catch (err) {
+      if (err instanceof ValidationError) {
+        return res.status(err.status).json({ error: err.message });
       }
-      finalCompanyId = company.id;
+      throw err;
+    }
+  })
+);
+
+router.post(
+  '/bulk',
+  requirePermission('users_manage'),
+  asyncHandler(async (req, res) => {
+    const rows = Array.isArray(req.body?.rows) ? req.body.rows : null;
+    if (!rows || !rows.length) {
+      return res.status(400).json({ error: 'Nessuna riga da importare' });
+    }
+    if (rows.length > 500) {
+      return res.status(400).json({ error: 'Massimo 500 utenti per importazione' });
     }
 
-    let finalGroupId = null;
-    if (groupId) {
-      const group = await db.get('SELECT id, company_id FROM groups WHERE id = ?', [groupId]);
-      if (!group || group.company_id !== finalCompanyId) {
-        return res.status(400).json({ error: 'Gruppo non valido' });
+    const results = [];
+    for (let i = 0; i < rows.length; i += 1) {
+      const row = rows[i] || {};
+      try {
+        const { user } = await createStaffUser(req.user, row);
+        results.push({ row: i + 1, success: true, name: user.name, email: user.email });
+      } catch (err) {
+        if (err instanceof ValidationError) {
+          results.push({ row: i + 1, success: false, email: row.email || '', error: err.message });
+        } else {
+          results.push({ row: i + 1, success: false, email: row.email || '', error: 'Errore inatteso' });
+        }
       }
-      finalGroupId = group.id;
-    }
-    const finalLocale = LOCALES.includes(locale) ? locale : 'it';
-
-    let finalManagerId = null;
-    if (managerId) {
-      const manager = await db.get('SELECT id, company_id FROM users WHERE id = ?', [managerId]);
-      if (!manager || manager.company_id !== finalCompanyId) {
-        return res.status(400).json({ error: 'Manager non valido' });
-      }
-      finalManagerId = manager.id;
     }
 
-    let finalRoleId = null;
-    if (roleId) {
-      const roleRow = await db.get('SELECT id, company_id FROM roles WHERE id = ?', [roleId]);
-      if (!roleRow || (!req.user.is_super_admin && roleRow.company_id && roleRow.company_id !== finalCompanyId)) {
-        return res.status(400).json({ error: 'Ruolo specifico non valido' });
-      }
-      finalRoleId = roleRow.id;
-    }
-
-    const tempPassword = crypto.randomBytes(6).toString('base64url');
-    const hash = bcrypt.hashSync(tempPassword, 10);
-
-    const info = await db.run(
-      'INSERT INTO users (name, email, password, role, group_id, locale, is_external, manager_id, role_id, company_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [name.trim(), email.toLowerCase(), hash, role, finalGroupId, finalLocale, isExternal ? 1 : 0, finalManagerId, finalRoleId, finalCompanyId]
-    );
-
-    const user = await db.get(`${USER_SELECT} WHERE u.id = ?`, [Number(info.lastInsertRowid)]);
-    mailer.sendInvite(user, tempPassword).catch((err) => console.error('Invio email di invito fallito:', err.message));
-    logAudit(req.user.id, 'user', user.id, `Creato account staff "${user.name}" (${email.toLowerCase()}), ruolo ${role}`).catch(() => {});
-    res.status(201).json({ user, tempPassword });
+    const created = results.filter((r) => r.success).length;
+    logAudit(req.user.id, 'user', null, `Importazione utenti in massa: ${created}/${rows.length} creati`).catch(() => {});
+    res.json({ results, summary: { created, failed: rows.length - created } });
   })
 );
 
