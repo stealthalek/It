@@ -516,6 +516,7 @@
       internal_note_label: 'Nota interna (visibile solo allo staff)', btn_send: 'Invia',
       management_title: 'Gestione', field_group: 'Gruppo di assegnazione', field_linked_asset: 'Asset collegato',
       delete_ticket_btn: 'Elimina ticket', no_group_option: 'Nessun gruppo', no_asset_option: 'Nessun asset',
+      group_search_placeholder: 'Cerca un gruppo…',
       confirm_delete_ticket: 'Eliminare definitivamente questo ticket?',
       ticket_cancelled_banner: 'Il ticket è stato cancellato.',
       toast_ticket_updated: 'Ticket aggiornato', toast_ticket_reopened: 'Ticket riaperto', toast_ticket_deleted: 'Ticket eliminato',
@@ -551,6 +552,7 @@
       table_type: 'Tipo', table_tag: 'Tag', table_status: 'Stato', table_assignment: 'Assegnazione', table_due_date: 'Scadenza',
       assignment_permanent: 'Permanente', assignment_loan: 'Prestito', none_option: 'Nessuno', no_assets_found: 'Nessun asset trovato.',
       toast_asset_status_updated: 'Stato asset aggiornato', toast_assignment_updated: 'Assegnazione aggiornata',
+      toast_asset_updated: 'Asset aggiornato', asset_name_required_error: 'Il nome dell\'asset è obbligatorio',
       toast_assignee_updated: 'Assegnatario aggiornato', toast_due_date_updated: 'Scadenza aggiornata',
       confirm_delete_asset: 'Eliminare questo asset?', toast_asset_deleted: 'Asset eliminato', delete_asset_title: 'Elimina asset',
       search_hint: 'Cerca per numero ticket, parola chiave o richiedente: i risultati compaiono mentre scrivi.',
@@ -663,6 +665,7 @@
       org_drop_root_hint: 'Trascina qui un gruppo per renderlo di primo livello', toast_group_reparented: 'Gruppo riorganizzato',
       toast_member_moved: 'Persona spostata di team', org_member_drag_hint: 'Trascina su un altro team per spostare la persona', org_no_members: 'Nessuna persona in questo team',
       assign_to_me_btn: 'Assegna a me', toast_ticket_assigned_to_you: 'Ticket assegnato a te',
+      quick_resolve_btn: 'Chiudi ticket', toast_ticket_resolved_quick: 'Ticket chiuso',
       group_by_team_label: 'Raggruppa per team',
       widgets_section_title: 'Cruscotto di gestione', widgets_customize_btn: 'Personalizza',
       widgets_collapse_all_btn: 'Comprimi tutto', widgets_expand_all_btn: 'Espandi tutto', widget_collapse_toggle_title: 'Comprimi/espandi',
@@ -795,6 +798,7 @@
       timesheet_history_title: 'Storico timbrature', th_clock_in: 'Entrata', th_clock_out: 'Uscita', th_duration: 'Durata',
       timesheet_no_entries: 'Nessuna timbratura registrata.', timesheet_ongoing: 'in corso',
       timesheet_manual_title: 'Aggiungi ore manualmente', timesheet_manual_hint: 'Registra o correggi una timbratura scegliendo data e orario sul calendario.',
+      timesheet_select_day_error: 'Seleziona prima un giorno dal calendario.',
       field_start_time: 'Ora inizio', field_end_time: 'Ora fine', btn_add_entry: 'Aggiungi',
       confirm_delete_time_entry: 'Eliminare questa timbratura?', toast_time_entry_added: 'Timbratura aggiunta',
       toast_time_entry_updated: 'Timbratura aggiornata', toast_time_entry_deleted: 'Timbratura eliminata',
@@ -982,6 +986,7 @@
       internal_note_label: 'Internal note (staff only)', btn_send: 'Send',
       management_title: 'Management', field_group: 'Assignment group', field_linked_asset: 'Linked asset',
       delete_ticket_btn: 'Delete ticket', no_group_option: 'No group', no_asset_option: 'No asset',
+      group_search_placeholder: 'Search a group…',
       confirm_delete_ticket: 'Permanently delete this ticket?',
       ticket_cancelled_banner: 'This ticket has been cancelled.',
       toast_ticket_updated: 'Ticket updated', toast_ticket_reopened: 'Ticket reopened', toast_ticket_deleted: 'Ticket deleted',
@@ -1016,6 +1021,7 @@
       field_name: 'Name', field_tag: 'Tag/asset number', btn_add_asset: 'Add asset',
       table_type: 'Type', table_tag: 'Tag', table_status: 'Status', table_assignment: 'Assignment', table_due_date: 'Due date',
       assignment_permanent: 'Permanent', assignment_loan: 'Loan', none_option: 'None', no_assets_found: 'No assets found.',
+      toast_asset_updated: 'Asset updated', asset_name_required_error: 'Asset name is required',
       toast_asset_status_updated: 'Asset status updated', toast_assignment_updated: 'Assignment updated',
       toast_assignee_updated: 'Assignee updated', toast_due_date_updated: 'Due date updated',
       confirm_delete_asset: 'Delete this asset?', toast_asset_deleted: 'Asset deleted', delete_asset_title: 'Delete asset',
@@ -1129,6 +1135,7 @@
       org_drop_root_hint: 'Drag a group here to make it top-level', toast_group_reparented: 'Group reorganized',
       toast_member_moved: 'Person moved to another team', org_member_drag_hint: 'Drag onto another team to move this person', org_no_members: 'No one in this team yet',
       assign_to_me_btn: 'Assign to me', toast_ticket_assigned_to_you: 'Ticket assigned to you',
+      quick_resolve_btn: 'Close ticket', toast_ticket_resolved_quick: 'Ticket closed',
       group_by_team_label: 'Group by team',
       widgets_section_title: 'Management dashboard', widgets_customize_btn: 'Customize',
       widgets_collapse_all_btn: 'Collapse all', widgets_expand_all_btn: 'Expand all', widget_collapse_toggle_title: 'Collapse/expand',
@@ -1261,6 +1268,7 @@
       timesheet_history_title: 'Time entry history', th_clock_in: 'Clock in', th_clock_out: 'Clock out', th_duration: 'Duration',
       timesheet_no_entries: 'No time entries recorded yet.', timesheet_ongoing: 'ongoing',
       timesheet_manual_title: 'Add hours manually', timesheet_manual_hint: 'Record or correct a time entry by picking a date and time on the calendar.',
+      timesheet_select_day_error: 'Select a day on the calendar first.',
       field_start_time: 'Start time', field_end_time: 'End time', btn_add_entry: 'Add',
       confirm_delete_time_entry: 'Delete this time entry?', toast_time_entry_added: 'Time entry added',
       toast_time_entry_updated: 'Time entry updated', toast_time_entry_deleted: 'Time entry deleted',
@@ -4127,8 +4135,19 @@
     let staffPanel = '';
     let requesterPanel = '';
     let assigneesOptions = '';
-    let groupOptions = '';
     let assetOptions = '';
+    let allTicketStaffUsers = [];
+    let ticketGroupsFlat = [];
+    function buildAssigneeOptionsHtml(users, groupId, currentAssignedId) {
+      const staffUsers = users.filter((u) => u.role === 'agent' || u.role === 'admin');
+      const pool = groupId ? staffUsers.filter((u) => u.group_id === groupId || u.id === currentAssignedId) : staffUsers;
+      const staffGroups = groupStaffByGroup(pool);
+      return `<option value="">${t('unassigned_label')}</option>` +
+        staffGroups.map(({ group, members }) => `
+          <optgroup label="${escapeHtml(group)}">
+            ${members.map((u) => `<option value="${u.id}" ${currentAssignedId === u.id ? 'selected' : ''}>${escapeHtml(u.name)}</option>`).join('')}
+          </optgroup>`).join('');
+    }
     if (isStaff() && !readOnly) {
       const [usersResult, groupsResult, assetsResult] = await Promise.all([
         api('/users').catch(() => null),
@@ -4138,12 +4157,8 @@
 
       if (usersResult) {
         const { users } = usersResult;
-        const staffGroups = groupStaffByGroup(users);
-        assigneesOptions = `<option value="">${t('unassigned_label')}</option>` +
-          staffGroups.map(({ group, members }) => `
-            <optgroup label="${escapeHtml(group)}">
-              ${members.map((u) => `<option value="${u.id}" ${ticket.assigned_to === u.id ? 'selected' : ''}>${escapeHtml(u.name)}</option>`).join('')}
-            </optgroup>`).join('');
+        allTicketStaffUsers = users;
+        assigneesOptions = buildAssigneeOptionsHtml(users, ticket.group_id, ticket.assigned_to);
 
         const requester = users.find((u) => u.id === ticket.created_by);
         const beneficiary = ticket.on_behalf_of ? users.find((u) => u.id === ticket.on_behalf_of) : null;
@@ -4170,7 +4185,7 @@
       }
 
       if (groupsResult) {
-        groupOptions = groupOptionsHtml(groupsResult.groups, ticket.group_id, t('no_group_option'));
+        ticketGroupsFlat = flattenGroupTree(buildGroupTree(groupsResult.groups));
       }
 
       if (assetsResult) {
@@ -4201,8 +4216,12 @@
             </select>
           </div>
           <div class="side-field">
-            <label for="groupSel">${t('field_group')}</label>
-            <select id="groupSel">${groupOptions}</select>
+            <label for="groupSearchInput">${t('field_group')}</label>
+            <div class="person-combobox">
+              <input type="text" id="groupSearchInput" autocomplete="off" placeholder="${t('group_search_placeholder')}" value="${escapeHtml(groupLabel(ticket) || t('no_group_option'))}" />
+              <input type="hidden" id="groupSel" value="${ticket.group_id || ''}" />
+              <div id="groupSearchResults" class="person-combobox-results" hidden></div>
+            </div>
           </div>
           <div class="side-field">
             <label for="assignedSel">${t('assigned_to_label')}</label>
@@ -4220,7 +4239,9 @@
     appEl.innerHTML = `
       <div class="view-header">
         <h1>#${formatTicketNumber(ticket.id)} ${escapeHtml(ticket.subject)}</h1>
-        <div style="display:flex;gap:0.5rem">
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+          ${isStaff() && !readOnly && ticket.assigned_to !== state.user.id ? `<button type="button" id="quickAssignMeBtn" class="btn btn-ghost">${icon('userCircle')} ${t('assign_to_me_btn')}</button>` : ''}
+          ${isStaff() && !readOnly && !['resolved', 'closed'].includes(ticket.status) ? `<button type="button" id="quickResolveBtn" class="btn btn-ghost">${icon('check')} ${t('quick_resolve_btn')}</button>` : ''}
           ${isStaff() && !readOnly ? `<button type="button" id="watchToggleBtn" class="btn btn-ghost">${icon(isWatching ? 'eyeOff' : 'eye')} <span id="watchToggleLabel">${isWatching ? t('btn_unwatch') : t('btn_watch')}</span>${ticketWatchers.length ? ` (${ticketWatchers.length})` : ''}</button>` : ''}
           <a class="btn btn-ghost" href="#/dashboard">${icon('arrowLeft')} ${t('back_to_list')}</a>
         </div>
@@ -4592,6 +4613,38 @@
       })();
     }
 
+    const quickAssignMeBtn = document.getElementById('quickAssignMeBtn');
+    if (quickAssignMeBtn) {
+      quickAssignMeBtn.addEventListener('click', async () => {
+        quickAssignMeBtn.disabled = true;
+        try {
+          const body = { assigned_to: state.user.id };
+          if (ticket.status !== 'in_progress') body.status = 'in_progress';
+          await api(`/tickets/${ticket.id}`, { method: 'PATCH', body });
+          showToast(t('toast_ticket_assigned_to_you'), 'success');
+          renderTicketDetail(id);
+        } catch (err) {
+          showToast(err.message, 'error');
+          quickAssignMeBtn.disabled = false;
+        }
+      });
+    }
+
+    const quickResolveBtn = document.getElementById('quickResolveBtn');
+    if (quickResolveBtn) {
+      quickResolveBtn.addEventListener('click', async () => {
+        quickResolveBtn.disabled = true;
+        try {
+          await api(`/tickets/${ticket.id}`, { method: 'PATCH', body: { status: 'resolved' } });
+          showToast(t('toast_ticket_resolved_quick'), 'success');
+          renderTicketDetail(id);
+        } catch (err) {
+          showToast(err.message, 'error');
+          quickResolveBtn.disabled = false;
+        }
+      });
+    }
+
     const watchToggleBtn = document.getElementById('watchToggleBtn');
     if (watchToggleBtn) {
       watchToggleBtn.addEventListener('click', async () => {
@@ -4722,6 +4775,54 @@
         } catch (err) {
           showToast(err.message, 'error');
         }
+      });
+    }
+
+    const groupSearchInput = document.getElementById('groupSearchInput');
+    const groupSearchHidden = document.getElementById('groupSel');
+    const groupSearchResults = document.getElementById('groupSearchResults');
+    if (groupSearchInput) {
+      function refreshAssigneeOptionsForGroup(groupId) {
+        const assignedSel = document.getElementById('assignedSel');
+        if (!assignedSel) return;
+        assignedSel.innerHTML = buildAssigneeOptionsHtml(allTicketStaffUsers, groupId, null);
+      }
+      function groupComboLabel(g) {
+        return `${'  '.repeat(g.depth)}${g.depth ? '– ' : ''}${g.name}`;
+      }
+      function renderGroupResults(list) {
+        const rows = [`<button type="button" class="person-combobox-option" data-group-id="" data-group-name="${escapeHtml(t('no_group_option'))}"><span>${t('no_group_option')}</span></button>`]
+          .concat(list.slice(0, 20).map((g) => `
+            <button type="button" class="person-combobox-option" data-group-id="${g.id}" data-group-name="${escapeHtml(g.name)}">
+              <span>${escapeHtml(groupComboLabel(g))}</span>
+            </button>`));
+        groupSearchResults.innerHTML = rows.join('');
+        groupSearchResults.hidden = false;
+        groupSearchResults.querySelectorAll('.person-combobox-option').forEach((btn) => {
+          btn.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            groupSearchHidden.value = btn.dataset.groupId;
+            groupSearchInput.value = btn.dataset.groupId ? btn.dataset.groupName : t('no_group_option');
+            groupSearchResults.hidden = true;
+            refreshAssigneeOptionsForGroup(btn.dataset.groupId ? Number(btn.dataset.groupId) : null);
+          });
+        });
+      }
+      groupSearchInput.addEventListener('focus', () => {
+        groupSearchInput.select();
+        renderGroupResults(ticketGroupsFlat);
+      });
+      groupSearchInput.addEventListener('input', () => {
+        groupSearchHidden.value = '';
+        const q = groupSearchInput.value.trim().toLowerCase();
+        const filtered = q ? ticketGroupsFlat.filter((g) => g.name.toLowerCase().includes(q)) : ticketGroupsFlat;
+        renderGroupResults(filtered);
+      });
+      groupSearchInput.addEventListener('blur', () => {
+        setTimeout(() => {
+          groupSearchResults.hidden = true;
+          if (!groupSearchHidden.value) groupSearchInput.value = t('no_group_option');
+        }, 150);
       });
     }
 
@@ -7757,9 +7858,13 @@
                 ${assets.map((a) => `
                   <tr>
                     <td><input type="checkbox" class="assetSelectBox" data-id="${a.id}" /></td>
-                    <td>${escapeHtml(a.name)}</td>
-                    <td>${assetTypeLabels()[a.asset_type] || a.asset_type}</td>
-                    <td>${escapeHtml(a.tag || '—')}</td>
+                    <td><input type="text" class="assetNameInput" data-id="${a.id}" value="${escapeHtml(a.name)}" /></td>
+                    <td>
+                      <select class="assetTypeSel" data-id="${a.id}">
+                        ${Object.entries(assetTypeLabels()).map(([v, l]) => `<option value="${v}" ${a.asset_type === v ? 'selected' : ''}>${l}</option>`).join('')}
+                      </select>
+                    </td>
+                    <td><input type="text" class="assetTagInput" data-id="${a.id}" value="${escapeHtml(a.tag || '')}" placeholder="—" /></td>
                     <td>
                       <select class="assetStatusSel groupSel" data-id="${a.id}">
                         ${Object.entries(assetStatusLabels()).map(([v, l]) => `<option value="${v}" ${a.status === v ? 'selected' : ''}>${l}</option>`).join('')}
@@ -7784,6 +7889,25 @@
             </table>
           </div>` : `<p class="hint">${t('no_assets_found')}</p>`;
 
+        wrap.querySelectorAll('.assetNameInput').forEach((input) => input.addEventListener('change', async () => {
+          if (!input.value.trim()) { showToast(t('asset_name_required_error'), 'error'); loadAssets(); return; }
+          try {
+            await api(`/assets/${input.dataset.id}`, { method: 'PATCH', body: { name: input.value.trim() } });
+            showToast(t('toast_asset_updated'), 'success');
+          } catch (err) { showToast(err.message, 'error'); loadAssets(); }
+        }));
+        wrap.querySelectorAll('.assetTypeSel').forEach((sel) => sel.addEventListener('change', async () => {
+          try {
+            await api(`/assets/${sel.dataset.id}`, { method: 'PATCH', body: { assetType: sel.value } });
+            showToast(t('toast_asset_updated'), 'success');
+          } catch (err) { showToast(err.message, 'error'); loadAssets(); }
+        }));
+        wrap.querySelectorAll('.assetTagInput').forEach((input) => input.addEventListener('change', async () => {
+          try {
+            await api(`/assets/${input.dataset.id}`, { method: 'PATCH', body: { tag: input.value.trim() || null } });
+            showToast(t('toast_asset_updated'), 'success');
+          } catch (err) { showToast(err.message, 'error'); loadAssets(); }
+        }));
         wrap.querySelectorAll('.assetStatusSel').forEach((sel) => sel.addEventListener('change', async () => {
           try {
             await api(`/assets/${sel.dataset.id}`, { method: 'PATCH', body: { status: sel.value } });
@@ -10081,9 +10205,18 @@
         <div class="card admin-grid-full" id="timesheetManualCard" hidden>
           <h3 class="section-title" style="margin-top:0">${icon('clock')} ${t('timesheet_manual_title')}</h3>
           <p class="hint">${t('timesheet_manual_hint')}</p>
+          <div class="timesheet-calendar" id="timesheetCalendar">
+            <div class="timesheet-calendar-head">
+              <button type="button" class="icon-btn" id="tsCalPrevBtn" aria-label="${t('page_prev')}">${icon('arrowLeft')}</button>
+              <strong id="tsCalMonthLabel"></strong>
+              <button type="button" class="icon-btn" id="tsCalNextBtn" aria-label="${t('page_next')}">${icon('arrowRight')}</button>
+            </div>
+            <div class="timesheet-calendar-grid" id="tsCalGrid"></div>
+          </div>
           <form id="timesheetManualForm" class="form-grid" style="max-width:none">
+            <p class="hint" id="manualDateLabel"></p>
+            <input id="manualDate" type="hidden" required />
             <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
-              <div class="field" style="flex:1 1 9rem"><label for="manualDate">${t('field_date')}</label><input id="manualDate" type="date" required /></div>
               <div class="field" style="flex:1 1 7rem"><label for="manualStart">${t('field_start_time')}</label><input id="manualStart" type="time" required /></div>
               <div class="field" style="flex:1 1 7rem"><label for="manualEnd">${t('field_end_time')}</label><input id="manualEnd" type="time" required /></div>
             </div>
@@ -10199,11 +10332,14 @@
 
     let lastEntries = [];
     let flexibleTimeEntry = false;
+    let calendarMonth = new Date();
+    let selectedCalendarDate = null;
     async function loadHistory() {
       const el = document.getElementById('timesheetHistory');
       try {
         const { entries } = await api('/time-entries');
         lastEntries = entries;
+        renderCalendarGrid();
         el.className = '';
         el.innerHTML = entriesTableHtml(entries, false, flexibleTimeEntry);
         renderPayEstimate(entries);
@@ -10243,6 +10379,92 @@
       return local.toISOString().slice(0, 19).replace('T', ' ');
     }
 
+    function calendarDayKey(dbValue) {
+      return dbDatetimeToParts(dbValue).date;
+    }
+
+    function monthFromDateKey(dateKey) {
+      const [y, m] = dateKey.split('-');
+      return new Date(Number(y), Number(m) - 1, 1);
+    }
+
+    function updateManualDateLabel(dateKey) {
+      const labelEl = document.getElementById('manualDateLabel');
+      if (!labelEl) return;
+      if (!dateKey) { labelEl.textContent = ''; return; }
+      const locale = getLang() === 'en' ? 'en-US' : 'it-IT';
+      labelEl.textContent = `${t('field_date')}: ${new Date(`${dateKey}T00:00:00`).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' })}`;
+    }
+
+    function renderCalendarGrid() {
+      const gridEl = document.getElementById('tsCalGrid');
+      const labelEl = document.getElementById('tsCalMonthLabel');
+      if (!gridEl || !labelEl) return;
+      const locale = getLang() === 'en' ? 'en-US' : 'it-IT';
+      const year = calendarMonth.getFullYear();
+      const month = calendarMonth.getMonth();
+      labelEl.textContent = calendarMonth.toLocaleDateString(locale, { month: 'long', year: 'numeric' });
+
+      const minutesByDay = {};
+      lastEntries.forEach((e) => {
+        if (!e.clock_out) return;
+        const key = calendarDayKey(e.clock_in);
+        const start = new Date(`${e.clock_in.replace(' ', 'T')}Z`).getTime();
+        const end = new Date(`${e.clock_out.replace(' ', 'T')}Z`).getTime();
+        minutesByDay[key] = (minutesByDay[key] || 0) + Math.max(0, (end - start) / 60000);
+      });
+
+      const pad = (n) => String(n).padStart(2, '0');
+      const today = new Date();
+      const todayKey = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+      const firstOfMonth = new Date(year, month, 1);
+      const startWeekday = (firstOfMonth.getDay() + 6) % 7;
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const weekdayLabels = locale === 'it-IT' ? ['L', 'M', 'M', 'G', 'V', 'S', 'D'] : ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+
+      let html = weekdayLabels.map((d) => `<div class="ts-cal-weekday">${d}</div>`).join('');
+      for (let i = 0; i < startWeekday; i++) html += '<div class="ts-cal-cell ts-cal-empty"></div>';
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dateKey = `${year}-${pad(month + 1)}-${pad(day)}`;
+        const minutes = minutesByDay[dateKey];
+        const classes = ['ts-cal-cell'];
+        if (dateKey === todayKey) classes.push('ts-cal-today');
+        if (dateKey === selectedCalendarDate) classes.push('ts-cal-selected');
+        if (minutes) classes.push('ts-cal-has-entry');
+        html += `<button type="button" class="${classes.join(' ')}" data-date="${dateKey}">
+          <span class="ts-cal-daynum">${day}</span>
+          ${minutes ? `<span class="ts-cal-hours">${(minutes / 60).toFixed(1)}h</span>` : ''}
+        </button>`;
+      }
+      gridEl.innerHTML = html;
+      gridEl.querySelectorAll('.ts-cal-cell:not(.ts-cal-empty)').forEach((cell) => {
+        cell.addEventListener('click', () => selectCalendarDay(cell.dataset.date));
+      });
+    }
+
+    function selectCalendarDay(dateKey) {
+      const existing = lastEntries.find((e) => e.clock_out && calendarDayKey(e.clock_in) === dateKey);
+      if (existing) {
+        startManualEdit(existing.id, existing.clock_in, existing.clock_out, existing.notes);
+        return;
+      }
+      resetManualForm();
+      selectedCalendarDate = dateKey;
+      document.getElementById('manualDate').value = dateKey;
+      updateManualDateLabel(dateKey);
+      renderCalendarGrid();
+    }
+
+    document.getElementById('tsCalPrevBtn').addEventListener('click', () => {
+      calendarMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1);
+      renderCalendarGrid();
+    });
+    document.getElementById('tsCalNextBtn').addEventListener('click', () => {
+      calendarMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1);
+      renderCalendarGrid();
+    });
+    renderCalendarGrid();
+
     let editingEntryId = null;
     function startManualEdit(id, clockIn, clockOut, notes) {
       editingEntryId = id;
@@ -10255,6 +10477,10 @@
       document.getElementById('timesheetManualSubmitBtn').textContent = t('btn_save');
       document.getElementById('timesheetManualCancelBtn').hidden = false;
       document.getElementById('timesheetManualCard').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      selectedCalendarDate = inParts.date;
+      calendarMonth = monthFromDateKey(inParts.date);
+      updateManualDateLabel(inParts.date);
+      renderCalendarGrid();
     }
 
     function resetManualForm() {
@@ -10263,6 +10489,9 @@
       document.getElementById('timesheetManualSubmitBtn').textContent = t('btn_add_entry');
       document.getElementById('timesheetManualCancelBtn').hidden = true;
       document.getElementById('timesheetManualError').textContent = '';
+      selectedCalendarDate = null;
+      updateManualDateLabel(null);
+      renderCalendarGrid();
     }
 
     document.getElementById('timesheetManualCancelBtn').addEventListener('click', resetManualForm);
@@ -10274,7 +10503,8 @@
       const startVal = document.getElementById('manualStart').value;
       const endVal = document.getElementById('manualEnd').value;
       const notes = document.getElementById('manualNotes').value;
-      if (!dateVal || !startVal || !endVal) return;
+      if (!dateVal) { errEl.textContent = t('timesheet_select_day_error'); return; }
+      if (!startVal || !endVal) return;
       const clockIn = partsToDbDatetime(dateVal, startVal);
       const clockOut = partsToDbDatetime(dateVal, endVal);
       try {
