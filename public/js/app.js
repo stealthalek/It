@@ -516,6 +516,7 @@
       internal_note_label: 'Nota interna (visibile solo allo staff)', btn_send: 'Invia',
       management_title: 'Gestione', field_group: 'Gruppo di assegnazione', field_linked_asset: 'Asset collegato',
       delete_ticket_btn: 'Elimina ticket', no_group_option: 'Nessun gruppo', no_asset_option: 'Nessun asset',
+      group_search_placeholder: 'Cerca un gruppo…',
       confirm_delete_ticket: 'Eliminare definitivamente questo ticket?',
       ticket_cancelled_banner: 'Il ticket è stato cancellato.',
       toast_ticket_updated: 'Ticket aggiornato', toast_ticket_reopened: 'Ticket riaperto', toast_ticket_deleted: 'Ticket eliminato',
@@ -984,6 +985,7 @@
       internal_note_label: 'Internal note (staff only)', btn_send: 'Send',
       management_title: 'Management', field_group: 'Assignment group', field_linked_asset: 'Linked asset',
       delete_ticket_btn: 'Delete ticket', no_group_option: 'No group', no_asset_option: 'No asset',
+      group_search_placeholder: 'Search a group…',
       confirm_delete_ticket: 'Permanently delete this ticket?',
       ticket_cancelled_banner: 'This ticket has been cancelled.',
       toast_ticket_updated: 'Ticket updated', toast_ticket_reopened: 'Ticket reopened', toast_ticket_deleted: 'Ticket deleted',
@@ -4131,8 +4133,19 @@
     let staffPanel = '';
     let requesterPanel = '';
     let assigneesOptions = '';
-    let groupOptions = '';
     let assetOptions = '';
+    let allTicketStaffUsers = [];
+    let ticketGroupsFlat = [];
+    function buildAssigneeOptionsHtml(users, groupId, currentAssignedId) {
+      const staffUsers = users.filter((u) => u.role === 'agent' || u.role === 'admin');
+      const pool = groupId ? staffUsers.filter((u) => u.group_id === groupId || u.id === currentAssignedId) : staffUsers;
+      const staffGroups = groupStaffByGroup(pool);
+      return `<option value="">${t('unassigned_label')}</option>` +
+        staffGroups.map(({ group, members }) => `
+          <optgroup label="${escapeHtml(group)}">
+            ${members.map((u) => `<option value="${u.id}" ${currentAssignedId === u.id ? 'selected' : ''}>${escapeHtml(u.name)}</option>`).join('')}
+          </optgroup>`).join('');
+    }
     if (isStaff() && !readOnly) {
       const [usersResult, groupsResult, assetsResult] = await Promise.all([
         api('/users').catch(() => null),
@@ -4142,12 +4155,8 @@
 
       if (usersResult) {
         const { users } = usersResult;
-        const staffGroups = groupStaffByGroup(users);
-        assigneesOptions = `<option value="">${t('unassigned_label')}</option>` +
-          staffGroups.map(({ group, members }) => `
-            <optgroup label="${escapeHtml(group)}">
-              ${members.map((u) => `<option value="${u.id}" ${ticket.assigned_to === u.id ? 'selected' : ''}>${escapeHtml(u.name)}</option>`).join('')}
-            </optgroup>`).join('');
+        allTicketStaffUsers = users;
+        assigneesOptions = buildAssigneeOptionsHtml(users, ticket.group_id, ticket.assigned_to);
 
         const requester = users.find((u) => u.id === ticket.created_by);
         const beneficiary = ticket.on_behalf_of ? users.find((u) => u.id === ticket.on_behalf_of) : null;
@@ -4174,7 +4183,7 @@
       }
 
       if (groupsResult) {
-        groupOptions = groupOptionsHtml(groupsResult.groups, ticket.group_id, t('no_group_option'));
+        ticketGroupsFlat = flattenGroupTree(buildGroupTree(groupsResult.groups));
       }
 
       if (assetsResult) {
@@ -4205,8 +4214,12 @@
             </select>
           </div>
           <div class="side-field">
-            <label for="groupSel">${t('field_group')}</label>
-            <select id="groupSel">${groupOptions}</select>
+            <label for="groupSearchInput">${t('field_group')}</label>
+            <div class="person-combobox">
+              <input type="text" id="groupSearchInput" autocomplete="off" placeholder="${t('group_search_placeholder')}" value="${escapeHtml(groupLabel(ticket) || t('no_group_option'))}" />
+              <input type="hidden" id="groupSel" value="${ticket.group_id || ''}" />
+              <div id="groupSearchResults" class="person-combobox-results" hidden></div>
+            </div>
           </div>
           <div class="side-field">
             <label for="assignedSel">${t('assigned_to_label')}</label>
@@ -4760,6 +4773,54 @@
         } catch (err) {
           showToast(err.message, 'error');
         }
+      });
+    }
+
+    const groupSearchInput = document.getElementById('groupSearchInput');
+    const groupSearchHidden = document.getElementById('groupSel');
+    const groupSearchResults = document.getElementById('groupSearchResults');
+    if (groupSearchInput) {
+      function refreshAssigneeOptionsForGroup(groupId) {
+        const assignedSel = document.getElementById('assignedSel');
+        if (!assignedSel) return;
+        assignedSel.innerHTML = buildAssigneeOptionsHtml(allTicketStaffUsers, groupId, null);
+      }
+      function groupComboLabel(g) {
+        return `${'  '.repeat(g.depth)}${g.depth ? '– ' : ''}${g.name}`;
+      }
+      function renderGroupResults(list) {
+        const rows = [`<button type="button" class="person-combobox-option" data-group-id="" data-group-name="${escapeHtml(t('no_group_option'))}"><span>${t('no_group_option')}</span></button>`]
+          .concat(list.slice(0, 20).map((g) => `
+            <button type="button" class="person-combobox-option" data-group-id="${g.id}" data-group-name="${escapeHtml(g.name)}">
+              <span>${escapeHtml(groupComboLabel(g))}</span>
+            </button>`));
+        groupSearchResults.innerHTML = rows.join('');
+        groupSearchResults.hidden = false;
+        groupSearchResults.querySelectorAll('.person-combobox-option').forEach((btn) => {
+          btn.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            groupSearchHidden.value = btn.dataset.groupId;
+            groupSearchInput.value = btn.dataset.groupId ? btn.dataset.groupName : t('no_group_option');
+            groupSearchResults.hidden = true;
+            refreshAssigneeOptionsForGroup(btn.dataset.groupId ? Number(btn.dataset.groupId) : null);
+          });
+        });
+      }
+      groupSearchInput.addEventListener('focus', () => {
+        groupSearchInput.select();
+        renderGroupResults(ticketGroupsFlat);
+      });
+      groupSearchInput.addEventListener('input', () => {
+        groupSearchHidden.value = '';
+        const q = groupSearchInput.value.trim().toLowerCase();
+        const filtered = q ? ticketGroupsFlat.filter((g) => g.name.toLowerCase().includes(q)) : ticketGroupsFlat;
+        renderGroupResults(filtered);
+      });
+      groupSearchInput.addEventListener('blur', () => {
+        setTimeout(() => {
+          groupSearchResults.hidden = true;
+          if (!groupSearchHidden.value) groupSearchInput.value = t('no_group_option');
+        }, 150);
       });
     }
 
