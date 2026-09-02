@@ -795,6 +795,7 @@
       timesheet_history_title: 'Storico timbrature', th_clock_in: 'Entrata', th_clock_out: 'Uscita', th_duration: 'Durata',
       timesheet_no_entries: 'Nessuna timbratura registrata.', timesheet_ongoing: 'in corso',
       timesheet_manual_title: 'Aggiungi ore manualmente', timesheet_manual_hint: 'Registra o correggi una timbratura scegliendo data e orario sul calendario.',
+      timesheet_select_day_error: 'Seleziona prima un giorno dal calendario.',
       field_start_time: 'Ora inizio', field_end_time: 'Ora fine', btn_add_entry: 'Aggiungi',
       confirm_delete_time_entry: 'Eliminare questa timbratura?', toast_time_entry_added: 'Timbratura aggiunta',
       toast_time_entry_updated: 'Timbratura aggiornata', toast_time_entry_deleted: 'Timbratura eliminata',
@@ -1261,6 +1262,7 @@
       timesheet_history_title: 'Time entry history', th_clock_in: 'Clock in', th_clock_out: 'Clock out', th_duration: 'Duration',
       timesheet_no_entries: 'No time entries recorded yet.', timesheet_ongoing: 'ongoing',
       timesheet_manual_title: 'Add hours manually', timesheet_manual_hint: 'Record or correct a time entry by picking a date and time on the calendar.',
+      timesheet_select_day_error: 'Select a day on the calendar first.',
       field_start_time: 'Start time', field_end_time: 'End time', btn_add_entry: 'Add',
       confirm_delete_time_entry: 'Delete this time entry?', toast_time_entry_added: 'Time entry added',
       toast_time_entry_updated: 'Time entry updated', toast_time_entry_deleted: 'Time entry deleted',
@@ -10081,9 +10083,18 @@
         <div class="card admin-grid-full" id="timesheetManualCard" hidden>
           <h3 class="section-title" style="margin-top:0">${icon('clock')} ${t('timesheet_manual_title')}</h3>
           <p class="hint">${t('timesheet_manual_hint')}</p>
+          <div class="timesheet-calendar" id="timesheetCalendar">
+            <div class="timesheet-calendar-head">
+              <button type="button" class="icon-btn" id="tsCalPrevBtn" aria-label="${t('page_prev')}">${icon('arrowLeft')}</button>
+              <strong id="tsCalMonthLabel"></strong>
+              <button type="button" class="icon-btn" id="tsCalNextBtn" aria-label="${t('page_next')}">${icon('arrowRight')}</button>
+            </div>
+            <div class="timesheet-calendar-grid" id="tsCalGrid"></div>
+          </div>
           <form id="timesheetManualForm" class="form-grid" style="max-width:none">
+            <p class="hint" id="manualDateLabel"></p>
+            <input id="manualDate" type="hidden" required />
             <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
-              <div class="field" style="flex:1 1 9rem"><label for="manualDate">${t('field_date')}</label><input id="manualDate" type="date" required /></div>
               <div class="field" style="flex:1 1 7rem"><label for="manualStart">${t('field_start_time')}</label><input id="manualStart" type="time" required /></div>
               <div class="field" style="flex:1 1 7rem"><label for="manualEnd">${t('field_end_time')}</label><input id="manualEnd" type="time" required /></div>
             </div>
@@ -10199,11 +10210,14 @@
 
     let lastEntries = [];
     let flexibleTimeEntry = false;
+    let calendarMonth = new Date();
+    let selectedCalendarDate = null;
     async function loadHistory() {
       const el = document.getElementById('timesheetHistory');
       try {
         const { entries } = await api('/time-entries');
         lastEntries = entries;
+        renderCalendarGrid();
         el.className = '';
         el.innerHTML = entriesTableHtml(entries, false, flexibleTimeEntry);
         renderPayEstimate(entries);
@@ -10243,6 +10257,92 @@
       return local.toISOString().slice(0, 19).replace('T', ' ');
     }
 
+    function calendarDayKey(dbValue) {
+      return dbDatetimeToParts(dbValue).date;
+    }
+
+    function monthFromDateKey(dateKey) {
+      const [y, m] = dateKey.split('-');
+      return new Date(Number(y), Number(m) - 1, 1);
+    }
+
+    function updateManualDateLabel(dateKey) {
+      const labelEl = document.getElementById('manualDateLabel');
+      if (!labelEl) return;
+      if (!dateKey) { labelEl.textContent = ''; return; }
+      const locale = getLang() === 'en' ? 'en-US' : 'it-IT';
+      labelEl.textContent = `${t('field_date')}: ${new Date(`${dateKey}T00:00:00`).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' })}`;
+    }
+
+    function renderCalendarGrid() {
+      const gridEl = document.getElementById('tsCalGrid');
+      const labelEl = document.getElementById('tsCalMonthLabel');
+      if (!gridEl || !labelEl) return;
+      const locale = getLang() === 'en' ? 'en-US' : 'it-IT';
+      const year = calendarMonth.getFullYear();
+      const month = calendarMonth.getMonth();
+      labelEl.textContent = calendarMonth.toLocaleDateString(locale, { month: 'long', year: 'numeric' });
+
+      const minutesByDay = {};
+      lastEntries.forEach((e) => {
+        if (!e.clock_out) return;
+        const key = calendarDayKey(e.clock_in);
+        const start = new Date(`${e.clock_in.replace(' ', 'T')}Z`).getTime();
+        const end = new Date(`${e.clock_out.replace(' ', 'T')}Z`).getTime();
+        minutesByDay[key] = (minutesByDay[key] || 0) + Math.max(0, (end - start) / 60000);
+      });
+
+      const pad = (n) => String(n).padStart(2, '0');
+      const today = new Date();
+      const todayKey = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+      const firstOfMonth = new Date(year, month, 1);
+      const startWeekday = (firstOfMonth.getDay() + 6) % 7;
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const weekdayLabels = locale === 'it-IT' ? ['L', 'M', 'M', 'G', 'V', 'S', 'D'] : ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+
+      let html = weekdayLabels.map((d) => `<div class="ts-cal-weekday">${d}</div>`).join('');
+      for (let i = 0; i < startWeekday; i++) html += '<div class="ts-cal-cell ts-cal-empty"></div>';
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dateKey = `${year}-${pad(month + 1)}-${pad(day)}`;
+        const minutes = minutesByDay[dateKey];
+        const classes = ['ts-cal-cell'];
+        if (dateKey === todayKey) classes.push('ts-cal-today');
+        if (dateKey === selectedCalendarDate) classes.push('ts-cal-selected');
+        if (minutes) classes.push('ts-cal-has-entry');
+        html += `<button type="button" class="${classes.join(' ')}" data-date="${dateKey}">
+          <span class="ts-cal-daynum">${day}</span>
+          ${minutes ? `<span class="ts-cal-hours">${(minutes / 60).toFixed(1)}h</span>` : ''}
+        </button>`;
+      }
+      gridEl.innerHTML = html;
+      gridEl.querySelectorAll('.ts-cal-cell:not(.ts-cal-empty)').forEach((cell) => {
+        cell.addEventListener('click', () => selectCalendarDay(cell.dataset.date));
+      });
+    }
+
+    function selectCalendarDay(dateKey) {
+      const existing = lastEntries.find((e) => e.clock_out && calendarDayKey(e.clock_in) === dateKey);
+      if (existing) {
+        startManualEdit(existing.id, existing.clock_in, existing.clock_out, existing.notes);
+        return;
+      }
+      resetManualForm();
+      selectedCalendarDate = dateKey;
+      document.getElementById('manualDate').value = dateKey;
+      updateManualDateLabel(dateKey);
+      renderCalendarGrid();
+    }
+
+    document.getElementById('tsCalPrevBtn').addEventListener('click', () => {
+      calendarMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1);
+      renderCalendarGrid();
+    });
+    document.getElementById('tsCalNextBtn').addEventListener('click', () => {
+      calendarMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1);
+      renderCalendarGrid();
+    });
+    renderCalendarGrid();
+
     let editingEntryId = null;
     function startManualEdit(id, clockIn, clockOut, notes) {
       editingEntryId = id;
@@ -10255,6 +10355,10 @@
       document.getElementById('timesheetManualSubmitBtn').textContent = t('btn_save');
       document.getElementById('timesheetManualCancelBtn').hidden = false;
       document.getElementById('timesheetManualCard').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      selectedCalendarDate = inParts.date;
+      calendarMonth = monthFromDateKey(inParts.date);
+      updateManualDateLabel(inParts.date);
+      renderCalendarGrid();
     }
 
     function resetManualForm() {
@@ -10263,6 +10367,9 @@
       document.getElementById('timesheetManualSubmitBtn').textContent = t('btn_add_entry');
       document.getElementById('timesheetManualCancelBtn').hidden = true;
       document.getElementById('timesheetManualError').textContent = '';
+      selectedCalendarDate = null;
+      updateManualDateLabel(null);
+      renderCalendarGrid();
     }
 
     document.getElementById('timesheetManualCancelBtn').addEventListener('click', resetManualForm);
@@ -10274,7 +10381,8 @@
       const startVal = document.getElementById('manualStart').value;
       const endVal = document.getElementById('manualEnd').value;
       const notes = document.getElementById('manualNotes').value;
-      if (!dateVal || !startVal || !endVal) return;
+      if (!dateVal) { errEl.textContent = t('timesheet_select_day_error'); return; }
+      if (!startVal || !endVal) return;
       const clockIn = partsToDbDatetime(dateVal, startVal);
       const clockOut = partsToDbDatetime(dateVal, endVal);
       try {
