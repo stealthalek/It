@@ -7,7 +7,7 @@ const { authenticate } = require('../middleware/auth');
 const { requirePermission } = require('../lib/permissions');
 const asyncHandler = require('../middleware/asyncHandler');
 const { logAudit } = require('../audit');
-const { notifyUser } = require('../notifications');
+const { notifyUser, notifyUsers } = require('../notifications');
 const { formatTicketNumber } = require('../lib/ticketNumber');
 const { createAssignmentLetter } = require('../lib/assetLetters');
 
@@ -311,12 +311,10 @@ async function createTicketForOnboardingItem(itemType, customization, request, r
       "SELECT id FROM users WHERE role IN ('agent', 'admin') AND group_id = ? AND id != ?",
       [itemType.default_group_id, requesterId]
     );
-    for (const u of staff) {
-      notifyUser(u.id, ticketId, {
-        it: `Nuovo ticket onboarding #${formatTicketNumber(ticketId)}: ${itemType.label_it}`,
-        en: `New onboarding ticket #${formatTicketNumber(ticketId)}: ${itemType.label_it}`,
-      }).catch(() => {});
-    }
+    notifyUsers(staff.map((u) => u.id), ticketId, {
+      it: `Nuovo ticket onboarding #${formatTicketNumber(ticketId)}: ${itemType.label_it}`,
+      en: `New onboarding ticket #${formatTicketNumber(ticketId)}: ${itemType.label_it}`,
+    }).catch(() => {});
   }
   return ticketId;
 }
@@ -348,9 +346,11 @@ router.post(
       notes: notes ? notes.trim() : null,
     };
 
+    const seenItemTypeIds = new Set();
     for (const selection of selections) {
       const itemType = types.find((tItem) => tItem.id === Number(selection.itemTypeId));
-      if (!itemType) continue;
+      if (!itemType || seenItemTypeIds.has(itemType.id)) continue;
+      seenItemTypeIds.add(itemType.id);
 
       let copyFromUserId = null;
       let copyFromUserName = null;
