@@ -5290,6 +5290,7 @@
       { key: 'privacy', icon: 'lock', label: t('admin_section_privacy') },
       ...(state.user.is_super_admin ? [{ key: 'companies', icon: 'building', label: t('admin_section_companies') }] : []),
     ];
+    const ADMIN_OVERVIEW_COUNTABLE = new Set(['users', 'groups', 'catalog', 'automation', 'onboarding', 'roles', 'companies']);
     const activeSection = isAdmin ? (ADMIN_SECTIONS.some((s) => s.key === state.adminSection) ? state.adminSection : 'overview') : 'users';
 
     function adminTabsHtml() {
@@ -5307,7 +5308,7 @@
           <button type="button" class="admin-overview-tile" data-admin-section="${s.key}">
             ${icon(s.icon)}
             <span class="admin-overview-tile-label">${s.label}</span>
-            <span class="admin-overview-tile-count" data-count-for="${s.key}"></span>
+            ${ADMIN_OVERVIEW_COUNTABLE.has(s.key) ? `<span class="admin-overview-tile-count" data-count-for="${s.key}"></span>` : ''}
           </button>
         `).join('')}
       </div>` : ''}
@@ -5870,20 +5871,24 @@
 
       async function loadAdminOverviewCounts() {
         try {
-          const [{ groups }, { categories }, { rules }, { requests }] = await Promise.all([
+          const [{ users }, { groups }, { categories }, { rules }, { requests }, { roles }, companiesResult] = await Promise.all([
+            api('/users'),
             api('/groups'),
             api('/categories'),
             api('/automations').catch(() => ({ rules: [] })),
             api('/onboarding').catch(() => ({ requests: [] })),
+            api('/roles').catch(() => ({ roles: [] })),
+            state.user.is_super_admin ? api('/companies').catch(() => ({ companies: [] })) : Promise.resolve(null),
           ]);
           const counts = {
-            users: '',
+            users: `${users.length}`,
             groups: `${groups.length}`,
             catalog: `${categories.length}`,
             automation: `${rules.length}`,
             onboarding: `${requests.filter((r) => r.status === 'open' || r.status === 'in_progress').length}`,
-            org: '',
+            roles: `${roles.length}`,
           };
+          if (companiesResult) counts.companies = `${companiesResult.companies.length}`;
           Object.entries(counts).forEach(([key, value]) => {
             const el = document.querySelector(`[data-count-for="${key}"]`);
             if (el) el.textContent = value;
@@ -10966,7 +10971,7 @@
         const params = statusFilter.value ? `?status=${statusFilter.value}` : '';
         const { ideas } = await api(`/ideas${params}`);
         listEl.className = '';
-        listEl.innerHTML = ideas.length ? ideas.map(ideaCardHtml).join('') : `<p class="hint">${t('ideas_none')}</p>`;
+        listEl.innerHTML = ideas.length ? ideas.map(ideaCardHtml).join('') : `<div class="empty-state">${icon('bulb')}<span>${t('ideas_none')}</span></div>`;
         listEl.querySelectorAll('.ideaVoteBtn').forEach((btn) => {
           btn.addEventListener('click', async () => {
             btn.disabled = true;
@@ -11080,7 +11085,7 @@
         const q = searchInput.value.trim();
         const { pages } = await api(`/wiki${q ? `?q=${encodeURIComponent(q)}` : ''}`);
         listEl.className = '';
-        listEl.innerHTML = pages.length ? pages.map(pageRowHtml).join('') : `<p class="hint">${t('wiki_none')}</p>`;
+        listEl.innerHTML = pages.length ? pages.map(pageRowHtml).join('') : `<div class="empty-state">${icon('file')}<span>${t('wiki_none')}</span></div>`;
       } catch (err) {
         listEl.className = '';
         listEl.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
