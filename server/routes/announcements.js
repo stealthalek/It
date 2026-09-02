@@ -4,7 +4,7 @@ const { authenticate } = require('../middleware/auth');
 const { requirePermission } = require('../lib/permissions');
 const asyncHandler = require('../middleware/asyncHandler');
 const { logAudit } = require('../audit');
-const { notifyUser } = require('../notifications');
+const { notifyUsers } = require('../notifications');
 
 const router = express.Router();
 router.use(authenticate);
@@ -63,6 +63,17 @@ async function listTargets(announcementId) {
     [announcementId]
   );
   return rows;
+}
+
+async function insertAnnouncementTargets(announcementId, groupIds, userIds) {
+  const rows = [
+    ...groupIds.map((id) => ['group', id]),
+    ...userIds.map((id) => ['user', id]),
+  ];
+  if (!rows.length) return;
+  const insertValues = rows.map(() => '(?, ?, ?)').join(', ');
+  const insertParams = rows.flatMap(([type, id]) => [announcementId, type, id]);
+  await db.run(`INSERT INTO announcement_targets (announcement_id, target_type, target_id) VALUES ${insertValues}`, insertParams);
 }
 
 async function computeRecipients(companyId, targetGroupIds, targetUserIds) {
@@ -152,21 +163,14 @@ router.post(
 
     const groupIds = Array.isArray(targetGroupIds) ? targetGroupIds.map(Number).filter(Boolean) : [];
     const userIds = Array.isArray(targetUserIds) ? targetUserIds.map(Number).filter(Boolean) : [];
-    for (const groupId of groupIds) {
-      await db.run('INSERT INTO announcement_targets (announcement_id, target_type, target_id) VALUES (?, ?, ?)', [announcementId, 'group', groupId]);
-    }
-    for (const userId of userIds) {
-      await db.run('INSERT INTO announcement_targets (announcement_id, target_type, target_id) VALUES (?, ?, ?)', [announcementId, 'user', userId]);
-    }
+    await insertAnnouncementTargets(announcementId, groupIds, userIds);
 
     const announcement = await db.get(`${ANNOUNCEMENT_SELECT} WHERE a.id = ?`, [req.user.id, announcementId]);
     logAudit(req.user.id, 'announcement', announcement.id, `Pubblicato annuncio "${announcement.title}"`).catch(() => {});
 
     const recipients = await computeRecipients(companyId, groupIds, userIds);
     recipients.delete(req.user.id);
-    for (const userId of recipients) {
-      notifyUser(userId, null, { it: `Nuovo annuncio: ${announcement.title}`, en: `New announcement: ${announcement.title}` }).catch(() => {});
-    }
+    notifyUsers([...recipients], null, { it: `Nuovo annuncio: ${announcement.title}`, en: `New announcement: ${announcement.title}` }).catch(() => {});
 
     res.status(201).json({ announcement: { ...announcement, pinned: !!announcement.pinned, is_read: !!announcement.is_read } });
   })
@@ -198,12 +202,7 @@ router.patch(
       await db.run('DELETE FROM announcement_targets WHERE announcement_id = ?', [req.params.id]);
       const groupIds = Array.isArray(targetGroupIds) ? targetGroupIds.map(Number).filter(Boolean) : [];
       const userIds = Array.isArray(targetUserIds) ? targetUserIds.map(Number).filter(Boolean) : [];
-      for (const groupId of groupIds) {
-        await db.run('INSERT INTO announcement_targets (announcement_id, target_type, target_id) VALUES (?, ?, ?)', [req.params.id, 'group', groupId]);
-      }
-      for (const userId of userIds) {
-        await db.run('INSERT INTO announcement_targets (announcement_id, target_type, target_id) VALUES (?, ?, ?)', [req.params.id, 'user', userId]);
-      }
+      await insertAnnouncementTargets(req.params.id, groupIds, userIds);
     }
 
     const announcement = await db.get(`${ANNOUNCEMENT_SELECT} WHERE a.id = ?`, [req.user.id, req.params.id]);
