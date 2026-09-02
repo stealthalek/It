@@ -38,6 +38,7 @@ const messageRoutes = require('./routes/messages');
 const roomRoutes = require('./routes/rooms');
 const ideaRoutes = require('./routes/ideas');
 const wikiRoutes = require('./routes/wiki');
+const expenseRoutes = require('./routes/expenses');
 const { loadHolidays } = require('./sla');
 const { recordRequest } = require('./lib/requestStats');
 
@@ -126,6 +127,7 @@ app.use('/api/messages', messageRoutes);
 app.use('/api/rooms', roomRoutes);
 app.use('/api/ideas', ideaRoutes);
 app.use('/api/wiki', wikiRoutes);
+app.use('/api/expenses', expenseRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() });
