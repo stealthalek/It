@@ -731,12 +731,12 @@ body:not(.role-customer):not(.role-agent):not(.role-admin) .nav-toggle { display
 .leave-card-main p { margin: 0.15rem 0 0; }
 .leave-card-side { display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem; }
 
-.timesheet-calendar { margin-bottom: 1.1rem; }
+.timesheet-calendar { margin-bottom: 1.1rem; min-width: 0; }
 .timesheet-calendar-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.6rem; }
 .timesheet-calendar-head strong { text-transform: capitalize; }
-.timesheet-calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.3rem; }
+.timesheet-calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0.3rem; min-width: 0; }
 .ts-cal-weekday { text-align: center; font-size: 0.72rem; font-weight: 600; color: var(--muted); padding-bottom: 0.2rem; }
-.ts-cal-cell { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.15rem; aspect-ratio: 1; min-height: 2.6rem; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); cursor: pointer; padding: 0.2rem; transition: border-color 0.15s ease, background-color 0.15s ease; }
+.ts-cal-cell { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.15rem; aspect-ratio: 1; min-height: 2.6rem; min-width: 0; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); cursor: pointer; padding: 0.2rem; transition: border-color 0.15s ease, background-color 0.15s ease; }
 .ts-cal-cell:hover { border-color: var(--primary); }
 .ts-cal-cell.ts-cal-empty { visibility: hidden; cursor: default; border: none; }
 .ts-cal-daynum { font-size: 0.85rem; font-weight: 600; }
