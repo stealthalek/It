@@ -12,6 +12,7 @@ const ALL_PERMISSIONS = [
   'users_manage',
   'groups_manage',
   'rooms_manage',
+  'ideas_manage',
 ];
 
 function resolvePermissions(user) {

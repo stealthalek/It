@@ -133,6 +133,15 @@
   function onboardingKindLabels() {
     return { checkbox: t('onboarding_kind_checkbox'), license: t('onboarding_kind_license'), copy_user: t('onboarding_kind_copy_user'), asset: t('onboarding_kind_asset') };
   }
+  function ideaStatusLabels() {
+    return {
+      new: t('idea_status_new'),
+      under_review: t('idea_status_under_review'),
+      planned: t('idea_status_planned'),
+      implemented: t('idea_status_implemented'),
+      rejected: t('idea_status_rejected'),
+    };
+  }
 
   const ICON_PATHS = {
     plus: '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
@@ -381,6 +390,12 @@
       toast_room_created: 'Sala creata', toast_room_deleted: 'Sala eliminata',
       confirm_cancel_room_booking: 'Annullare questa prenotazione?', confirm_delete_room: 'Eliminare questa sala? Le prenotazioni collegate verranno rimosse.',
       delete_room_title: 'Elimina sala', rooms_col_name: 'Sala', rooms_col_location: 'Posizione', rooms_col_capacity: 'Capienza',
+      nav_ideas: 'Bacheca idee', ideas_hint: 'Proponi un\'idea o vota quelle degli altri: le più votate salgono in cima.',
+      ideas_new_title: 'Proponi un\'idea', ideas_field_title: 'Titolo', ideas_field_description: 'Descrizione (facoltativa)', ideas_submit_btn: 'Invia idea',
+      ideas_list_title: 'Idee proposte', ideas_filter_all: 'Tutti gli stati', ideas_none: 'Nessuna idea per ora: proponi la prima!',
+      ideas_vote_btn: 'Vota', ideas_delete_title: 'Elimina idea', confirm_delete_idea: 'Eliminare questa idea?',
+      toast_idea_submitted: 'Idea inviata', toast_idea_deleted: 'Idea eliminata', toast_idea_status_updated: 'Stato idea aggiornato',
+      idea_status_new: 'Nuova', idea_status_under_review: 'In valutazione', idea_status_planned: 'Pianificata', idea_status_implemented: 'Realizzata', idea_status_rejected: 'Non accolta',
       nav_assets: 'Asset', nav_onboarding: 'Onboarding', nav_timesheet: 'Orari', nav_report: 'Report', nav_audit: 'Audit', nav_admin: 'Amministrazione', nav_profile: 'Profilo', logout: 'Esci',
       login_title: 'Accedi', login_hint: 'Entra nella piattaforma di ticketing.', login_email: 'Email', login_password: 'Password',
       login_submit: 'Accedi', login_no_account: 'Non hai un account?', login_register_link: 'Registrati',
@@ -822,6 +837,12 @@
       toast_room_created: 'Room created', toast_room_deleted: 'Room deleted',
       confirm_cancel_room_booking: 'Cancel this booking?', confirm_delete_room: 'Delete this room? Linked bookings will be removed.',
       delete_room_title: 'Delete room', rooms_col_name: 'Room', rooms_col_location: 'Location', rooms_col_capacity: 'Capacity',
+      nav_ideas: 'Ideas board', ideas_hint: 'Suggest an idea or vote for others\' ideas: the most popular rise to the top.',
+      ideas_new_title: 'Suggest an idea', ideas_field_title: 'Title', ideas_field_description: 'Description (optional)', ideas_submit_btn: 'Submit idea',
+      ideas_list_title: 'Suggested ideas', ideas_filter_all: 'All statuses', ideas_none: 'No ideas yet: suggest the first one!',
+      ideas_vote_btn: 'Vote', ideas_delete_title: 'Delete idea', confirm_delete_idea: 'Delete this idea?',
+      toast_idea_submitted: 'Idea submitted', toast_idea_deleted: 'Idea deleted', toast_idea_status_updated: 'Idea status updated',
+      idea_status_new: 'New', idea_status_under_review: 'Under review', idea_status_planned: 'Planned', idea_status_implemented: 'Implemented', idea_status_rejected: 'Not accepted',
       nav_assets: 'Assets', nav_onboarding: 'Onboarding', nav_timesheet: 'Hours', nav_report: 'Report', nav_audit: 'Audit', nav_admin: 'Administration', nav_profile: 'Profile', logout: 'Log out',
       login_title: 'Sign in', login_hint: 'Enter the ticketing platform.', login_email: 'Email', login_password: 'Password',
       login_submit: 'Sign in', login_no_account: "Don't have an account?", login_register_link: 'Register',
@@ -1246,11 +1267,11 @@
 
   const NAV_KEY_BY_ROUTE = {
     dashboard: 'nav_dashboard', new: 'nav_new', search: 'nav_search', announcements: 'nav_announcements', directory: 'nav_directory', messages: 'nav_messages',
-    assets: 'nav_assets', onboarding: 'nav_onboarding', timesheet: 'nav_timesheet', orgchart: 'nav_orgchart', rooms: 'nav_rooms', report: 'nav_insights', admin: 'nav_admin', profile: 'nav_profile',
+    assets: 'nav_assets', onboarding: 'nav_onboarding', timesheet: 'nav_timesheet', orgchart: 'nav_orgchart', rooms: 'nav_rooms', ideas: 'nav_ideas', report: 'nav_insights', admin: 'nav_admin', profile: 'nav_profile',
   };
   const NAV_ICON_BY_ROUTE = {
     dashboard: 'ticket', new: 'plus', search: 'inbox', announcements: 'megaphone', directory: 'users', messages: 'mail',
-    assets: 'monitor', onboarding: 'userCircle', timesheet: 'clock', orgchart: 'globe', rooms: 'calendar', report: 'activity', admin: 'shield', profile: 'userCircle',
+    assets: 'monitor', onboarding: 'userCircle', timesheet: 'clock', orgchart: 'globe', rooms: 'calendar', ideas: 'bulb', report: 'activity', admin: 'shield', profile: 'userCircle',
   };
 
   const NAV_SECTION_KEY = { work: 'nav_section_work', team: 'nav_section_team', tools: 'nav_section_tools' };
@@ -2119,6 +2140,7 @@
         case 'timesheet': return renderTimesheet();
         case 'orgchart': return renderOrgChartPublic();
         case 'rooms': return renderRooms();
+        case 'ideas': return renderIdeas();
         case 'search': return renderSearch();
         case 'report': return renderInsights('report');
         case 'audit': return renderInsights('audit');
@@ -10465,6 +10487,139 @@
     }
 
     loadRooms();
+  }
+
+  function canManageIdeas() {
+    return !!(state.user && (state.user.role === 'admin' || state.user.is_super_admin || (Array.isArray(state.user.permissions) && state.user.permissions.includes('ideas_manage'))));
+  }
+
+  async function renderIdeas() {
+    appEl.innerHTML = `
+      <div class="view-header">
+        <h1>${icon('bulb')} ${t('nav_ideas')}</h1>
+        <p class="hint">${t('ideas_hint')}</p>
+      </div>
+      <div class="two-col">
+        <div class="card">
+          <h3 class="section-title" style="margin-top:0">${icon('plus')} ${t('ideas_new_title')}</h3>
+          <form id="newIdeaForm" class="form-grid" style="max-width:none">
+            <div class="field"><label for="ideaTitle">${t('ideas_field_title')}</label><input id="ideaTitle" required maxlength="200" /></div>
+            <div class="field"><label for="ideaDescription">${t('ideas_field_description')}</label><textarea id="ideaDescription" rows="3" maxlength="4000"></textarea></div>
+            <p class="error-text" id="ideaError"></p>
+            <div><button class="btn btn-sm" type="submit">${t('ideas_submit_btn')}</button></div>
+          </form>
+        </div>
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem">
+            <h3 class="section-title" style="margin:0">${icon('inbox')} ${t('ideas_list_title')}</h3>
+            <select id="ideaStatusFilter">
+              <option value="">${t('ideas_filter_all')}</option>
+              ${Object.entries(ideaStatusLabels()).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
+            </select>
+          </div>
+          <div id="ideasList" class="spinner-row">${t('loading')}</div>
+        </div>
+      </div>
+    `;
+
+    const statusFilter = document.getElementById('ideaStatusFilter');
+
+    function ideaCardHtml(idea) {
+      const canDelete = idea.author_id === state.user.id || canManageIdeas();
+      return `
+        <div class="card" style="margin-bottom:0.6rem" data-idea-id="${idea.id}">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.75rem">
+            <button type="button" class="icon-btn ideaVoteBtn ${idea.has_voted ? 'active' : ''}" data-id="${idea.id}" title="${t('ideas_vote_btn')}">
+              ${icon('bulb')}<span>${idea.vote_count}</span>
+            </button>
+            <div style="flex:1">
+              <strong>${escapeHtml(idea.title)}</strong>
+              ${idea.description ? `<p class="hint" style="margin:0.3rem 0 0;white-space:pre-wrap">${escapeHtml(idea.description)}</p>` : ''}
+              <p class="hint" style="margin:0.3rem 0 0">${icon('userCircle', 'badge-icon')} ${escapeHtml(idea.author_name)} · ${formatDate(idea.created_at)}</p>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.4rem">
+              ${canManageIdeas() ? `
+              <select class="ideaStatusSelect" data-id="${idea.id}">
+                ${Object.entries(ideaStatusLabels()).map(([v, l]) => `<option value="${v}" ${v === idea.status ? 'selected' : ''}>${l}</option>`).join('')}
+              </select>` : `<span class="role-tag idea-status-${idea.status}">${ideaStatusLabels()[idea.status]}</span>`}
+              ${canDelete ? `<button type="button" class="icon-btn deleteIdeaBtn" data-id="${idea.id}" title="${t('ideas_delete_title')}">${icon('trash')}</button>` : ''}
+            </div>
+          </div>
+        </div>`;
+    }
+
+    async function loadIdeas() {
+      const listEl = document.getElementById('ideasList');
+      listEl.className = 'spinner-row';
+      listEl.textContent = t('loading');
+      try {
+        const params = statusFilter.value ? `?status=${statusFilter.value}` : '';
+        const { ideas } = await api(`/ideas${params}`);
+        listEl.className = '';
+        listEl.innerHTML = ideas.length ? ideas.map(ideaCardHtml).join('') : `<p class="hint">${t('ideas_none')}</p>`;
+        listEl.querySelectorAll('.ideaVoteBtn').forEach((btn) => {
+          btn.addEventListener('click', async () => {
+            btn.disabled = true;
+            try {
+              await api(`/ideas/${btn.dataset.id}/vote`, { method: 'POST' });
+              loadIdeas();
+            } catch (err) {
+              showToast(err.message, 'error');
+              btn.disabled = false;
+            }
+          });
+        });
+        listEl.querySelectorAll('.ideaStatusSelect').forEach((sel) => {
+          sel.addEventListener('change', async () => {
+            try {
+              await api(`/ideas/${sel.dataset.id}/status`, { method: 'PATCH', body: { status: sel.value } });
+              showToast(t('toast_idea_status_updated'), 'success');
+              loadIdeas();
+            } catch (err) {
+              showToast(err.message, 'error');
+            }
+          });
+        });
+        listEl.querySelectorAll('.deleteIdeaBtn').forEach((btn) => {
+          btn.addEventListener('click', async () => {
+            if (!confirm(t('confirm_delete_idea'))) return;
+            try {
+              await api(`/ideas/${btn.dataset.id}`, { method: 'DELETE' });
+              showToast(t('toast_idea_deleted'), 'success');
+              loadIdeas();
+            } catch (err) {
+              showToast(err.message, 'error');
+            }
+          });
+        });
+      } catch (err) {
+        listEl.className = '';
+        listEl.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
+      }
+    }
+
+    statusFilter.addEventListener('change', loadIdeas);
+
+    guardForm(document.getElementById('newIdeaForm'), async () => {
+      const errEl = document.getElementById('ideaError');
+      errEl.textContent = '';
+      try {
+        await api('/ideas', {
+          method: 'POST',
+          body: {
+            title: document.getElementById('ideaTitle').value,
+            description: document.getElementById('ideaDescription').value,
+          },
+        });
+        document.getElementById('newIdeaForm').reset();
+        showToast(t('toast_idea_submitted'), 'success');
+        loadIdeas();
+      } catch (err) {
+        errEl.textContent = err.message;
+      }
+    });
+
+    loadIdeas();
   }
 
   function renderTwoFaCard() {
