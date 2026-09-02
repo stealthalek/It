@@ -673,6 +673,7 @@
       btn_confirm_skip: 'Chiudi ticket', toast_ticket_skipped: 'Ticket chiuso',
       close_reason_banner_not_resolved: 'Ticket chiuso come non risolto', close_reason_banner_opened_by_mistake: 'Ticket chiuso come aperto erroneamente',
       group_by_team_label: 'Raggruppa per team',
+      analytics_hide_btn: 'Nascondi statistiche', analytics_show_btn: 'Mostra statistiche',
       widgets_section_title: 'Cruscotto di gestione', widgets_customize_btn: 'Personalizza',
       widgets_collapse_all_btn: 'Comprimi tutto', widgets_expand_all_btn: 'Espandi tutto', widget_collapse_toggle_title: 'Comprimi/espandi',
       widgets_all_hidden_hint: 'Nessun widget visibile. Usa "Personalizza" per riattivarli.',
@@ -1151,6 +1152,7 @@
       btn_confirm_skip: 'Close ticket', toast_ticket_skipped: 'Ticket closed',
       close_reason_banner_not_resolved: 'Ticket closed as not resolved', close_reason_banner_opened_by_mistake: 'Ticket closed as opened by mistake',
       group_by_team_label: 'Group by team',
+      analytics_hide_btn: 'Hide stats', analytics_show_btn: 'Show stats',
       widgets_section_title: 'Management dashboard', widgets_customize_btn: 'Customize',
       widgets_collapse_all_btn: 'Collapse all', widgets_expand_all_btn: 'Expand all', widget_collapse_toggle_title: 'Collapse/expand',
       widgets_all_hidden_hint: 'No widgets visible. Use "Customize" to turn them back on.',
@@ -2793,9 +2795,14 @@
       <div id="dashImpersonatePanel" hidden></div>
       <div id="assetLetterBanner" hidden></div>
       <div id="personalCounter"></div>
-      <div id="statsRow" class="stat-row"></div>
-      <div id="chartsRow" class="charts-row"></div>
-      <div id="scopedChartsRow" class="charts-row"></div>
+      <div class="dashboard-analytics-head">
+        <button type="button" id="analyticsToggleBtn" class="btn btn-ghost btn-sm">${icon('grid', 'badge-icon')} <span id="analyticsToggleLabel"></span></button>
+      </div>
+      <div id="dashboardAnalytics">
+        <div id="statsRow" class="stat-row"></div>
+        <div id="chartsRow" class="charts-row"></div>
+        <div id="scopedChartsRow" class="charts-row"></div>
+      </div>
       ${isStaff() && !viewingAs ? `
       <div class="widgets-section-head">
         <h2 class="section-title">${t('widgets_section_title')}</h2>
@@ -2829,6 +2836,21 @@
       <div id="ticketList" class="skeleton-grid">
         ${Array(4).fill('<div class="skeleton-card"></div>').join('')}
       </div>`;
+
+    const analyticsToggleBtn = document.getElementById('analyticsToggleBtn');
+    const analyticsToggleLabel = document.getElementById('analyticsToggleLabel');
+    const dashboardAnalyticsEl = document.getElementById('dashboardAnalytics');
+    if (analyticsToggleBtn) {
+      const analyticsCollapsed = localStorage.getItem('ticketing_dashboard_analytics_collapsed') === '1';
+      dashboardAnalyticsEl.hidden = analyticsCollapsed;
+      analyticsToggleLabel.textContent = analyticsCollapsed ? t('analytics_show_btn') : t('analytics_hide_btn');
+      analyticsToggleBtn.addEventListener('click', () => {
+        const nowCollapsed = !dashboardAnalyticsEl.hidden;
+        dashboardAnalyticsEl.hidden = nowCollapsed;
+        localStorage.setItem('ticketing_dashboard_analytics_collapsed', nowCollapsed ? '1' : '0');
+        analyticsToggleLabel.textContent = nowCollapsed ? t('analytics_show_btn') : t('analytics_hide_btn');
+      });
+    }
 
     const dashImpersonateBtn = document.getElementById('dashImpersonateBtn');
     if (dashImpersonateBtn) {
