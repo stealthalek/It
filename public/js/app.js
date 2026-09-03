@@ -678,6 +678,7 @@
       widgets_collapse_all_btn: 'Comprimi tutto', widgets_expand_all_btn: 'Espandi tutto', widget_collapse_toggle_title: 'Comprimi/espandi',
       widgets_all_hidden_hint: 'Nessun widget visibile. Usa "Personalizza" per riattivarli.',
       ticket_list_truncated_hint: 'Vengono mostrati solo i ticket più recenti: affina i filtri per una vista completa.',
+      report_truncated_hint: 'Il volume di ticket supera quanto questo report può caricare in una volta: grafici ed export riflettono solo i ticket più recenti, non lo storico completo. Restringi l\'intervallo di date per un\'analisi esatta.',
       widget_unassigned_by_group_title: 'Non assegnati per gruppo', widget_unassigned_by_group_empty: 'Nessun ticket non assegnato al momento.',
       widget_sla_watch_title: 'Ticket a rischio SLA', widget_sla_watch_empty: 'Nessun ticket a rischio SLA al momento.',
       widget_sla_overdue_label: 'SLA superata', widget_sla_elapsed_label: 'del tempo SLA trascorso',
@@ -1162,6 +1163,7 @@
       widgets_collapse_all_btn: 'Collapse all', widgets_expand_all_btn: 'Expand all', widget_collapse_toggle_title: 'Collapse/expand',
       widgets_all_hidden_hint: 'No widgets visible. Use "Customize" to turn them back on.',
       ticket_list_truncated_hint: 'Only the most recent tickets are shown: refine the filters for a complete view.',
+      report_truncated_hint: 'Ticket volume exceeds what this report can load at once: charts and exports reflect only the most recent tickets, not the full history. Narrow the date range for an exact analysis.',
       widget_unassigned_by_group_title: 'Unassigned by group', widget_unassigned_by_group_empty: 'No unassigned tickets right now.',
       widget_sla_watch_title: 'SLA at-risk tickets', widget_sla_watch_empty: 'No tickets at SLA risk right now.',
       widget_sla_overdue_label: 'SLA breached', widget_sla_elapsed_label: 'of SLA time elapsed',
@@ -1549,6 +1551,22 @@
       throw new Error(message);
     }
     return data;
+  }
+
+  async function fetchAllTickets(queryString = '') {
+    const pageSize = 200;
+    const maxPages = 30;
+    const sep = queryString ? `${queryString}&` : '';
+    let all = [];
+    let total = Infinity;
+    let page = 1;
+    while (all.length < total && page <= maxPages) {
+      const res = await api(`/tickets?${sep}page=${page}&pageSize=${pageSize}`);
+      all = all.concat(res.tickets);
+      total = res.total;
+      page += 1;
+    }
+    return { tickets: all, truncated: all.length < total };
   }
 
   function setSession(token, user) {
@@ -3171,7 +3189,7 @@
     async function loadWidgetsData() {
       if (!dashboardWidgetsEl) return;
       try {
-        const { tickets: allTickets } = await api('/tickets');
+        const { tickets: allTickets } = await fetchAllTickets();
         widgetsData = allTickets;
         refreshVisibleWidgets();
       } catch (err) {
@@ -9734,6 +9752,7 @@
         <button type="button" id="exportExcelBtn" class="btn btn-ghost">${icon('download')} ${t('btn_export_excel')}</button>
         <span class="hint" id="reportExportCount"></span>
       </div>
+      <p class="hint" id="reportTruncatedHint" hidden>${t('report_truncated_hint')}</p>
       <div id="reportCharts" class="charts-row spinner-row">${t('loading')}</div>`;
 
     const chartsEl = document.getElementById('reportCharts');
@@ -9752,11 +9771,13 @@
     let groups = [];
     let staffUsers = [];
     let filteredTickets = [];
+    const truncatedHintEl = document.getElementById('reportTruncatedHint');
     try {
-      const [ticketsRes, groupsRes, usersRes] = await Promise.all([api('/tickets'), api('/groups'), api('/users')]);
+      const [ticketsRes, groupsRes, usersRes] = await Promise.all([fetchAllTickets(), api('/groups'), api('/users')]);
       allTickets = ticketsRes.tickets;
       groups = groupsRes.groups;
       staffUsers = usersRes.users.filter((u) => u.role === 'agent' || u.role === 'admin');
+      if (truncatedHintEl) truncatedHintEl.hidden = !ticketsRes.truncated;
     } catch (err) {
       chartsEl.className = '';
       chartsEl.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
