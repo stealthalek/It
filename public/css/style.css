@@ -762,6 +762,10 @@ body:not(.role-customer):not(.role-agent):not(.role-admin) .nav-toggle { display
 .ts-cal-cell.ts-cal-has-entry { background: var(--primary-soft); }
 .ts-cal-cell.ts-cal-selected { background: var(--primary); border-color: var(--primary); }
 .ts-cal-cell.ts-cal-selected .ts-cal-daynum, .ts-cal-cell.ts-cal-selected .ts-cal-hours { color: #fff; }
+.ts-cal-cell.ts-cal-in-range { background: var(--primary-soft); border-color: var(--primary); }
+.ts-cal-cell.ts-cal-in-range .ts-cal-daynum { color: var(--text); }
+.ts-cal-range-hint { margin-top: 0.5rem; }
+.timesheet-leave-quick-actions { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.4rem; padding-top: 0.6rem; border-top: 1px dashed var(--border); }
 
 .directory-card { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.4rem; }
 .directory-card-main h3 { margin: 0; font-size: 1rem; }

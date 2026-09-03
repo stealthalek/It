@@ -31,9 +31,9 @@ async function sendMail({ to, subject, text, html }) {
 async function getOrgName() {
   try {
     const row = await db.get('SELECT org_name FROM app_settings WHERE id = 1');
-    return (row && row.org_name) || 'Ticketing';
+    return (row && row.org_name) || 'CorpCloud';
   } catch {
-    return 'Ticketing';
+    return 'CorpCloud';
   }
 }
 

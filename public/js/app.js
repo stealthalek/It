@@ -420,7 +420,7 @@
       close_btn: 'Chiudi',
       leave_requests_hint: 'Richiedi ferie o permessi e tieni traccia delle tue richieste.',
       leave_new_request_title: 'Nuova richiesta', leave_field_type: 'Tipo', leave_field_start: 'Dal', leave_field_end: 'Al', leave_field_note: 'Motivo (facoltativo)',
-      leave_submit_btn: 'Invia richiesta', leave_type_vacation: 'Ferie', leave_type_permit: 'Permesso',
+      leave_submit_btn: 'Invia richiesta', leave_type_vacation: 'Ferie', leave_type_permit: 'Permesso', leave_type_sick: 'Malattia',
       leave_status_pending: 'In attesa', leave_status_approved: 'Approvata', leave_status_rejected: 'Respinta',
       leave_my_requests_title: 'Le mie richieste', leave_team_title: 'Richieste del team', leave_none_found: 'Nessuna richiesta.',
       leave_cancel_btn: 'Ritira', leave_approve_btn: 'Approva', leave_reject_btn: 'Respingi', leave_review_note_label: 'Nota',
@@ -832,6 +832,8 @@
       timesheet_no_entries: 'Nessuna timbratura registrata.', timesheet_ongoing: 'in corso',
       timesheet_manual_title: 'Aggiungi ore manualmente', timesheet_manual_hint: 'Registra o correggi una timbratura scegliendo data e orario sul calendario.',
       timesheet_select_day_error: 'Seleziona prima un giorno dal calendario.',
+      timesheet_range_hint: 'Clic su un giorno per selezionarlo, Shift+clic su un altro giorno per selezionare un intervallo.',
+      timesheet_mark_as_label: 'Segna i giorni selezionati come:',
       field_start_time: 'Ora inizio', field_end_time: 'Ora fine', btn_add_entry: 'Aggiungi',
       confirm_delete_time_entry: 'Eliminare questa timbratura?', toast_time_entry_added: 'Timbratura aggiunta',
       toast_time_entry_updated: 'Timbratura aggiornata', toast_time_entry_deleted: 'Timbratura eliminata',
@@ -928,7 +930,7 @@
       close_btn: 'Close',
       leave_requests_hint: 'Request vacation or personal leave and track your requests.',
       leave_new_request_title: 'New request', leave_field_type: 'Type', leave_field_start: 'From', leave_field_end: 'To', leave_field_note: 'Reason (optional)',
-      leave_submit_btn: 'Submit request', leave_type_vacation: 'Vacation', leave_type_permit: 'Personal leave',
+      leave_submit_btn: 'Submit request', leave_type_vacation: 'Vacation', leave_type_permit: 'Personal leave', leave_type_sick: 'Sick leave',
       leave_status_pending: 'Pending', leave_status_approved: 'Approved', leave_status_rejected: 'Rejected',
       leave_my_requests_title: 'My requests', leave_team_title: 'Team requests', leave_none_found: 'No requests.',
       leave_cancel_btn: 'Withdraw', leave_approve_btn: 'Approve', leave_reject_btn: 'Reject', leave_review_note_label: 'Note',
@@ -1340,6 +1342,8 @@
       timesheet_no_entries: 'No time entries recorded yet.', timesheet_ongoing: 'ongoing',
       timesheet_manual_title: 'Add hours manually', timesheet_manual_hint: 'Record or correct a time entry by picking a date and time on the calendar.',
       timesheet_select_day_error: 'Select a day on the calendar first.',
+      timesheet_range_hint: 'Click a day to select it, Shift+click another day to select a range.',
+      timesheet_mark_as_label: 'Mark the selected days as:',
       field_start_time: 'Start time', field_end_time: 'End time', btn_add_entry: 'Add',
       confirm_delete_time_entry: 'Delete this time entry?', toast_time_entry_added: 'Time entry added',
       toast_time_entry_updated: 'Time entry updated', toast_time_entry_deleted: 'Time entry deleted',
@@ -1817,7 +1821,7 @@
   function showDesktopNotification(notification) {
     if (!desktopNotifEnabled()) return;
     try {
-      const popup = new Notification(getOrgNameCached() || 'Ticketing', {
+      const popup = new Notification(getOrgNameCached() || 'CorpCloud', {
         body: notification.message,
         icon: localStorage.getItem('ticketing_org_logo') || 'img/icon.svg',
         tag: `ticket-${notification.ticket_id}`,
@@ -9192,7 +9196,7 @@
     return { pending: t('leave_status_pending'), approved: t('leave_status_approved'), rejected: t('leave_status_rejected') };
   }
   function leaveTypeLabels() {
-    return { vacation: t('leave_type_vacation'), permit: t('leave_type_permit') };
+    return { vacation: t('leave_type_vacation'), permit: t('leave_type_permit'), sick: t('leave_type_sick') };
   }
   function canReviewLeaveRequests() {
     return !!(state.user && (isStaff() || state.user.is_manager));
@@ -10603,7 +10607,7 @@
     appEl.innerHTML = `
       <div class="view-header"><h1>${icon('clock')} ${t('timesheet_title')}</h1></div>
       <div class="two-col">
-        <div class="card">
+        <div class="card" id="timesheetClockCard">
           <p class="hint">${t('timesheet_hint')}</p>
           <p id="timesheetStatus" class="spinner-row">${t('loading')}</p>
           <div class="field" id="timesheetNotesWrap" hidden>
@@ -10639,19 +10643,27 @@
               <button type="button" class="icon-btn" id="tsCalNextBtn" aria-label="${t('page_next')}">${icon('arrowRight')}</button>
             </div>
             <div class="timesheet-calendar-grid" id="tsCalGrid"></div>
+            <p class="hint ts-cal-range-hint">${t('timesheet_range_hint')}</p>
           </div>
           <form id="timesheetManualForm" class="form-grid" style="max-width:none">
             <p class="hint" id="manualDateLabel"></p>
             <input id="manualDate" type="hidden" required />
+            <input id="manualDateEnd" type="hidden" />
             <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
               <div class="field" style="flex:1 1 7rem"><label for="manualStart">${t('field_start_time')}</label><input id="manualStart" type="time" required /></div>
               <div class="field" style="flex:1 1 7rem"><label for="manualEnd">${t('field_end_time')}</label><input id="manualEnd" type="time" required /></div>
             </div>
             <div class="field"><label for="manualNotes">${t('field_notes')}</label><input id="manualNotes" type="text" maxlength="500" /></div>
             <p class="error-text" id="timesheetManualError"></p>
-            <div style="display:flex; gap:0.6rem;">
+            <div style="display:flex; gap:0.6rem; flex-wrap:wrap;">
               <button class="btn btn-sm" type="submit" id="timesheetManualSubmitBtn">${t('btn_add_entry')}</button>
               <button type="button" class="btn btn-sm btn-ghost" id="timesheetManualCancelBtn" hidden>${t('btn_cancel')}</button>
+            </div>
+            <div class="timesheet-leave-quick-actions">
+              <span class="hint">${t('timesheet_mark_as_label')}</span>
+              <button type="button" class="btn btn-sm btn-ghost" id="markVacationBtn">${icon('sun', 'badge-icon')} ${t('leave_type_vacation')}</button>
+              <button type="button" class="btn btn-sm btn-ghost" id="markSickBtn">${icon('activity', 'badge-icon')} ${t('leave_type_sick')}</button>
+              <button type="button" class="btn btn-sm btn-ghost" id="markPermitBtn">${icon('clock', 'badge-icon')} ${t('leave_type_permit')}</button>
             </div>
           </form>
         </div>
@@ -10668,6 +10680,7 @@
               <select id="leaveType">
                 <option value="vacation">${leaveTypeLabels().vacation}</option>
                 <option value="permit">${leaveTypeLabels().permit}</option>
+                <option value="sick">${leaveTypeLabels().sick}</option>
               </select>
             </div>
             <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
@@ -10762,6 +10775,7 @@
     let flexibleTimeEntry = false;
     let calendarMonth = new Date();
     let selectedCalendarDate = null;
+    let selectedCalendarDateEnd = null;
     async function loadHistory() {
       const el = document.getElementById('timesheetHistory');
       try {
@@ -10816,12 +10830,30 @@
       return new Date(Number(y), Number(m) - 1, 1);
     }
 
-    function updateManualDateLabel(dateKey) {
+    function dateRangeKeys(startKey, endKey) {
+      if (!startKey) return [];
+      if (!endKey || endKey === startKey) return [startKey];
+      const [lo, hi] = startKey < endKey ? [startKey, endKey] : [endKey, startKey];
+      const keys = [];
+      let cursor = new Date(`${lo}T00:00:00`);
+      const last = new Date(`${hi}T00:00:00`);
+      const pad = (n) => String(n).padStart(2, '0');
+      while (cursor <= last) {
+        keys.push(`${cursor.getFullYear()}-${pad(cursor.getMonth() + 1)}-${pad(cursor.getDate())}`);
+        cursor = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate() + 1);
+      }
+      return keys;
+    }
+
+    function updateManualDateLabel(dateKey, dateKeyEnd) {
       const labelEl = document.getElementById('manualDateLabel');
       if (!labelEl) return;
       if (!dateKey) { labelEl.textContent = ''; return; }
       const locale = getLang() === 'en' ? 'en-US' : 'it-IT';
-      labelEl.textContent = `${t('field_date')}: ${new Date(`${dateKey}T00:00:00`).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' })}`;
+      const fmt = (k) => new Date(`${k}T00:00:00`).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' });
+      labelEl.textContent = dateKeyEnd && dateKeyEnd !== dateKey
+        ? `${t('field_date')}: ${fmt(dateKey < dateKeyEnd ? dateKey : dateKeyEnd)} → ${fmt(dateKey < dateKeyEnd ? dateKeyEnd : dateKey)}`
+        : `${t('field_date')}: ${fmt(dateKey)}`;
     }
 
     function renderCalendarGrid() {
@@ -10850,6 +10882,8 @@
       const daysInMonth = new Date(year, month + 1, 0).getDate();
       const weekdayLabels = locale === 'it-IT' ? ['L', 'M', 'M', 'G', 'V', 'S', 'D'] : ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
+      const rangeKeys = new Set(dateRangeKeys(selectedCalendarDate, selectedCalendarDateEnd));
+
       let html = weekdayLabels.map((d) => `<div class="ts-cal-weekday">${d}</div>`).join('');
       for (let i = 0; i < startWeekday; i++) html += '<div class="ts-cal-cell ts-cal-empty"></div>';
       for (let day = 1; day <= daysInMonth; day++) {
@@ -10857,7 +10891,7 @@
         const minutes = minutesByDay[dateKey];
         const classes = ['ts-cal-cell'];
         if (dateKey === todayKey) classes.push('ts-cal-today');
-        if (dateKey === selectedCalendarDate) classes.push('ts-cal-selected');
+        if (rangeKeys.has(dateKey)) classes.push('ts-cal-selected', 'ts-cal-in-range');
         if (minutes) classes.push('ts-cal-has-entry');
         html += `<button type="button" class="${classes.join(' ')}" data-date="${dateKey}">
           <span class="ts-cal-daynum">${day}</span>
@@ -10866,11 +10900,22 @@
       }
       gridEl.innerHTML = html;
       gridEl.querySelectorAll('.ts-cal-cell:not(.ts-cal-empty)').forEach((cell) => {
-        cell.addEventListener('click', () => selectCalendarDay(cell.dataset.date));
+        cell.addEventListener('click', (e) => selectCalendarDay(cell.dataset.date, e.shiftKey));
       });
     }
 
-    function selectCalendarDay(dateKey) {
+    function selectCalendarDay(dateKey, extend) {
+      if (extend && selectedCalendarDate) {
+        selectedCalendarDateEnd = dateKey;
+        editingEntryId = null;
+        document.getElementById('manualDate').value = selectedCalendarDate;
+        document.getElementById('manualDateEnd').value = dateKey;
+        document.getElementById('timesheetManualSubmitBtn').textContent = t('btn_add_entry');
+        document.getElementById('timesheetManualCancelBtn').hidden = false;
+        updateManualDateLabel(selectedCalendarDate, selectedCalendarDateEnd);
+        renderCalendarGrid();
+        return;
+      }
       const existing = lastEntries.find((e) => e.clock_out && calendarDayKey(e.clock_in) === dateKey);
       if (existing) {
         startManualEdit(existing.id, existing.clock_in, existing.clock_out, existing.notes);
@@ -10899,6 +10944,7 @@
       const inParts = dbDatetimeToParts(clockIn);
       const outParts = dbDatetimeToParts(clockOut);
       document.getElementById('manualDate').value = inParts.date;
+      document.getElementById('manualDateEnd').value = '';
       document.getElementById('manualStart').value = inParts.time;
       document.getElementById('manualEnd').value = outParts.time;
       document.getElementById('manualNotes').value = notes || '';
@@ -10906,6 +10952,7 @@
       document.getElementById('timesheetManualCancelBtn').hidden = false;
       document.getElementById('timesheetManualCard').scrollIntoView({ behavior: 'smooth', block: 'center' });
       selectedCalendarDate = inParts.date;
+      selectedCalendarDateEnd = null;
       calendarMonth = monthFromDateKey(inParts.date);
       updateManualDateLabel(inParts.date);
       renderCalendarGrid();
@@ -10918,6 +10965,7 @@
       document.getElementById('timesheetManualCancelBtn').hidden = true;
       document.getElementById('timesheetManualError').textContent = '';
       selectedCalendarDate = null;
+      selectedCalendarDateEnd = null;
       updateManualDateLabel(null);
       renderCalendarGrid();
     }
@@ -10928,19 +10976,25 @@
       const errEl = document.getElementById('timesheetManualError');
       errEl.textContent = '';
       const dateVal = document.getElementById('manualDate').value;
+      const dateEndVal = document.getElementById('manualDateEnd').value;
       const startVal = document.getElementById('manualStart').value;
       const endVal = document.getElementById('manualEnd').value;
       const notes = document.getElementById('manualNotes').value;
       if (!dateVal) { errEl.textContent = t('timesheet_select_day_error'); return; }
       if (!startVal || !endVal) return;
-      const clockIn = partsToDbDatetime(dateVal, startVal);
-      const clockOut = partsToDbDatetime(dateVal, endVal);
       try {
         if (editingEntryId) {
+          const clockIn = partsToDbDatetime(dateVal, startVal);
+          const clockOut = partsToDbDatetime(dateVal, endVal);
           await api(`/time-entries/${editingEntryId}`, { method: 'PATCH', body: { clockIn, clockOut, notes } });
           showToast(t('toast_time_entry_updated'), 'success');
         } else {
-          await api('/time-entries/manual', { method: 'POST', body: { clockIn, clockOut, notes } });
+          const days = dateRangeKeys(dateVal, dateEndVal);
+          for (const day of days) {
+            const clockIn = partsToDbDatetime(day, startVal);
+            const clockOut = partsToDbDatetime(day, endVal);
+            await api('/time-entries/manual', { method: 'POST', body: { clockIn, clockOut, notes } });
+          }
           showToast(t('toast_time_entry_added'), 'success');
         }
         resetManualForm();
@@ -10949,6 +11003,26 @@
         errEl.textContent = err.message;
       }
     });
+
+    async function markSelectedAsLeave(type) {
+      const errEl = document.getElementById('timesheetManualError');
+      errEl.textContent = '';
+      if (!selectedCalendarDate) { errEl.textContent = t('timesheet_select_day_error'); return; }
+      const startDate = selectedCalendarDateEnd && selectedCalendarDateEnd < selectedCalendarDate ? selectedCalendarDateEnd : selectedCalendarDate;
+      const endDate = selectedCalendarDateEnd && selectedCalendarDateEnd > selectedCalendarDate ? selectedCalendarDateEnd : (selectedCalendarDateEnd || selectedCalendarDate);
+      try {
+        await api('/leave-requests', { method: 'POST', body: { type, startDate, endDate } });
+        showToast(t('toast_leave_request_created'), 'success');
+        resetManualForm();
+        loadLeaveMine();
+      } catch (err) {
+        errEl.textContent = err.message;
+      }
+    }
+
+    document.getElementById('markVacationBtn').addEventListener('click', () => markSelectedAsLeave('vacation'));
+    document.getElementById('markSickBtn').addEventListener('click', () => markSelectedAsLeave('sick'));
+    document.getElementById('markPermitBtn').addEventListener('click', () => markSelectedAsLeave('permit'));
 
     const wageInput = document.getElementById('timesheetWageInput');
     try { wageInput.value = localStorage.getItem('ticketing_hourly_wage') || ''; } catch {}
@@ -11141,6 +11215,7 @@
     api('/settings').then(({ flexibleTimeEntry: flag }) => {
       flexibleTimeEntry = flag;
       document.getElementById('timesheetManualCard').hidden = !flag;
+      document.getElementById('timesheetClockCard').hidden = flag;
       loadHistory();
     }).catch(() => loadHistory());
     loadTeam();

@@ -128,7 +128,7 @@ async function setupSchema() {
       )`,
       `CREATE TABLE IF NOT EXISTS app_settings (
         id INTEGER PRIMARY KEY CHECK (id = 1),
-        org_name TEXT NOT NULL DEFAULT 'Ticketing'
+        org_name TEXT NOT NULL DEFAULT 'CorpCloud'
       )`,
       `CREATE TABLE IF NOT EXISTS notifications (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -355,7 +355,7 @@ async function setupSchema() {
       `CREATE TABLE IF NOT EXISTS leave_requests (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        type TEXT NOT NULL DEFAULT 'vacation' CHECK (type IN ('vacation', 'permit')),
+        type TEXT NOT NULL DEFAULT 'vacation' CHECK (type IN ('vacation', 'permit', 'sick')),
         start_date TEXT NOT NULL,
         end_date TEXT NOT NULL,
         note TEXT,
@@ -1049,6 +1049,31 @@ async function migrate() {
   if (!userCols8.some((c) => c.name === 'privacy_accepted_at')) {
     await run('ALTER TABLE users ADD COLUMN privacy_accepted_at TEXT');
   }
+  await run("UPDATE app_settings SET org_name = 'CorpCloud' WHERE id = 1 AND org_name = 'Ticketing'");
+  await run("UPDATE companies SET display_name = 'CorpCloud' WHERE display_name = 'Ticketing'");
+
+  const leaveRequestsTable = await get("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'leave_requests'");
+  if (leaveRequestsTable && leaveRequestsTable.sql && !leaveRequestsTable.sql.includes("'sick'")) {
+    await run('PRAGMA foreign_keys = OFF');
+    await run(`CREATE TABLE leave_requests_new (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      type TEXT NOT NULL DEFAULT 'vacation' CHECK (type IN ('vacation', 'permit', 'sick')),
+      start_date TEXT NOT NULL,
+      end_date TEXT NOT NULL,
+      note TEXT,
+      status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+      reviewed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      reviewed_at TEXT,
+      review_note TEXT,
+      company_id INTEGER REFERENCES companies(id) ON DELETE SET NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )`);
+    await run(`INSERT INTO leave_requests_new SELECT * FROM leave_requests`);
+    await run('DROP TABLE leave_requests');
+    await run('ALTER TABLE leave_requests_new RENAME TO leave_requests');
+    await run('PRAGMA foreign_keys = ON');
+  }
 }
 
 async function seedDefaultCompany() {
@@ -1299,7 +1324,7 @@ async function seedDefaultAdmin() {
 async function seedAppSettings() {
   const row = await get('SELECT id FROM app_settings WHERE id = 1');
   if (!row) {
-    await run('INSERT INTO app_settings (id, org_name) VALUES (1, ?)', ['Ticketing']);
+    await run('INSERT INTO app_settings (id, org_name) VALUES (1, ?)', ['CorpCloud']);
   }
 }
 

@@ -1,6 +1,6 @@
 {
-  "name": "Piattaforma di Ticketing",
-  "short_name": "Ticketing",
+  "name": "CorpCloud",
+  "short_name": "CorpCloud",
   "description": "Gestione richieste di assistenza, utilizzabile da qualsiasi dispositivo.",
   "start_url": ".",
   "scope": ".",

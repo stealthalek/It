@@ -10,6 +10,9 @@ router.use(authenticate);
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TEAM_LIMIT = 1000;
+const LEAVE_TYPES = ['vacation', 'permit', 'sick'];
+const TYPE_LABEL_IT = { vacation: 'ferie', permit: 'permesso', sick: 'malattia' };
+const TYPE_LABEL_EN = { vacation: 'vacation', permit: 'leave', sick: 'sick leave' };
 
 const LEAVE_SELECT = `
   SELECT lr.id, lr.user_id, u.name AS user_name, lr.type, lr.start_date, lr.end_date, lr.note,
@@ -93,7 +96,7 @@ router.post(
   '/',
   asyncHandler(async (req, res) => {
     const { type, startDate, endDate, note } = req.body || {};
-    if (!['vacation', 'permit'].includes(type)) {
+    if (!LEAVE_TYPES.includes(type)) {
       return res.status(400).json({ error: 'Tipo non valido' });
     }
     if (!startDate || !DATE_RE.test(startDate) || !endDate || !DATE_RE.test(endDate)) {
@@ -108,13 +111,13 @@ router.post(
       [req.user.id, type, startDate, endDate, note && note.trim() ? note.trim().slice(0, 500) : null, req.user.company_id || null]
     );
     const request = await db.get(`${LEAVE_SELECT} WHERE lr.id = ?`, [Number(info.lastInsertRowid)]);
-    logAudit(req.user.id, 'leave_request', request.id, `Richiesta ${type === 'vacation' ? 'ferie' : 'permesso'} (${startDate} → ${endDate})`).catch(() => {});
+    logAudit(req.user.id, 'leave_request', request.id, `Richiesta ${TYPE_LABEL_IT[type]} (${startDate} → ${endDate})`).catch(() => {});
 
     const requester = await db.get('SELECT manager_id FROM users WHERE id = ?', [req.user.id]);
     if (requester && requester.manager_id) {
       notifyUser(requester.manager_id, null, {
-        it: `${req.user.name} ha inviato una richiesta di ${type === 'vacation' ? 'ferie' : 'permesso'}`,
-        en: `${req.user.name} submitted a ${type === 'vacation' ? 'vacation' : 'leave'} request`,
+        it: `${req.user.name} ha inviato una richiesta di ${TYPE_LABEL_IT[type]}`,
+        en: `${req.user.name} submitted a ${TYPE_LABEL_EN[type]} request`,
       }).catch(() => {});
     }
     res.status(201).json({ request });
@@ -150,8 +153,8 @@ router.patch(
     ).catch(() => {});
 
     notifyUser(request.user_id, null, {
-      it: `La tua richiesta di ${request.type === 'vacation' ? 'ferie' : 'permesso'} è stata ${status === 'approved' ? 'approvata' : 'respinta'}`,
-      en: `Your ${request.type === 'vacation' ? 'vacation' : 'leave'} request was ${status === 'approved' ? 'approved' : 'rejected'}`,
+      it: `La tua richiesta di ${TYPE_LABEL_IT[request.type]} è stata ${status === 'approved' ? 'approvata' : 'respinta'}`,
+      en: `Your ${TYPE_LABEL_EN[request.type]} request was ${status === 'approved' ? 'approved' : 'rejected'}`,
     }).catch(() => {});
 
     res.json({ request });
