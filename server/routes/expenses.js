@@ -10,6 +10,7 @@ router.use(authenticate);
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const CATEGORIES = ['travel', 'meals', 'accommodation', 'supplies', 'other'];
+const TEAM_LIMIT = 1000;
 
 const EXPENSE_SELECT = `
   SELECT e.id, e.user_id, u.name AS user_name, e.description, e.amount, e.expense_date, e.category,
@@ -75,8 +76,17 @@ router.get(
     }
 
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const reports = await db.all(`${EXPENSE_SELECT} ${where} ORDER BY e.created_at DESC LIMIT 1000`, params);
-    res.json({ reports });
+    const reports = await db.all(`${EXPENSE_SELECT} ${where} ORDER BY e.created_at DESC LIMIT ${TEAM_LIMIT}`, params);
+
+    let total = reports.length;
+    let truncated = false;
+    if (reports.length === TEAM_LIMIT) {
+      const totalRow = await db.get(`SELECT COUNT(*) AS n FROM expense_reports e ${where}`, params);
+      total = totalRow.n;
+      truncated = total > TEAM_LIMIT;
+    }
+
+    res.json({ reports, total, truncated });
   })
 );
 

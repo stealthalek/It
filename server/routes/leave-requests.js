@@ -9,6 +9,7 @@ const router = express.Router();
 router.use(authenticate);
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const TEAM_LIMIT = 1000;
 
 const LEAVE_SELECT = `
   SELECT lr.id, lr.user_id, u.name AS user_name, lr.type, lr.start_date, lr.end_date, lr.note,
@@ -74,8 +75,17 @@ router.get(
     }
 
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const requests = await db.all(`${LEAVE_SELECT} ${where} ORDER BY lr.created_at DESC LIMIT 1000`, params);
-    res.json({ requests });
+    const requests = await db.all(`${LEAVE_SELECT} ${where} ORDER BY lr.created_at DESC LIMIT ${TEAM_LIMIT}`, params);
+
+    let total = requests.length;
+    let truncated = false;
+    if (requests.length === TEAM_LIMIT) {
+      const totalRow = await db.get(`SELECT COUNT(*) AS n FROM leave_requests lr ${where}`, params);
+      total = totalRow.n;
+      truncated = total > TEAM_LIMIT;
+    }
+
+    res.json({ requests, total, truncated });
   })
 );
 
