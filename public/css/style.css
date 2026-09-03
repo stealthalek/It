@@ -1231,6 +1231,17 @@ body:not(.role-customer):not(.role-agent):not(.role-admin) .nav-toggle { display
 .rule-row.rule-disabled { opacity: 0.55; }
 .rule-row-head { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
 .rule-row-head .checkbox-field { margin-right: auto; }
+.rule-clause { display: flex; align-items: baseline; gap: 0.45rem; }
+.rule-clause-tag {
+  flex-shrink: 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 0.1rem 0.4rem;
+  border-radius: var(--radius-sm);
+}
+.rule-clause-if { color: var(--primary); background: var(--primary-soft); }
+.rule-clause-then { color: var(--success-text); background: var(--success-soft); }
 
 .custom-fields-summary {
   display: flex;
