@@ -18,6 +18,7 @@
 
   let adminSystemStatusTimer = null;
   let systemStatusHistory = [];
+  let navTogglesWired = false;
   function teardownAdminSystemStatusPolling() {
     if (adminSystemStatusTimer) {
       clearInterval(adminSystemStatusTimer);
@@ -401,6 +402,10 @@
     it: {
       nav_dashboard: 'Ticket', nav_new: 'Nuovo ticket', nav_search: 'Ricerca', nav_announcements: 'Bacheca', nav_directory: 'Rubrica', nav_messages: 'Messaggi',
       nav_section_work: 'Lavoro', nav_section_team: 'Team', nav_section_tools: 'Strumenti',
+      nav_hint_dashboard: 'I tuoi ticket e quelli del tuo team.', nav_hint_new: 'Apri una nuova richiesta di assistenza.',
+      nav_hint_announcements: 'Comunicazioni e annunci dall\'azienda.', nav_hint_orgchart: 'Struttura organizzativa dell\'azienda.',
+      nav_hint_onboarding: 'Gestisci l\'inserimento dei nuovi assunti.', nav_hint_timesheet: 'Timbratura, ferie e permessi.',
+      nav_hint_admin: 'Utenti, gruppi e configurazione della piattaforma.', nav_hint_profile: 'Il tuo account e le preferenze personali.',
       directory_hint: 'Trova un collega per nome, ruolo o team.',
       send_message_btn: 'Messaggio', messages_inbox_hint: 'Le tue conversazioni dirette con i colleghi.',
       messages_you_prefix: 'Tu:', no_messages_yet: 'Nessun messaggio.',
@@ -887,6 +892,10 @@
     en: {
       nav_dashboard: 'Tickets', nav_new: 'New ticket', nav_search: 'Search', nav_announcements: 'Announcements', nav_directory: 'Directory', nav_messages: 'Messages',
       nav_section_work: 'Work', nav_section_team: 'Team', nav_section_tools: 'Tools',
+      nav_hint_dashboard: 'Your tickets and your team\'s.', nav_hint_new: 'Open a new support request.',
+      nav_hint_announcements: 'Company announcements and communications.', nav_hint_orgchart: 'The company\'s organizational structure.',
+      nav_hint_onboarding: 'Manage new-hire onboarding.', nav_hint_timesheet: 'Clock-ins, leave and time off.',
+      nav_hint_admin: 'Users, groups and platform configuration.', nav_hint_profile: 'Your account and personal preferences.',
       directory_hint: 'Find a colleague by name, role, or team.',
       send_message_btn: 'Message', messages_inbox_hint: 'Your direct conversations with colleagues.',
       messages_you_prefix: 'You:', no_messages_yet: 'No messages yet.',
@@ -1396,21 +1405,58 @@
   };
 
   const NAV_SECTION_KEY = { work: 'nav_section_work', team: 'nav_section_team', tools: 'nav_section_tools' };
+  const NAV_HINT_BY_ROUTE = {
+    dashboard: 'nav_hint_dashboard', new: 'nav_hint_new', announcements: 'nav_hint_announcements', directory: 'directory_hint',
+    messages: 'messages_inbox_hint', orgchart: 'nav_hint_orgchart', onboarding: 'nav_hint_onboarding', timesheet: 'nav_hint_timesheet',
+    rooms: 'rooms_hint', ideas: 'ideas_hint', wiki: 'wiki_hint', expenses: 'expenses_hint', search: 'search_hint',
+    assets: 'assets_hint', report: 'insights_hint', admin: 'nav_hint_admin', profile: 'nav_hint_profile',
+  };
+  const NAV_COLLAPSIBLE_SECTIONS = ['team', 'tools'];
+
+  function setNavSectionCollapsed(section, collapsed) {
+    const toggle = document.querySelector(`.nav-section-toggle[data-nav-section="${section}"]`);
+    const group = document.querySelector(`.nav-group[data-nav-group-wrap="${section}"]`);
+    if (!toggle || !group) return;
+    group.classList.toggle('collapsed', collapsed);
+    toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+  }
+
+  function wireNavSectionToggles() {
+    NAV_COLLAPSIBLE_SECTIONS.forEach((section) => {
+      setNavSectionCollapsed(section, localStorage.getItem(`ticketing_nav_collapsed_${section}`) === '1');
+    });
+    if (navTogglesWired) return;
+    navTogglesWired = true;
+    document.querySelectorAll('.nav-section-toggle').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const section = btn.dataset.navSection;
+        const collapsed = btn.getAttribute('aria-expanded') !== 'false';
+        setNavSectionCollapsed(section, collapsed);
+        localStorage.setItem(`ticketing_nav_collapsed_${section}`, collapsed ? '1' : '0');
+      });
+    });
+  }
 
   function applyChromeTranslations() {
     document.querySelectorAll('.main-nav a[data-nav]').forEach((a) => {
       const key = NAV_KEY_BY_ROUTE[a.dataset.nav];
       const iconName = NAV_ICON_BY_ROUTE[a.dataset.nav];
+      const hintKey = NAV_HINT_BY_ROUTE[a.dataset.nav];
       if (key) a.innerHTML = `${icon(iconName, 'nav-icon')}<span class="nav-label">${t(key)}</span><span class="nav-dot" hidden></span>`;
+      if (hintKey) a.title = t(hintKey);
     });
     document.querySelectorAll('.nav-section-label[data-nav-section]').forEach((el) => {
       const key = NAV_SECTION_KEY[el.dataset.navSection];
-      if (key) el.textContent = t(key);
+      if (!key) return;
+      el.innerHTML = el.classList.contains('nav-section-toggle')
+        ? `<span>${t(key)}</span>${icon('chevronDown', 'nav-section-chevron')}`
+        : t(key);
     });
     logoutBtn.innerHTML = `${icon('logout')} <span class="nav-label">${t('logout')}</span>`;
     refreshAnnouncementsNavDot();
     refreshMessagesNavDot();
     updateNavSectionVisibility();
+    wireNavSectionToggles();
   }
 
   function updateNavSectionVisibility() {
