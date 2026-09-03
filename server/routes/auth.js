@@ -354,7 +354,7 @@ router.post(
   asyncHandler(async (req, res) => {
     const secret = generateSecret();
     await db.run('UPDATE users SET totp_secret = ?, totp_enabled = 0 WHERE id = ?', [secret, req.user.id]);
-    const otpauthUri = buildOtpauthUri(secret, req.user.email, 'Ticketing IT');
+    const otpauthUri = buildOtpauthUri(secret, req.user.email, 'CorpCloud');
     const qrDataUrl = await QRCode.toDataURL(otpauthUri, { margin: 1, width: 220 });
     res.json({ secret, otpauth_uri: otpauthUri, qr_data_url: qrDataUrl });
   })

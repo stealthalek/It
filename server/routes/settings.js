@@ -57,7 +57,7 @@ router.get(
   '/',
   asyncHandler(async (req, res) => {
     const row = await db.get('SELECT org_name, org_logo, flexible_time_entry FROM app_settings WHERE id = 1');
-    let orgName = (row && row.org_name) || 'Ticketing';
+    let orgName = (row && row.org_name) || 'CorpCloud';
     let orgLogo = (row && row.org_logo) || null;
     let flexibleTimeEntry = !!(row && row.flexible_time_entry);
 

@@ -1817,7 +1817,7 @@
   function showDesktopNotification(notification) {
     if (!desktopNotifEnabled()) return;
     try {
-      const popup = new Notification(getOrgNameCached() || 'Ticketing', {
+      const popup = new Notification(getOrgNameCached() || 'CorpCloud', {
         body: notification.message,
         icon: localStorage.getItem('ticketing_org_logo') || 'img/icon.svg',
         tag: `ticket-${notification.ticket_id}`,

@@ -128,7 +128,7 @@ async function setupSchema() {
       )`,
       `CREATE TABLE IF NOT EXISTS app_settings (
         id INTEGER PRIMARY KEY CHECK (id = 1),
-        org_name TEXT NOT NULL DEFAULT 'Ticketing'
+        org_name TEXT NOT NULL DEFAULT 'CorpCloud'
       )`,
       `CREATE TABLE IF NOT EXISTS notifications (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1049,6 +1049,8 @@ async function migrate() {
   if (!userCols8.some((c) => c.name === 'privacy_accepted_at')) {
     await run('ALTER TABLE users ADD COLUMN privacy_accepted_at TEXT');
   }
+  await run("UPDATE app_settings SET org_name = 'CorpCloud' WHERE id = 1 AND org_name = 'Ticketing'");
+  await run("UPDATE companies SET display_name = 'CorpCloud' WHERE display_name = 'Ticketing'");
 }
 
 async function seedDefaultCompany() {
@@ -1299,7 +1301,7 @@ async function seedDefaultAdmin() {
 async function seedAppSettings() {
   const row = await get('SELECT id FROM app_settings WHERE id = 1');
   if (!row) {
-    await run('INSERT INTO app_settings (id, org_name) VALUES (1, ?)', ['Ticketing']);
+    await run('INSERT INTO app_settings (id, org_name) VALUES (1, ?)', ['CorpCloud']);
   }
 }
 
