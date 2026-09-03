@@ -786,7 +786,8 @@
       admin_section_catalog: 'Catalogo e campi', admin_section_automation: 'Automazione', admin_section_onboarding: 'Onboarding',
       admin_section_org: 'Organizzazione', admin_section_roles: 'Ruoli', admin_section_system: 'Sistema',
       admin_section_companies: 'Aziende',
-      admin_companies_title: 'Gestione aziende', admin_companies_hint: 'Ogni azienda ha una propria intestazione, logo, gruppi e utenti separati dalle altre.',
+      admin_companies_title: 'Gestione aziende', admin_companies_hint: 'Ogni azienda creata qui è un perimetro dati a sé: utenti, ticket, gruppi, asset, bacheca e tutto il resto restano separati dalle altre aziende fin dal primo momento, senza bisogno di configurazioni aggiuntive.',
+      admin_companies_privacy_link: 'Come funziona l\'isolamento →',
       field_company_name: 'Nome interno', field_company_display_name: 'Titolo mostrato (opzionale)',
       btn_create_company: 'Crea azienda', company_error_required: 'Il nome interno è obbligatorio',
       name_required_error: 'Il nome è obbligatorio',
@@ -829,6 +830,10 @@
       privacy_ret_auto_after: 'Eliminato automaticamente dopo', privacy_days_unit: 'giorni',
       privacy_isolation_hint: 'Ogni azienda vede solo i propri dati: l\'isolamento è applicato su ogni lista, con un controllo automatico che blocca la risposta se una riga fuori perimetro dovesse comunque comparire, invece di restituirla.',
       privacy_transport_hint: 'Tutto il traffico tra dispositivo, applicazione e database viaggia cifrato via HTTPS.',
+      privacy_unavailable: 'Dati non disponibili al momento. Riprova tra qualche istante.',
+      privacy_export_title: 'Esporta i dati della tua azienda',
+      privacy_export_hint: 'Un unico file con tutti i dati di questa azienda: utenti, ticket, asset, bacheca, wiki, note spese e altro. Nessun dato di altre aziende può comparirvi.',
+      privacy_export_btn: 'Esporta JSON', privacy_export_generating: 'Preparazione...', privacy_export_error: 'Esportazione non riuscita',
       system_uptime_label: 'Attivo da', system_memory_label: 'Memoria (RSS)', system_requests_label: 'Richieste API (15 min)',
       system_requests_reset_prefix: 'si azzera tra', system_requests_reset_suffix: 'min', system_requests_total_suffix: 'totali dall\'avvio',
       system_db_label: 'Latenza database', system_db_error: 'Errore', system_db_mode_turso: 'Turso con replica locale', system_db_mode_local: 'File locale (non persistente)',
@@ -1265,7 +1270,8 @@
       admin_section_catalog: 'Catalog and fields', admin_section_automation: 'Automation', admin_section_onboarding: 'Onboarding',
       admin_section_org: 'Organization', admin_section_roles: 'Roles', admin_section_system: 'System',
       admin_section_companies: 'Companies',
-      admin_companies_title: 'Company management', admin_companies_hint: 'Each company has its own title, logo, groups and users, separate from the others.',
+      admin_companies_title: 'Company management', admin_companies_hint: 'Every company created here is its own data perimeter: users, tickets, groups, assets, board and everything else stay separate from other companies from the very first moment, with no extra setup needed.',
+      admin_companies_privacy_link: 'How isolation works →',
       field_company_name: 'Internal name', field_company_display_name: 'Displayed title (optional)',
       btn_create_company: 'Create company', company_error_required: 'The internal name is required',
       name_required_error: 'The name is required',
@@ -1308,6 +1314,10 @@
       privacy_ret_auto_after: 'Automatically deleted after', privacy_days_unit: 'days',
       privacy_isolation_hint: 'Each company sees only its own data: isolation is enforced on every list, with an automatic check that blocks the response instead of returning it if a row outside the requester\'s scope were ever to appear.',
       privacy_transport_hint: 'All traffic between device, application and database travels encrypted over HTTPS.',
+      privacy_unavailable: 'Data not available right now. Please try again shortly.',
+      privacy_export_title: 'Export your company data',
+      privacy_export_hint: 'A single file with all of this company\'s data: users, tickets, assets, board, wiki, expenses and more. No other company\'s data can ever appear in it.',
+      privacy_export_btn: 'Export JSON', privacy_export_generating: 'Preparing...', privacy_export_error: 'Export failed',
       system_uptime_label: 'Up for', system_memory_label: 'Memory (RSS)', system_requests_label: 'API requests (15 min)',
       system_requests_reset_prefix: 'resets in', system_requests_reset_suffix: 'min', system_requests_total_suffix: 'total since start',
       system_db_label: 'Database latency', system_db_error: 'Error', system_db_mode_turso: 'Turso with local replica', system_db_mode_local: 'Local file (not persistent)',
@@ -5681,11 +5691,18 @@
           <h3 class="section-title" style="margin-top:0">${icon('lock')} ${t('admin_privacy_title')}</h3>
           <p class="hint">${t('admin_privacy_hint')}</p>
           <div id="dataGovernanceBody" class="spinner-row">${t('loading')}</div>
+          <div class="data-export-row">
+            <div>
+              <strong>${t('privacy_export_title')}</strong>
+              <p class="hint" style="margin:0.2rem 0 0">${t('privacy_export_hint')}</p>
+            </div>
+            <button type="button" id="dataExportBtn" class="btn btn-outline btn-sm">${icon('download')} ${t('privacy_export_btn')}</button>
+          </div>
         </div>
         ${state.user.is_super_admin ? `
         <div class="card admin-grid-full" data-admin-panel="companies" data-block-id="companiesManagement" ${activeSection === 'companies' ? '' : 'hidden'}>
           <h3 class="section-title" style="margin-top:0">${icon('building')} ${t('admin_companies_title')}</h3>
-          <p class="hint">${t('admin_companies_hint')}</p>
+          <p class="hint">${t('admin_companies_hint')} <button type="button" class="btn-link" data-admin-section="privacy">${t('admin_companies_privacy_link')}</button></p>
           <form id="newCompanyForm" style="display:flex;flex-wrap:wrap;gap:0.6rem;align-items:flex-end;margin:0.75rem 0">
             <div class="field" style="flex:1 1 12rem"><label for="newCompanyName">${t('field_company_name')}</label><input id="newCompanyName" required /></div>
             <div class="field" style="flex:1 1 12rem"><label for="newCompanyDisplayName">${t('field_company_display_name')}</label><input id="newCompanyDisplayName" /></div>
@@ -5936,6 +5953,9 @@
         try {
           const status = await api('/admin/status');
           const gov = status.dataGovernance;
+          if (!gov || !gov.database || !gov.attachmentStorage || !gov.retentionDays) {
+            throw new Error(t('privacy_unavailable'));
+          }
           const retentionRow = (label, days) => `<div class="storage-row"><span>${label}</span><strong>${t('privacy_ret_auto_after')} ${days} ${t('privacy_days_unit')}</strong></div>`;
           const manualRow = (label) => `<div class="storage-row"><span>${label}</span><strong>${t('privacy_ret_manual')}</strong></div>`;
           bodyEl.className = '';
@@ -5973,6 +5993,27 @@
       }
 
       if (activeSection === 'privacy') loadDataGovernance();
+
+      const dataExportBtn = document.getElementById('dataExportBtn');
+      if (dataExportBtn) {
+        dataExportBtn.addEventListener('click', async () => {
+          const originalLabel = dataExportBtn.innerHTML;
+          dataExportBtn.disabled = true;
+          dataExportBtn.innerHTML = t('privacy_export_generating');
+          try {
+            const result = await api('/data-export');
+            const blob = new Blob([JSON.stringify(result, null, 2)], { type: 'application/json' });
+            const companySlug = (result.company && result.company.name ? result.company.name : 'azienda')
+              .toLowerCase().replace(/[^a-z0-9]+/g, '-');
+            downloadBlob(blob, `export-${companySlug}-${new Date().toISOString().slice(0, 10)}.json`);
+          } catch (err) {
+            showToast(err.message || t('privacy_export_error'), 'error');
+          } finally {
+            dataExportBtn.disabled = false;
+            dataExportBtn.innerHTML = originalLabel;
+          }
+        });
+      }
 
       async function loadAdminOverviewCounts() {
         try {
