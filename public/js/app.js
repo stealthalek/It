@@ -792,6 +792,7 @@
       admin_section_overview: 'Panoramica', admin_section_users: 'Utenti', admin_section_groups: 'Gruppi e organigramma',
       admin_section_catalog: 'Catalogo e campi', admin_section_automation: 'Automazione', admin_section_onboarding: 'Onboarding',
       admin_section_org: 'Organizzazione', admin_section_roles: 'Ruoli', admin_section_system: 'Sistema',
+      admin_group_people: 'Persone', admin_group_ticketing: 'Configurazione ticket', admin_group_org: 'Azienda', admin_group_system: 'Sistema',
       admin_section_companies: 'Aziende',
       admin_companies_title: 'Gestione aziende', admin_companies_hint: 'Ogni azienda creata qui è un perimetro dati a sé: utenti, ticket, gruppi, asset, bacheca e tutto il resto restano separati dalle altre aziende fin dal primo momento, senza bisogno di configurazioni aggiuntive.',
       admin_companies_privacy_link: 'Come funziona l\'isolamento →',
@@ -1282,6 +1283,7 @@
       admin_section_overview: 'Overview', admin_section_users: 'Users', admin_section_groups: 'Groups and org chart',
       admin_section_catalog: 'Catalog and fields', admin_section_automation: 'Automation', admin_section_onboarding: 'Onboarding',
       admin_section_org: 'Organization', admin_section_roles: 'Roles', admin_section_system: 'System',
+      admin_group_people: 'People', admin_group_ticketing: 'Ticket configuration', admin_group_org: 'Organization', admin_group_system: 'System',
       admin_section_companies: 'Companies',
       admin_companies_title: 'Company management', admin_companies_hint: 'Every company created here is its own data perimeter: users, tickets, groups, assets, board and everything else stay separate from other companies from the very first moment, with no extra setup needed.',
       admin_companies_privacy_link: 'How isolation works →',
@@ -5458,37 +5460,73 @@
       { key: 'overview', icon: 'grid', label: t('admin_section_overview') },
       { key: 'users', icon: 'users', label: t('admin_section_users') },
       { key: 'groups', icon: 'shield', label: t('admin_section_groups') },
+      { key: 'roles', icon: 'shield', label: t('admin_section_roles') },
+      { key: 'onboarding', icon: 'userCircle', label: t('admin_section_onboarding') },
       { key: 'catalog', icon: 'ticket', label: t('admin_section_catalog') },
       { key: 'automation', icon: 'activity', label: t('admin_section_automation') },
-      { key: 'onboarding', icon: 'userCircle', label: t('admin_section_onboarding') },
-      { key: 'roles', icon: 'shield', label: t('admin_section_roles') },
       { key: 'org', icon: 'globe', label: t('admin_section_org') },
+      ...(state.user.is_super_admin ? [{ key: 'companies', icon: 'building', label: t('admin_section_companies') }] : []),
       { key: 'system', icon: 'server', label: t('admin_section_system') },
       { key: 'privacy', icon: 'lock', label: t('admin_section_privacy') },
-      ...(state.user.is_super_admin ? [{ key: 'companies', icon: 'building', label: t('admin_section_companies') }] : []),
+    ];
+    const ADMIN_SECTION_GROUPS = [
+      { key: 'people', labelKey: 'admin_group_people', sections: ['users', 'groups', 'roles', 'onboarding'] },
+      { key: 'ticketing', labelKey: 'admin_group_ticketing', sections: ['catalog', 'automation'] },
+      { key: 'org', labelKey: 'admin_group_org', sections: ['org', 'companies'] },
+      { key: 'system', labelKey: 'admin_group_system', sections: ['system', 'privacy'] },
     ];
     const ADMIN_OVERVIEW_COUNTABLE = new Set(['users', 'groups', 'catalog', 'automation', 'onboarding', 'roles', 'companies']);
     const activeSection = isAdmin ? (ADMIN_SECTIONS.some((s) => s.key === state.adminSection) ? state.adminSection : 'overview') : 'users';
 
+    function adminSectionButtonHtml(s) {
+      return `<button type="button" class="admin-tab ${activeSection === s.key ? 'active' : ''}" data-admin-section="${s.key}">${icon(s.icon, 'nav-icon')} ${s.label}</button>`;
+    }
+
     function adminTabsHtml() {
-      return `<div class="admin-tabs">${ADMIN_SECTIONS.map((s) => `
-        <button type="button" class="admin-tab ${activeSection === s.key ? 'active' : ''}" data-admin-section="${s.key}">${icon(s.icon, 'nav-icon')} ${s.label}</button>
-      `).join('')}</div>`;
+      const bySection = new Map(ADMIN_SECTIONS.map((s) => [s.key, s]));
+      const grouped = new Set(ADMIN_SECTION_GROUPS.flatMap((g) => g.sections));
+      const parts = [adminSectionButtonHtml(bySection.get('overview'))];
+      ADMIN_SECTION_GROUPS.forEach((g) => {
+        const sections = g.sections.map((key) => bySection.get(key)).filter(Boolean);
+        if (!sections.length) return;
+        parts.push('<span class="admin-tabs-divider"></span>');
+        parts.push(...sections.map(adminSectionButtonHtml));
+      });
+      ADMIN_SECTIONS.filter((s) => s.key !== 'overview' && !grouped.has(s.key)).forEach((s) => {
+        parts.push('<span class="admin-tabs-divider"></span>', adminSectionButtonHtml(s));
+      });
+      return `<div class="admin-tabs">${parts.join('')}</div>`;
+    }
+
+    function adminOverviewTileHtml(s) {
+      return `<button type="button" class="admin-overview-tile" data-admin-section="${s.key}">
+        ${icon(s.icon)}
+        <span class="admin-overview-tile-label">${s.label}</span>
+        ${ADMIN_OVERVIEW_COUNTABLE.has(s.key) ? `<span class="admin-overview-tile-count" data-count-for="${s.key}"></span>` : ''}
+      </button>`;
+    }
+
+    function adminOverviewGridHtml() {
+      const bySection = new Map(ADMIN_SECTIONS.map((s) => [s.key, s]));
+      const grouped = new Set(ADMIN_SECTION_GROUPS.flatMap((g) => g.sections));
+      const clusters = ADMIN_SECTION_GROUPS.map((g) => ({
+        label: t(g.labelKey),
+        sections: g.sections.map((key) => bySection.get(key)).filter(Boolean),
+      })).filter((c) => c.sections.length);
+      const ungrouped = ADMIN_SECTIONS.filter((s) => s.key !== 'overview' && !grouped.has(s.key));
+      return `<div id="adminOverviewGrid">
+        ${clusters.map((c) => `
+          <h3 class="admin-overview-group-title">${c.label}</h3>
+          <div class="admin-overview-grid">${c.sections.map(adminOverviewTileHtml).join('')}</div>
+        `).join('')}
+        ${ungrouped.length ? `<div class="admin-overview-grid">${ungrouped.map(adminOverviewTileHtml).join('')}</div>` : ''}
+      </div>`;
     }
 
     appEl.innerHTML = `
       <div class="view-header"><h1>${icon('shield')} ${t('admin_title')}</h1></div>
       ${isAdmin ? adminTabsHtml() : ''}
-      ${isAdmin && activeSection === 'overview' ? `
-      <div class="admin-overview-grid" id="adminOverviewGrid">
-        ${ADMIN_SECTIONS.filter((s) => s.key !== 'overview').map((s) => `
-          <button type="button" class="admin-overview-tile" data-admin-section="${s.key}">
-            ${icon(s.icon)}
-            <span class="admin-overview-tile-label">${s.label}</span>
-            ${ADMIN_OVERVIEW_COUNTABLE.has(s.key) ? `<span class="admin-overview-tile-count" data-count-for="${s.key}"></span>` : ''}
-          </button>
-        `).join('')}
-      </div>` : ''}
+      ${isAdmin && activeSection === 'overview' ? adminOverviewGridHtml() : ''}
       ${isAdmin ? `
       <div class="admin-grid" style="margin-bottom:1.25rem">
         <div class="card" data-admin-panel="users" data-block-id="createStaff" ${activeSection === 'users' ? '' : 'hidden'}>
