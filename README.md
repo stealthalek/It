@@ -227,6 +227,7 @@ La ricezione delle risposte (email in arrivo che diventano commenti automatici s
 | `S3_ENDPOINT` | Endpoint dello storage compatibile S3, abilita gli allegati fuori dal database | non impostato (allegati salvati nel database) |
 | `S3_BUCKET` | Nome del bucket | non impostato |
 | `S3_REGION` | Regione del bucket | `auto` |
+| `SENTRY_DSN` | DSN di un progetto [Sentry](https://sentry.io), abilita il monitoraggio degli errori del server in produzione | non impostato (monitoraggio disattivato, solo log su console) |
 | `S3_ACCESS_KEY_ID` | Chiave d'accesso allo storage | non impostato |
 | `S3_SECRET_ACCESS_KEY` | Chiave segreta dello storage | non impostato |
 

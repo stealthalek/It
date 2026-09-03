@@ -42,12 +42,17 @@ const expenseRoutes = require('./routes/expenses');
 const dataExportRoutes = require('./routes/data-export');
 const { loadHolidays } = require('./sla');
 const { recordRequest } = require('./lib/requestStats');
+const errorTracking = require('./lib/errorTracking');
+
+errorTracking.init();
 
 process.on('unhandledRejection', (reason) => {
   console.error('Rejection non gestita:', reason);
+  errorTracking.captureError(reason);
 });
 process.on('uncaughtException', (err) => {
   console.error('Eccezione non gestita:', err);
+  errorTracking.captureError(err);
 });
 
 const app = express();
@@ -148,6 +153,7 @@ app.use((req, res) => {
 
 app.use((err, req, res, next) => {
   console.error(err);
+  errorTracking.captureError(err);
   res.status(500).json({ error: 'Errore interno del server' });
 });
 
