@@ -467,6 +467,8 @@
       twofa_settings_hint_enabled: 'Attiva. Per accedere ti verrà chiesto anche il codice dell\'app di autenticazione.',
       twofa_enable_button: 'Attiva 2FA', twofa_disable_button: 'Disattiva 2FA', twofa_enabled_badge: 'Attiva',
       twofa_secret_label: 'Codice segreto (inserimento manuale)', twofa_secret_hint: 'Apri la tua app di autenticazione, aggiungi un nuovo account e inserisci questo codice manualmente, oppure incolla l\'URI di configurazione.',
+      twofa_qr_hint: 'Inquadra questo codice con un\'app di autenticazione (Google Authenticator, Microsoft Authenticator o simili).',
+      twofa_manual_entry_toggle: 'Non riesci a inquadrare il codice? Inseriscilo manualmente',
       twofa_confirm_code_label: 'Codice generato dall\'app', twofa_confirm_button: 'Conferma e attiva', twofa_cancel_button: 'Annulla',
       twofa_disable_password_label: 'Password attuale', twofa_disable_code_label: 'Codice dell\'app', twofa_disable_confirm_button: 'Conferma disattivazione',
       sessions_title: 'Sessioni attive', sessions_hint: 'Dispositivi e browser con accesso attivo al tuo account.',
@@ -743,6 +745,10 @@
       password_reset_success_msg: 'Password reimpostata.',
       new_temp_password_hint: 'Nuova password temporanea (comunicala in modo sicuro, non sarà più visibile):',
       toast_password_reset: 'Password reimpostata', settings_title: 'Impostazioni',
+      reset_2fa_btn: 'Disattiva autenticazione a due fattori',
+      reset_2fa_hint: 'Usa questa opzione se la persona ha perso il dispositivo con l\'app di autenticazione: potrà accedere con la sola password e riattivarla in un secondo momento.',
+      confirm_reset_2fa_prefix: 'Disattivare l\'autenticazione a due fattori per', confirm_reset_2fa_suffix: '? La persona verrà avvisata.',
+      toast_2fa_reset: 'Autenticazione a due fattori disattivata',
       field_specific_role: 'Ruolo specifico', specific_role_none_option: 'Nessuno (permessi base)',
       specific_role_hint: 'Assegna un ruolo con permessi aggiuntivi, oltre al ruolo base.',
       toast_specific_role_updated: 'Ruolo specifico aggiornato', toast_profile_updated: 'Dati account aggiornati',
@@ -958,6 +964,8 @@
       twofa_settings_hint_enabled: "Enabled. Signing in will also ask for your authenticator app's code.",
       twofa_enable_button: 'Enable 2FA', twofa_disable_button: 'Disable 2FA', twofa_enabled_badge: 'Enabled',
       twofa_secret_label: 'Secret key (manual entry)', twofa_secret_hint: 'Open your authenticator app, add a new account and enter this key manually, or paste the setup URI.',
+      twofa_qr_hint: 'Scan this code with an authenticator app (Google Authenticator, Microsoft Authenticator or similar).',
+      twofa_manual_entry_toggle: 'Can\'t scan the code? Enter it manually',
       twofa_confirm_code_label: 'Code from the app', twofa_confirm_button: 'Confirm and enable', twofa_cancel_button: 'Cancel',
       twofa_disable_password_label: 'Current password', twofa_disable_code_label: 'Code from the app', twofa_disable_confirm_button: 'Confirm disable',
       sessions_title: 'Active sessions', sessions_hint: 'Devices and browsers currently signed in to your account.',
@@ -1234,6 +1242,10 @@
       password_reset_success_msg: 'Password reset.',
       new_temp_password_hint: 'New temporary password (share it securely, it will not be shown again):',
       toast_password_reset: 'Password reset', settings_title: 'Settings',
+      reset_2fa_btn: 'Disable two-factor authentication',
+      reset_2fa_hint: 'Use this if the person lost the device with their authenticator app: they\'ll be able to sign in with just their password and turn it back on later.',
+      confirm_reset_2fa_prefix: 'Disable two-factor authentication for', confirm_reset_2fa_suffix: '? The person will be notified.',
+      toast_2fa_reset: 'Two-factor authentication disabled',
       field_specific_role: 'Specific role', specific_role_none_option: 'None (base permissions)',
       specific_role_hint: 'Assign a role with extra permissions, on top of the base role.',
       toast_specific_role_updated: 'Specific role updated', toast_profile_updated: 'Account details updated',
@@ -7844,6 +7856,8 @@
           ` : ''}
           <button type="button" id="detailResetPwBtn" class="btn btn-sm btn-outline-danger" style="margin-top:0.5rem">${icon('refresh')} ${t('reset_password_btn')}</button>
           <div id="detailResetPwBox"></div>
+          ${user.totp_enabled ? `<button type="button" id="detailReset2faBtn" class="btn btn-sm btn-outline-danger" style="margin-top:0.5rem">${icon('shield')} ${t('reset_2fa_btn')}</button>
+          <p class="hint">${t('reset_2fa_hint')}</p>` : ''}
           ${user.is_blocked && user.blocked_reason ? `<p class="hint" style="margin-top:0.5rem"><strong>${t('blocked_reason_label')}:</strong> ${escapeHtml(user.blocked_reason)}</p>` : ''}
           ${!isSelf ? `<button type="button" id="detailBlockBtn" class="btn btn-sm ${user.is_blocked ? '' : 'btn-outline-danger'}" style="margin-top:0.5rem">${icon(user.is_blocked ? 'check' : 'lock')} ${t(user.is_blocked ? 'btn_unblock_account' : 'btn_block_account')}</button>` : ''}
           ${!isSelf ? `<button type="button" id="detailDeleteBtn" class="btn btn-sm btn-danger" style="margin-top:0.5rem">${icon('trash')} ${t('delete_account_btn')}</button>` : ''}
@@ -8017,6 +8031,19 @@
           showToast(err.message, 'error');
         }
       });
+      const detailReset2faBtn = document.getElementById('detailReset2faBtn');
+      if (detailReset2faBtn) {
+        detailReset2faBtn.addEventListener('click', async () => {
+          if (!confirm(`${t('confirm_reset_2fa_prefix')} ${user.name}${t('confirm_reset_2fa_suffix')}`)) return;
+          try {
+            await api(`/users/${user.id}/reset-2fa`, { method: 'POST' });
+            showToast(t('toast_2fa_reset'), 'success');
+            renderUserDetail(id);
+          } catch (err) {
+            showToast(err.message, 'error');
+          }
+        });
+      }
     }
 
     const impersonateBtn = document.getElementById('impersonateBtn');
@@ -11661,13 +11688,18 @@
 
   async function startTwoFaSetup(body) {
     try {
-      const { secret, otpauth_uri: otpauthUri } = await api('/auth/2fa/setup', { method: 'POST' });
+      const { secret, qr_data_url: qrDataUrl } = await api('/auth/2fa/setup', { method: 'POST' });
       body.innerHTML = `
-        <div class="field">
-          <label>${t('twofa_secret_label')}</label>
-          <code class="totp-secret-code">${escapeHtml(secret)}</code>
-          <p class="hint">${t('twofa_secret_hint')}</p>
-        </div>
+        <p class="hint">${t('twofa_qr_hint')}</p>
+        <img src="${escapeHtml(qrDataUrl)}" alt="" width="220" height="220" class="totp-qr-code" />
+        <details class="totp-manual-entry">
+          <summary>${t('twofa_manual_entry_toggle')}</summary>
+          <div class="field">
+            <label>${t('twofa_secret_label')}</label>
+            <code class="totp-secret-code">${escapeHtml(secret)}</code>
+            <p class="hint">${t('twofa_secret_hint')}</p>
+          </div>
+        </details>
         <form id="twoFaConfirmForm" class="form-grid" style="max-width:none">
           <div class="field">
             <label for="twoFaConfirmCode">${t('twofa_confirm_code_label')}</label>
@@ -11679,7 +11711,6 @@
             <button class="btn btn-sm btn-ghost" type="button" id="twoFaCancelBtn">${t('twofa_cancel_button')}</button>
           </div>
         </form>`;
-      body.querySelector('.totp-secret-code').title = otpauthUri;
       document.getElementById('twoFaCancelBtn').addEventListener('click', () => renderTwoFaCard());
       guardForm(document.getElementById('twoFaConfirmForm'), async () => {
         const errEl = document.getElementById('twoFaConfirmError');

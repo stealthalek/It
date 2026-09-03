@@ -6,6 +6,7 @@ const mailer = require('../mailer');
 const { authenticate, requireRole } = require('../middleware/auth');
 const asyncHandler = require('../middleware/asyncHandler');
 const { logAudit } = require('../audit');
+const { notifyUser } = require('../notifications');
 const { revokeAllSessions } = require('../lib/sessions');
 const { assertCompanyScoped } = require('../lib/companyGuard');
 const { requirePermission } = require('../lib/permissions');
@@ -21,7 +22,8 @@ const USER_SELECT = `
   SELECT u.id, u.name, u.email, u.role, u.group_id, g.name AS group_name, gParent.name AS group_parent_name,
     u.locale, u.created_at, u.is_external, u.manager_id, manager.name AS manager_name,
     u.role_id, r.label_it AS role_label_it, r.label_en AS role_label_en, r.color AS role_color, r.read_only AS role_read_only,
-    u.is_blocked, u.blocked_at, u.blocked_reason, u.company_id, c.display_name AS company_display_name, c.name AS company_name
+    u.is_blocked, u.blocked_at, u.blocked_reason, u.company_id, c.display_name AS company_display_name, c.name AS company_name,
+    u.totp_enabled
   FROM users u
   LEFT JOIN groups g ON g.id = u.group_id
   LEFT JOIN groups gParent ON gParent.id = g.parent_id
@@ -446,6 +448,30 @@ router.post(
     mailer.sendPasswordReset(user, tempPassword).catch((err) => console.error('Invio email di reset fallito:', err.message));
     logAudit(req.user.id, 'user', user.id, `Password di "${user.name}" reimpostata dall'amministratore`).catch(() => {});
     res.json({ user, tempPassword });
+  })
+);
+
+router.post(
+  '/:id/reset-2fa',
+  requirePermission('users_manage'),
+  asyncHandler(async (req, res) => {
+    const target = await db.get('SELECT * FROM users WHERE id = ?', [req.params.id]);
+    if (outOfScope(target, req.user)) {
+      return res.status(404).json({ error: 'Utente non trovato' });
+    }
+    if (!target.totp_enabled) {
+      return res.status(400).json({ error: 'Autenticazione a due fattori non attiva per questo utente' });
+    }
+
+    await db.run('UPDATE users SET totp_enabled = 0, totp_secret = NULL WHERE id = ?', [req.params.id]);
+
+    const user = await db.get(`${USER_SELECT} WHERE u.id = ?`, [req.params.id]);
+    notifyUser(user.id, null, {
+      it: `Un amministratore ha disattivato la tua autenticazione a due fattori. Puoi riattivarla dal tuo profilo.`,
+      en: `An administrator has disabled your two-factor authentication. You can turn it back on from your profile.`,
+    }).catch(() => {});
+    logAudit(req.user.id, 'user', user.id, `Autenticazione a due fattori di "${user.name}" reimpostata dall'amministratore`).catch(() => {});
+    res.json({ user });
   })
 );
 
