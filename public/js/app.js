@@ -679,6 +679,7 @@
       widgets_all_hidden_hint: 'Nessun widget visibile. Usa "Personalizza" per riattivarli.',
       ticket_list_truncated_hint: 'Vengono mostrati solo i ticket più recenti: affina i filtri per una vista completa.',
       report_truncated_hint: 'Il volume di ticket supera quanto questo report può caricare in una volta: grafici ed export riflettono solo i ticket più recenti, non lo storico completo. Restringi l\'intervallo di date per un\'analisi esatta.',
+      audit_truncated_hint: 'Ci sono più voci di quelle mostrate: elenco ed export riflettono solo le più recenti. Restringi l\'intervallo di date per una vista completa.',
       widget_unassigned_by_group_title: 'Non assegnati per gruppo', widget_unassigned_by_group_empty: 'Nessun ticket non assegnato al momento.',
       widget_sla_watch_title: 'Ticket a rischio SLA', widget_sla_watch_empty: 'Nessun ticket a rischio SLA al momento.',
       widget_sla_overdue_label: 'SLA superata', widget_sla_elapsed_label: 'del tempo SLA trascorso',
@@ -1164,6 +1165,7 @@
       widgets_all_hidden_hint: 'No widgets visible. Use "Customize" to turn them back on.',
       ticket_list_truncated_hint: 'Only the most recent tickets are shown: refine the filters for a complete view.',
       report_truncated_hint: 'Ticket volume exceeds what this report can load at once: charts and exports reflect only the most recent tickets, not the full history. Narrow the date range for an exact analysis.',
+      audit_truncated_hint: 'There are more entries than shown: the list and export reflect only the most recent ones. Narrow the date range for a complete view.',
       widget_unassigned_by_group_title: 'Unassigned by group', widget_unassigned_by_group_empty: 'No unassigned tickets right now.',
       widget_sla_watch_title: 'SLA at-risk tickets', widget_sla_watch_empty: 'No tickets at SLA risk right now.',
       widget_sla_overdue_label: 'SLA breached', widget_sla_elapsed_label: 'of SLA time elapsed',
@@ -10034,6 +10036,7 @@
         <button type="button" id="auditExportExcelBtn" class="btn btn-ghost">${icon('download')} ${t('btn_export_excel')}</button>
         <span class="hint" id="auditResultCount"></span>
       </div>
+      <p class="hint" id="auditTruncatedHint" hidden>${t('audit_truncated_hint')}</p>
       <div id="auditList" class="spinner-row">${t('loading')}</div>`;
 
     const listEl = document.getElementById('auditList');
@@ -10043,8 +10046,12 @@
     const groupFilterEl = document.getElementById('auditGroupFilter');
     const searchEl = document.getElementById('auditSearch');
     const resultCountEl = document.getElementById('auditResultCount');
+    const truncatedHintEl = document.getElementById('auditTruncatedHint');
     const exportCsvBtn = document.getElementById('auditExportCsvBtn');
     const exportExcelBtn = document.getElementById('auditExportExcelBtn');
+
+    const defaultFrom = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+    dateFromEl.value = defaultFrom.toISOString().slice(0, 10);
 
     let currentEntries = [];
     let debounceTimer;
@@ -10098,8 +10105,9 @@
       if (groupFilterEl.value) params.set('group', groupFilterEl.value);
       if (searchEl.value.trim()) params.set('q', searchEl.value.trim());
       try {
-        const { entries } = await api(`/audit?${params.toString()}`);
+        const { entries, total } = await api(`/audit?${params.toString()}`);
         currentEntries = entries;
+        if (truncatedHintEl) truncatedHintEl.hidden = entries.length >= total;
         renderList();
       } catch (err) {
         listEl.className = '';
