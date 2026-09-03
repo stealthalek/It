@@ -18,6 +18,7 @@
 
   let adminSystemStatusTimer = null;
   let systemStatusHistory = [];
+  let navTogglesWired = false;
   function teardownAdminSystemStatusPolling() {
     if (adminSystemStatusTimer) {
       clearInterval(adminSystemStatusTimer);
@@ -401,6 +402,10 @@
     it: {
       nav_dashboard: 'Ticket', nav_new: 'Nuovo ticket', nav_search: 'Ricerca', nav_announcements: 'Bacheca', nav_directory: 'Rubrica', nav_messages: 'Messaggi',
       nav_section_work: 'Lavoro', nav_section_team: 'Team', nav_section_tools: 'Strumenti',
+      nav_hint_dashboard: 'I tuoi ticket e quelli del tuo team.', nav_hint_new: 'Apri una nuova richiesta di assistenza.',
+      nav_hint_announcements: 'Comunicazioni e annunci dall\'azienda.', nav_hint_orgchart: 'Struttura organizzativa dell\'azienda.',
+      nav_hint_onboarding: 'Gestisci l\'inserimento dei nuovi assunti.', nav_hint_timesheet: 'Timbratura, ferie e permessi.',
+      nav_hint_admin: 'Utenti, gruppi e configurazione della piattaforma.', nav_hint_profile: 'Il tuo account e le preferenze personali.',
       directory_hint: 'Trova un collega per nome, ruolo o team.',
       send_message_btn: 'Messaggio', messages_inbox_hint: 'Le tue conversazioni dirette con i colleghi.',
       messages_you_prefix: 'Tu:', no_messages_yet: 'Nessun messaggio.',
@@ -679,6 +684,7 @@
       widgets_all_hidden_hint: 'Nessun widget visibile. Usa "Personalizza" per riattivarli.',
       ticket_list_truncated_hint: 'Vengono mostrati solo i ticket più recenti: affina i filtri per una vista completa.',
       report_truncated_hint: 'Il volume di ticket supera quanto questo report può caricare in una volta: grafici ed export riflettono solo i ticket più recenti, non lo storico completo. Restringi l\'intervallo di date per un\'analisi esatta.',
+      audit_truncated_hint: 'Ci sono più voci di quelle mostrate: elenco ed export riflettono solo le più recenti. Restringi l\'intervallo di date per una vista completa.',
       widget_unassigned_by_group_title: 'Non assegnati per gruppo', widget_unassigned_by_group_empty: 'Nessun ticket non assegnato al momento.',
       widget_sla_watch_title: 'Ticket a rischio SLA', widget_sla_watch_empty: 'Nessun ticket a rischio SLA al momento.',
       widget_sla_overdue_label: 'SLA superata', widget_sla_elapsed_label: 'del tempo SLA trascorso',
@@ -886,6 +892,10 @@
     en: {
       nav_dashboard: 'Tickets', nav_new: 'New ticket', nav_search: 'Search', nav_announcements: 'Announcements', nav_directory: 'Directory', nav_messages: 'Messages',
       nav_section_work: 'Work', nav_section_team: 'Team', nav_section_tools: 'Tools',
+      nav_hint_dashboard: 'Your tickets and your team\'s.', nav_hint_new: 'Open a new support request.',
+      nav_hint_announcements: 'Company announcements and communications.', nav_hint_orgchart: 'The company\'s organizational structure.',
+      nav_hint_onboarding: 'Manage new-hire onboarding.', nav_hint_timesheet: 'Clock-ins, leave and time off.',
+      nav_hint_admin: 'Users, groups and platform configuration.', nav_hint_profile: 'Your account and personal preferences.',
       directory_hint: 'Find a colleague by name, role, or team.',
       send_message_btn: 'Message', messages_inbox_hint: 'Your direct conversations with colleagues.',
       messages_you_prefix: 'You:', no_messages_yet: 'No messages yet.',
@@ -1164,6 +1174,7 @@
       widgets_all_hidden_hint: 'No widgets visible. Use "Customize" to turn them back on.',
       ticket_list_truncated_hint: 'Only the most recent tickets are shown: refine the filters for a complete view.',
       report_truncated_hint: 'Ticket volume exceeds what this report can load at once: charts and exports reflect only the most recent tickets, not the full history. Narrow the date range for an exact analysis.',
+      audit_truncated_hint: 'There are more entries than shown: the list and export reflect only the most recent ones. Narrow the date range for a complete view.',
       widget_unassigned_by_group_title: 'Unassigned by group', widget_unassigned_by_group_empty: 'No unassigned tickets right now.',
       widget_sla_watch_title: 'SLA at-risk tickets', widget_sla_watch_empty: 'No tickets at SLA risk right now.',
       widget_sla_overdue_label: 'SLA breached', widget_sla_elapsed_label: 'of SLA time elapsed',
@@ -1394,21 +1405,58 @@
   };
 
   const NAV_SECTION_KEY = { work: 'nav_section_work', team: 'nav_section_team', tools: 'nav_section_tools' };
+  const NAV_HINT_BY_ROUTE = {
+    dashboard: 'nav_hint_dashboard', new: 'nav_hint_new', announcements: 'nav_hint_announcements', directory: 'directory_hint',
+    messages: 'messages_inbox_hint', orgchart: 'nav_hint_orgchart', onboarding: 'nav_hint_onboarding', timesheet: 'nav_hint_timesheet',
+    rooms: 'rooms_hint', ideas: 'ideas_hint', wiki: 'wiki_hint', expenses: 'expenses_hint', search: 'search_hint',
+    assets: 'assets_hint', report: 'insights_hint', admin: 'nav_hint_admin', profile: 'nav_hint_profile',
+  };
+  const NAV_COLLAPSIBLE_SECTIONS = ['team', 'tools'];
+
+  function setNavSectionCollapsed(section, collapsed) {
+    const toggle = document.querySelector(`.nav-section-toggle[data-nav-section="${section}"]`);
+    const group = document.querySelector(`.nav-group[data-nav-group-wrap="${section}"]`);
+    if (!toggle || !group) return;
+    group.classList.toggle('collapsed', collapsed);
+    toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+  }
+
+  function wireNavSectionToggles() {
+    NAV_COLLAPSIBLE_SECTIONS.forEach((section) => {
+      setNavSectionCollapsed(section, localStorage.getItem(`ticketing_nav_collapsed_${section}`) === '1');
+    });
+    if (navTogglesWired) return;
+    navTogglesWired = true;
+    document.querySelectorAll('.nav-section-toggle').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const section = btn.dataset.navSection;
+        const collapsed = btn.getAttribute('aria-expanded') !== 'false';
+        setNavSectionCollapsed(section, collapsed);
+        localStorage.setItem(`ticketing_nav_collapsed_${section}`, collapsed ? '1' : '0');
+      });
+    });
+  }
 
   function applyChromeTranslations() {
     document.querySelectorAll('.main-nav a[data-nav]').forEach((a) => {
       const key = NAV_KEY_BY_ROUTE[a.dataset.nav];
       const iconName = NAV_ICON_BY_ROUTE[a.dataset.nav];
+      const hintKey = NAV_HINT_BY_ROUTE[a.dataset.nav];
       if (key) a.innerHTML = `${icon(iconName, 'nav-icon')}<span class="nav-label">${t(key)}</span><span class="nav-dot" hidden></span>`;
+      if (hintKey) a.title = t(hintKey);
     });
     document.querySelectorAll('.nav-section-label[data-nav-section]').forEach((el) => {
       const key = NAV_SECTION_KEY[el.dataset.navSection];
-      if (key) el.textContent = t(key);
+      if (!key) return;
+      el.innerHTML = el.classList.contains('nav-section-toggle')
+        ? `<span>${t(key)}</span>${icon('chevronDown', 'nav-section-chevron')}`
+        : t(key);
     });
     logoutBtn.innerHTML = `${icon('logout')} <span class="nav-label">${t('logout')}</span>`;
     refreshAnnouncementsNavDot();
     refreshMessagesNavDot();
     updateNavSectionVisibility();
+    wireNavSectionToggles();
   }
 
   function updateNavSectionVisibility() {
@@ -10034,6 +10082,7 @@
         <button type="button" id="auditExportExcelBtn" class="btn btn-ghost">${icon('download')} ${t('btn_export_excel')}</button>
         <span class="hint" id="auditResultCount"></span>
       </div>
+      <p class="hint" id="auditTruncatedHint" hidden>${t('audit_truncated_hint')}</p>
       <div id="auditList" class="spinner-row">${t('loading')}</div>`;
 
     const listEl = document.getElementById('auditList');
@@ -10043,8 +10092,12 @@
     const groupFilterEl = document.getElementById('auditGroupFilter');
     const searchEl = document.getElementById('auditSearch');
     const resultCountEl = document.getElementById('auditResultCount');
+    const truncatedHintEl = document.getElementById('auditTruncatedHint');
     const exportCsvBtn = document.getElementById('auditExportCsvBtn');
     const exportExcelBtn = document.getElementById('auditExportExcelBtn');
+
+    const defaultFrom = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+    dateFromEl.value = defaultFrom.toISOString().slice(0, 10);
 
     let currentEntries = [];
     let debounceTimer;
@@ -10098,8 +10151,9 @@
       if (groupFilterEl.value) params.set('group', groupFilterEl.value);
       if (searchEl.value.trim()) params.set('q', searchEl.value.trim());
       try {
-        const { entries } = await api(`/audit?${params.toString()}`);
+        const { entries, total } = await api(`/audit?${params.toString()}`);
         currentEntries = entries;
+        if (truncatedHintEl) truncatedHintEl.hidden = entries.length >= total;
         renderList();
       } catch (err) {
         listEl.className = '';

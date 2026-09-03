@@ -551,6 +551,23 @@ svg { display: block; }
 .nav-section-label:first-child { padding-top: 0.25rem; }
 .sidebar.collapsed .nav-section-label { padding-left: 0; text-align: center; font-size: 0; }
 .sidebar.collapsed .nav-section-label::before { content: ''; display: block; height: 1px; background: var(--border); margin: 0 0.4rem; }
+.nav-section-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+.nav-section-toggle:hover { opacity: 1; }
+.nav-section-toggle .nav-section-chevron { flex-shrink: 0; width: 12px; height: 12px; transition: transform 0.15s ease; }
+.nav-section-toggle[aria-expanded="false"] .nav-section-chevron { transform: rotate(-90deg); }
+.nav-group { display: flex; flex-direction: column; gap: 0.2rem; }
+.nav-group.collapsed { display: none; }
+.sidebar.collapsed .nav-group.collapsed { display: flex; }
+.sidebar.collapsed .nav-section-toggle .nav-section-chevron { display: none; }
 .nav-section-divider {
   height: 1px;
   background: var(--border);
