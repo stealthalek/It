@@ -1266,6 +1266,13 @@ async function seedDefaultAdmin() {
   const row = await get('SELECT COUNT(*) AS n FROM users');
   if (row.n > 0) return;
 
+  if (process.env.NODE_ENV === 'production' && !process.env.DEFAULT_ADMIN_PASSWORD) {
+    throw new Error(
+      'DEFAULT_ADMIN_PASSWORD non impostata in produzione: avvio bloccato per sicurezza. ' +
+      'Imposta DEFAULT_ADMIN_EMAIL e DEFAULT_ADMIN_PASSWORD prima del primo avvio per evitare credenziali predefinite pubbliche.'
+    );
+  }
+
   const email = process.env.DEFAULT_ADMIN_EMAIL || 'admin@ticketing.local';
   const password = process.env.DEFAULT_ADMIN_PASSWORD || 'Admin123!';
   const hash = bcrypt.hashSync(password, 10);

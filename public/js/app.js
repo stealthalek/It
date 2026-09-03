@@ -458,7 +458,7 @@
       toast_expense_submitted: 'Nota spese inviata', toast_expense_cancelled: 'Nota spese ritirata', toast_expense_approved: 'Nota spese approvata', toast_expense_rejected: 'Nota spese respinta',
       expense_status_pending: 'In attesa', expense_status_approved: 'Approvata', expense_status_rejected: 'Respinta',
       expense_category_travel: 'Viaggio', expense_category_meals: 'Pasti', expense_category_accommodation: 'Alloggio', expense_category_supplies: 'Materiale', expense_category_other: 'Altro',
-      nav_assets: 'Asset', nav_onboarding: 'Onboarding', nav_timesheet: 'Orari', nav_report: 'Report', nav_audit: 'Audit', nav_admin: 'Amministrazione', nav_profile: 'Profilo', logout: 'Esci',
+      nav_assets: 'Asset', nav_onboarding: 'Onboarding', nav_timesheet: 'Orari e ferie', nav_report: 'Report', nav_audit: 'Audit', nav_admin: 'Amministrazione', nav_profile: 'Profilo', logout: 'Esci',
       login_title: 'Accedi', login_hint: 'Entra nella piattaforma di ticketing.', login_email: 'Email', login_password: 'Password',
       login_submit: 'Accedi', login_no_account: 'Non hai un account?', login_register_link: 'Registrati',
       twofa_login_title: 'Verifica in due passaggi', twofa_login_hint: 'Inserisci il codice a 6 cifre generato dalla tua app di autenticazione.',
@@ -643,20 +643,25 @@
       action_add_note: 'Aggiungi nota interna', action_add_note_placeholder: 'Testo della nota interna da aggiungere automaticamente',
       btn_create_rule: 'Crea regola', rule_no_conditions: 'Nessuna condizione (si applica sempre)', no_rules_hint: 'Nessuna regola di automazione configurata.',
       toast_rule_updated: 'Regola aggiornata', toast_rule_deleted: 'Regola eliminata', toast_rule_added: 'Regola creata',
+      delete_rule_title: 'Elimina regola', confirm_delete_rule: 'Eliminare questa regola di automazione?',
       admin_custom_fields_title: 'Campi personalizzati', admin_custom_fields_hint: 'Aggiungi campi extra al modulo di apertura ticket, globali oppure specifici per una categoria.',
       field_field_name: 'Nome campo', field_field_type: 'Tipo', field_type_text: 'Testo', field_type_number: 'Numero', field_type_textarea: 'Testo lungo', field_type_select: 'Scelta', field_type_checkbox: 'Casella di spunta',
       field_field_options: 'Opzioni (separate da virgola)', field_field_options_placeholder: 'Es: Bassa, Media, Alta', field_field_category: 'Categoria', field_global_option: 'Globale (tutte le categorie)',
       field_required_label: 'Obbligatorio', btn_add_field: 'Aggiungi campo', no_fields_hint: 'Nessun campo personalizzato configurato.',
       toast_field_added: 'Campo aggiunto', toast_field_deleted: 'Campo eliminato',
+      delete_field_title: 'Elimina campo', confirm_delete_field: 'Eliminare questo campo personalizzato? I valori già inseriti sui ticket esistenti andranno persi.',
       admin_canned_title: 'Risposte rapide', admin_canned_hint: 'Testi pronti che il personale può inserire velocemente nei commenti dei ticket.',
       field_canned_title: 'Titolo', field_canned_body: 'Testo della risposta', btn_add_canned: 'Aggiungi risposta rapida', no_canned_hint: 'Nessuna risposta rapida configurata.',
       toast_canned_added: 'Risposta rapida aggiunta', toast_canned_deleted: 'Risposta rapida eliminata',
+      delete_canned_title: 'Elimina risposta rapida', confirm_delete_canned: 'Eliminare questa risposta rapida?',
       admin_templates_title: 'Modelli ticket', admin_templates_hint: 'Modelli predefiniti per velocizzare l\'apertura di richieste ricorrenti, selezionabili dall\'utente nel modulo di nuovo ticket.',
       field_template_name: 'Nome modello', btn_add_template: 'Aggiungi modello', no_templates_hint: 'Nessun modello configurato.',
       toast_template_added: 'Modello aggiunto', toast_template_deleted: 'Modello eliminato',
+      delete_template_title: 'Elimina modello', confirm_delete_template: 'Eliminare questo modello di ticket?',
       admin_holidays_title: 'Giorni festivi', admin_holidays_hint: 'Le date qui indicate vengono escluse dal calcolo delle ore lavorative per l\'SLA, oltre ai fine settimana.',
       field_date: 'Data', field_holiday_name: 'Nome festività', btn_add_holiday: 'Aggiungi festività', no_holidays_hint: 'Nessuna festività configurata.',
       toast_holiday_added: 'Festività aggiunta', toast_holiday_deleted: 'Festività rimossa',
+      delete_holiday_title: 'Rimuovi festività', confirm_delete_holiday: 'Rimuovere questa festività dal calendario SLA?',
       field_group_name: 'Nome gruppo', field_parent_group: 'Gruppo padre', option_no_parent: 'Nessuno (primo livello)',
       field_response_hours: 'Risposta (h)', field_resolve_hours: 'Risoluzione (h)', field_shift_start: 'Inizio turno', field_shift_end: 'Fine turno',
       btn_create_group: 'Crea gruppo', delete_group_title: 'Elimina gruppo', shift_from_label: 'Turno dalle', shift_to_label: 'alle',
@@ -956,7 +961,7 @@
       toast_expense_submitted: 'Expense report submitted', toast_expense_cancelled: 'Expense report withdrawn', toast_expense_approved: 'Expense report approved', toast_expense_rejected: 'Expense report rejected',
       expense_status_pending: 'Pending', expense_status_approved: 'Approved', expense_status_rejected: 'Rejected',
       expense_category_travel: 'Travel', expense_category_meals: 'Meals', expense_category_accommodation: 'Accommodation', expense_category_supplies: 'Supplies', expense_category_other: 'Other',
-      nav_assets: 'Assets', nav_onboarding: 'Onboarding', nav_timesheet: 'Hours', nav_report: 'Report', nav_audit: 'Audit', nav_admin: 'Administration', nav_profile: 'Profile', logout: 'Log out',
+      nav_assets: 'Assets', nav_onboarding: 'Onboarding', nav_timesheet: 'Hours & leave', nav_report: 'Report', nav_audit: 'Audit', nav_admin: 'Administration', nav_profile: 'Profile', logout: 'Log out',
       login_title: 'Sign in', login_hint: 'Enter the ticketing platform.', login_email: 'Email', login_password: 'Password',
       login_submit: 'Sign in', login_no_account: "Don't have an account?", login_register_link: 'Register',
       twofa_login_title: 'Two-factor verification', twofa_login_hint: 'Enter the 6-digit code generated by your authenticator app.',
@@ -1141,20 +1146,25 @@
       action_add_note: 'Add internal note', action_add_note_placeholder: 'Internal note text to add automatically',
       btn_create_rule: 'Create rule', rule_no_conditions: 'No conditions (always applies)', no_rules_hint: 'No automation rules configured.',
       toast_rule_updated: 'Rule updated', toast_rule_deleted: 'Rule deleted', toast_rule_added: 'Rule created',
+      delete_rule_title: 'Delete rule', confirm_delete_rule: 'Delete this automation rule?',
       admin_custom_fields_title: 'Custom fields', admin_custom_fields_hint: 'Add extra fields to the ticket creation form, either global or scoped to a specific category.',
       field_field_name: 'Field name', field_field_type: 'Type', field_type_text: 'Text', field_type_number: 'Number', field_type_textarea: 'Long text', field_type_select: 'Choice', field_type_checkbox: 'Checkbox',
       field_field_options: 'Options (comma-separated)', field_field_options_placeholder: 'E.g: Low, Medium, High', field_field_category: 'Category', field_global_option: 'Global (all categories)',
       field_required_label: 'Required', btn_add_field: 'Add field', no_fields_hint: 'No custom fields configured.',
       toast_field_added: 'Field added', toast_field_deleted: 'Field deleted',
+      delete_field_title: 'Delete field', confirm_delete_field: 'Delete this custom field? Values already entered on existing tickets will be lost.',
       admin_canned_title: 'Canned responses', admin_canned_hint: 'Ready-made text that staff can quickly insert into ticket comments.',
       field_canned_title: 'Title', field_canned_body: 'Response text', btn_add_canned: 'Add canned response', no_canned_hint: 'No canned responses configured.',
       toast_canned_added: 'Canned response added', toast_canned_deleted: 'Canned response deleted',
+      delete_canned_title: 'Delete canned response', confirm_delete_canned: 'Delete this canned response?',
       admin_templates_title: 'Ticket templates', admin_templates_hint: 'Preset templates to speed up opening recurring requests, selectable by users on the new-ticket form.',
       field_template_name: 'Template name', btn_add_template: 'Add template', no_templates_hint: 'No templates configured.',
       toast_template_added: 'Template added', toast_template_deleted: 'Template deleted',
+      delete_template_title: 'Delete template', confirm_delete_template: 'Delete this ticket template?',
       admin_holidays_title: 'Holidays', admin_holidays_hint: 'Dates listed here are excluded from SLA business-hours calculations, in addition to weekends.',
       field_date: 'Date', field_holiday_name: 'Holiday name', btn_add_holiday: 'Add holiday', no_holidays_hint: 'No holidays configured.',
       toast_holiday_added: 'Holiday added', toast_holiday_deleted: 'Holiday removed',
+      delete_holiday_title: 'Remove holiday', confirm_delete_holiday: 'Remove this holiday from the SLA calendar?',
       field_group_name: 'Group name', field_parent_group: 'Parent group', option_no_parent: 'None (top level)',
       field_response_hours: 'Response (h)', field_resolve_hours: 'Resolution (h)', field_shift_start: 'Shift start', field_shift_end: 'Shift end',
       btn_create_group: 'Create group', delete_group_title: 'Delete group', shift_from_label: 'Shift from', shift_to_label: 'to',
@@ -7186,7 +7196,7 @@
                   <strong>${escapeHtml(rule.name)}</strong>
                 </label>
                 ${ruleBadge(rule.trigger_event === 'created' ? 'trigger_created' : 'trigger_updated')}
-                <button type="button" class="icon-btn deleteRuleBtn" data-id="${rule.id}" title="${t('delete_category_title')}">${icon('trash')}</button>
+                <button type="button" class="icon-btn deleteRuleBtn" data-id="${rule.id}" title="${t('delete_rule_title')}">${icon('trash')}</button>
               </div>
               <p class="hint" style="margin:0.3rem 0 0"><strong>${t('rule_conditions_label')}:</strong> ${ruleConditionSummary(rule)}</p>
               <p class="hint" style="margin:0.15rem 0 0"><strong>${t('rule_actions_label')}:</strong> ${ruleActionSummary(rule)}</p>
@@ -7206,6 +7216,7 @@
           });
           listEl.querySelectorAll('.deleteRuleBtn').forEach((btn) => {
             btn.addEventListener('click', async () => {
+              if (!confirm(t('confirm_delete_rule'))) return;
               try {
                 await api(`/automations/${btn.dataset.id}`, { method: 'DELETE' });
                 showToast(t('toast_rule_deleted'), 'success');
@@ -7279,13 +7290,14 @@
                 <strong>${escapeHtml(field.name)}</strong>
                 <span class="badge badge-in_progress">${t(fieldTypeLabelKeys[field.field_type] || 'field_type_text')}</span>
                 ${field.required ? `<span class="badge badge-urgent">${t('field_required_label')}</span>` : ''}
-                <button type="button" class="icon-btn deleteFieldBtn" data-id="${field.id}" title="${t('delete_category_title')}">${icon('trash')}</button>
+                <button type="button" class="icon-btn deleteFieldBtn" data-id="${field.id}" title="${t('delete_field_title')}">${icon('trash')}</button>
               </div>
               <p class="hint" style="margin:0.3rem 0 0">${field.category_name ? `${t('field_field_category')}: ${escapeHtml(field.category_name)}` : t('field_global_option')}${field.options.length ? ` · ${field.options.join(', ')}` : ''}</p>
             </div>`).join('') : `<p class="hint">${t('no_fields_hint')}</p>`;
 
           listEl.querySelectorAll('.deleteFieldBtn').forEach((btn) => {
             btn.addEventListener('click', async () => {
+              if (!confirm(t('confirm_delete_field'))) return;
               try {
                 await api(`/custom-fields/${btn.dataset.id}`, { method: 'DELETE' });
                 showToast(t('toast_field_deleted'), 'success');
@@ -7347,13 +7359,14 @@
             <div class="rule-row">
               <div class="rule-row-head">
                 <strong>${escapeHtml(r.title)}</strong>
-                <button type="button" class="icon-btn deleteCannedBtn" data-id="${r.id}" title="${t('delete_category_title')}">${icon('trash')}</button>
+                <button type="button" class="icon-btn deleteCannedBtn" data-id="${r.id}" title="${t('delete_canned_title')}">${icon('trash')}</button>
               </div>
               <p class="hint" style="margin:0.3rem 0 0;white-space:pre-wrap">${escapeHtml(r.body)}</p>
             </div>`).join('') : `<p class="hint">${t('no_canned_hint')}</p>`;
 
           listEl.querySelectorAll('.deleteCannedBtn').forEach((btn) => {
             btn.addEventListener('click', async () => {
+              if (!confirm(t('confirm_delete_canned'))) return;
               try {
                 await api(`/canned-responses/${btn.dataset.id}`, { method: 'DELETE' });
                 showToast(t('toast_canned_deleted'), 'success');
@@ -7411,13 +7424,14 @@
               <div class="rule-row-head">
                 <strong>${escapeHtml(tpl.name)}</strong>
                 ${tpl.category ? `<span class="badge badge-in_progress">${escapeHtml(tpl.category)}</span>` : ''}
-                <button type="button" class="icon-btn deleteTemplateBtn" data-id="${tpl.id}" title="${t('delete_category_title')}">${icon('trash')}</button>
+                <button type="button" class="icon-btn deleteTemplateBtn" data-id="${tpl.id}" title="${t('delete_template_title')}">${icon('trash')}</button>
               </div>
               <p class="hint" style="margin:0.3rem 0 0">${escapeHtml(tpl.subject)}</p>
             </div>`).join('') : `<p class="hint">${t('no_templates_hint')}</p>`;
 
           listEl.querySelectorAll('.deleteTemplateBtn').forEach((btn) => {
             btn.addEventListener('click', async () => {
+              if (!confirm(t('confirm_delete_template'))) return;
               try {
                 await api(`/ticket-templates/${btn.dataset.id}`, { method: 'DELETE' });
                 showToast(t('toast_template_deleted'), 'success');
@@ -7471,12 +7485,13 @@
               <div class="rule-row-head">
                 <strong>${new Date(`${h.date}T00:00:00Z`).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' })}</strong>
                 <span>${escapeHtml(h.name)}</span>
-                <button type="button" class="icon-btn deleteHolidayBtn" data-id="${h.id}" title="${t('delete_category_title')}">${icon('trash')}</button>
+                <button type="button" class="icon-btn deleteHolidayBtn" data-id="${h.id}" title="${t('delete_holiday_title')}">${icon('trash')}</button>
               </div>
             </div>`).join('') : `<p class="hint">${t('no_holidays_hint')}</p>`;
 
           listEl.querySelectorAll('.deleteHolidayBtn').forEach((btn) => {
             btn.addEventListener('click', async () => {
+              if (!confirm(t('confirm_delete_holiday'))) return;
               try {
                 await api(`/holidays/${btn.dataset.id}`, { method: 'DELETE' });
                 showToast(t('toast_holiday_deleted'), 'success');

@@ -213,7 +213,7 @@ La ricezione delle risposte (email in arrivo che diventano commenti automatici s
 | `PORT` | Porta HTTP del server | `3000` |
 | `JWT_SECRET` | Segreto per la firma dei token JWT — **obbligatorio in produzione** (l'avvio viene bloccato se manca) | `dev-secret-change-me` (solo in sviluppo locale) |
 | `DEFAULT_ADMIN_EMAIL` | Email dell'admin creato al primo avvio | nessuno — impostala sempre prima del primo deploy |
-| `DEFAULT_ADMIN_PASSWORD` | Password dell'admin creato al primo avvio | nessuno — impostala sempre prima del primo deploy |
+| `DEFAULT_ADMIN_PASSWORD` | Password dell'admin creato al primo avvio — **obbligatoria in produzione** al primo avvio (l'avvio viene bloccato se manca, per evitare credenziali predefinite pubbliche) | nessuno — impostala sempre prima del primo deploy |
 | `GOOGLE_CLIENT_ID` | Client ID OAuth Google, abilita l'accesso "Sign in with Google" | non impostato (SSO Google disattivato) |
 | `MICROSOFT_CLIENT_ID` | Application ID Microsoft Entra, abilita l'accesso con Microsoft | non impostato (SSO Microsoft disattivato) |
 | `MICROSOFT_TENANT_ID` | Limita l'accesso Microsoft a un singolo tenant aziendale | `common` (qualsiasi account Microsoft) |
