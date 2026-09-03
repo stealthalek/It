@@ -128,7 +128,7 @@ router.post(
   '/register',
   makeAuthLimiter(),
   asyncHandler(async (req, res) => {
-    const { name, email, password, companyId } = req.body || {};
+    const { name, email, password, companyId, privacyAccepted } = req.body || {};
 
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Il nome è obbligatorio' });
@@ -139,6 +139,9 @@ router.post(
     const pwError = passwordError(password);
     if (pwError) {
       return res.status(400).json({ error: pwError });
+    }
+    if (!privacyAccepted) {
+      return res.status(400).json({ error: 'Devi accettare l\'informativa privacy e i termini di servizio per registrarti' });
     }
 
     const existing = await db.get('SELECT id FROM users WHERE email = ?', [email.toLowerCase()]);
@@ -152,13 +155,10 @@ router.post(
     }
 
     const hash = bcrypt.hashSync(password, 10);
-    const info = await db.run('INSERT INTO users (name, email, password, role, company_id) VALUES (?, ?, ?, ?, ?)', [
-      name.trim(),
-      email.toLowerCase(),
-      hash,
-      'customer',
-      companyResolution.companyId,
-    ]);
+    const info = await db.run(
+      "INSERT INTO users (name, email, password, role, company_id, privacy_accepted_at) VALUES (?, ?, ?, ?, ?, datetime('now'))",
+      [name.trim(), email.toLowerCase(), hash, 'customer', companyResolution.companyId]
+    );
 
     const user = await db.get('SELECT id, name, email, role FROM users WHERE id = ?', [Number(info.lastInsertRowid)]);
     const token = await issueSessionToken(user, req);

@@ -477,7 +477,11 @@
       toast_2fa_enabled: 'Autenticazione a due fattori attivata', toast_2fa_disabled: 'Autenticazione a due fattori disattivata',
       toast_session_revoked: 'Sessione terminata', toast_sessions_revoked_others: 'Tutte le altre sessioni sono state terminate',
       register_title: 'Crea un account', register_submit: 'Registrati',
-      register_has_account: 'Hai già un account?', register_login_link: 'Accedi',
+      register_has_account: 'Hai già un account?', register_login_link: 'Accedi', back_btn: 'Indietro',
+      register_privacy_consent_prefix: 'Ho letto e accetto l\'', register_privacy_consent_privacy_link: 'informativa sulla privacy',
+      register_privacy_consent_and: 'e i', register_privacy_consent_terms_link: 'termini di servizio',
+      register_privacy_consent_required: 'Devi accettare l\'informativa privacy e i termini di servizio per registrarti',
+      footer_privacy_link: 'Privacy', footer_terms_link: 'Termini',
       dashboard_title_staff: 'Tutti i ticket', dashboard_title_customer: 'I miei ticket',
       dashboard_hint_staff: 'Gestisci e rispondi alle richieste di assistenza.',
       dashboard_hint_customer: 'Consulta lo stato delle tue richieste.',
@@ -980,7 +984,11 @@
       toast_2fa_enabled: 'Two-factor authentication enabled', toast_2fa_disabled: 'Two-factor authentication disabled',
       toast_session_revoked: 'Session ended', toast_sessions_revoked_others: 'All other sessions have been ended',
       register_title: 'Create an account', register_submit: 'Register',
-      register_has_account: 'Already have an account?', register_login_link: 'Sign in',
+      register_has_account: 'Already have an account?', register_login_link: 'Sign in', back_btn: 'Back',
+      register_privacy_consent_prefix: 'I have read and accept the', register_privacy_consent_privacy_link: 'privacy policy',
+      register_privacy_consent_and: 'and the', register_privacy_consent_terms_link: 'terms of service',
+      register_privacy_consent_required: 'You must accept the privacy policy and terms of service to register',
+      footer_privacy_link: 'Privacy', footer_terms_link: 'Terms',
       dashboard_title_staff: 'All tickets', dashboard_title_customer: 'My tickets',
       dashboard_hint_staff: 'Manage and respond to support requests.',
       dashboard_hint_customer: 'Check the status of your requests.',
@@ -1419,6 +1427,86 @@
   function t(key) {
     const lang = getLang();
     return (TRANSLATIONS[lang] && TRANSLATIONS[lang][key]) || TRANSLATIONS.it[key] || key;
+  }
+
+  const LEGAL_CONTENT = {
+    it: {
+      privacy_title: 'Informativa sulla privacy',
+      privacy_updated: 'Ultimo aggiornamento: settembre 2026',
+      privacy_body: `
+        <p>Questa informativa descrive come questa piattaforma di ticketing e intranet aziendale ("la Piattaforma") tratta i dati personali degli utenti che vi accedono.</p>
+        <h3>Titolare e responsabile del trattamento</h3>
+        <p>Ogni azienda che utilizza la Piattaforma è titolare del trattamento dei dati personali dei propri dipendenti e collaboratori. Il gestore tecnico della Piattaforma agisce come responsabile del trattamento per conto dell'azienda, in base a un contratto o accordo di fornitura del servizio. Per qualsiasi richiesta relativa ai tuoi dati personali (accesso, rettifica, cancellazione), rivolgiti prima di tutto all'amministratore della tua azienda su questa Piattaforma.</p>
+        <h3>Quali dati raccogliamo</h3>
+        <p>La Piattaforma raccoglie e conserva: dati identificativi dell'account (nome, email), contenuti dei ticket e delle richieste che invii (incluse note spese, richieste di ferie/permessi, timbrature, messaggi diretti, contenuti pubblicati su bacheca, wiki e idee), dati tecnici di accesso (indirizzo IP, data e ora degli accessi, dispositivo/browser utilizzato) e le preferenze dell'account (lingua, tema).</p>
+        <h3>Come usiamo i dati</h3>
+        <p>I dati sono trattati esclusivamente per: fornire le funzionalità della Piattaforma (gestione ticket, richieste HR, comunicazione interna), garantire la sicurezza dell'account (log di accesso, protezione da accessi non autorizzati), rispettare obblighi contrattuali o di legge verso l'azienda titolare del trattamento. I dati non vengono ceduti a terzi per finalità di marketing.</p>
+        <h3>Isolamento tra aziende</h3>
+        <p>I dati di ciascuna azienda registrata sulla Piattaforma sono logicamente isolati da quelli delle altre aziende: nessun utente può accedere ai dati di un'azienda diversa dalla propria, salvo gli amministratori con privilegi di sistema per finalità tecniche e di supporto.</p>
+        <h3>Conservazione</h3>
+        <p>I dati vengono conservati per la durata del rapporto con l'azienda titolare del trattamento e, successivamente, per il tempo previsto dalla normativa applicabile o dalle policy dell'azienda stessa. L'amministratore della tua azienda può esportare o richiedere la cancellazione dei dati in qualsiasi momento dalla sezione "Dati e Privacy" del pannello di amministrazione.</p>
+        <h3>I tuoi diritti</h3>
+        <p>Hai diritto di accedere, rettificare, limitare o richiedere la cancellazione dei tuoi dati personali. Per esercitare questi diritti, contatta l'amministratore della tua azienda su questa Piattaforma.</p>`,
+      terms_title: 'Termini di servizio',
+      terms_updated: 'Ultimo aggiornamento: settembre 2026',
+      terms_body: `
+        <p>L'utilizzo di questa piattaforma di ticketing e intranet aziendale ("la Piattaforma") è soggetto ai termini seguenti.</p>
+        <h3>Account e accesso</h3>
+        <p>L'accesso alla Piattaforma è riservato alle persone autorizzate dall'azienda che l'ha attivata. Sei responsabile della riservatezza delle tue credenziali e di ogni attività svolta con il tuo account. Segnala immediatamente al tuo amministratore ogni sospetto accesso non autorizzato.</p>
+        <h3>Uso consentito</h3>
+        <p>La Piattaforma va utilizzata esclusivamente per finalità lavorative e nel rispetto delle policy della tua azienda. È vietato: caricare contenuti illeciti, offensivi o lesivi di diritti di terzi; tentare di accedere a dati o funzionalità non autorizzate; utilizzare la Piattaforma per finalità estranee al rapporto di lavoro.</p>
+        <h3>Contenuti caricati dall'utente</h3>
+        <p>Resti responsabile dei contenuti che carichi (ticket, allegati, messaggi, note). L'azienda titolare del trattamento può accedere, moderare o rimuovere tali contenuti secondo le proprie policy interne.</p>
+        <h3>Disponibilità del servizio</h3>
+        <p>Ci impegniamo a mantenere la Piattaforma disponibile e funzionante, ma non garantiamo un servizio ininterrotto o privo di errori. Manutenzioni programmate o interruzioni tecniche possono verificarsi senza preavviso.</p>
+        <h3>Limitazione di responsabilità</h3>
+        <p>Nei limiti consentiti dalla legge applicabile, il gestore tecnico della Piattaforma non è responsabile per danni indiretti derivanti dall'uso o dall'impossibilità di uso del servizio, salvo dolo o colpa grave.</p>
+        <h3>Modifiche ai termini</h3>
+        <p>Questi termini possono essere aggiornati nel tempo. Le modifiche sostanziali saranno comunicate tramite la Piattaforma o dal tuo amministratore.</p>
+        <h3>Contatti</h3>
+        <p>Per domande su questi termini, contatta l'amministratore della tua azienda su questa Piattaforma.</p>`,
+    },
+    en: {
+      privacy_title: 'Privacy policy',
+      privacy_updated: 'Last updated: September 2026',
+      privacy_body: `
+        <p>This policy describes how this corporate ticketing and intranet platform ("the Platform") handles the personal data of the people who use it.</p>
+        <h3>Data controller and processor</h3>
+        <p>Each company using the Platform is the data controller for the personal data of its own employees and collaborators. The Platform's technical operator acts as data processor on the company's behalf, under a service agreement. For any request about your personal data (access, correction, deletion), start with your company's administrator on this Platform.</p>
+        <h3>What data we collect</h3>
+        <p>The Platform collects and stores: account identification data (name, email), the content of tickets and requests you submit (including expense reports, leave requests, time clock entries, direct messages, and content posted to the announcement board, wiki, and ideas board), technical access data (IP address, access date/time, device/browser used), and account preferences (language, theme).</p>
+        <h3>How we use the data</h3>
+        <p>Data is processed solely to: provide the Platform's features (ticket management, HR requests, internal communication), keep the account secure (access logs, protection against unauthorized access), and meet contractual or legal obligations owed to the controlling company. Data is never sold or shared with third parties for marketing purposes.</p>
+        <h3>Isolation between companies</h3>
+        <p>Data belonging to each company registered on the Platform is logically isolated from every other company's data: no user can access another company's data, except system administrators acting for technical support purposes.</p>
+        <h3>Retention</h3>
+        <p>Data is retained for the duration of your relationship with the controlling company and, afterwards, for as long as required by applicable law or the company's own policies. Your company's administrator can export or request deletion of the data at any time from the "Data & Privacy" section of the admin panel.</p>
+        <h3>Your rights</h3>
+        <p>You have the right to access, correct, restrict, or request deletion of your personal data. To exercise these rights, contact your company's administrator on this Platform.</p>`,
+      terms_title: 'Terms of service',
+      terms_updated: 'Last updated: September 2026',
+      terms_body: `
+        <p>Use of this corporate ticketing and intranet platform ("the Platform") is subject to the following terms.</p>
+        <h3>Accounts and access</h3>
+        <p>Access to the Platform is limited to people authorized by the company that activated it. You are responsible for keeping your credentials confidential and for all activity under your account. Report any suspected unauthorized access to your administrator immediately.</p>
+        <h3>Permitted use</h3>
+        <p>The Platform must be used solely for work purposes and in line with your company's policies. It is forbidden to: upload unlawful, offensive, or rights-infringing content; attempt to access data or features you are not authorized for; or use the Platform for purposes unrelated to your working relationship.</p>
+        <h3>User-submitted content</h3>
+        <p>You remain responsible for the content you submit (tickets, attachments, messages, notes). The controlling company may access, moderate, or remove such content under its own internal policies.</p>
+        <h3>Service availability</h3>
+        <p>We work to keep the Platform available and functioning, but we do not guarantee uninterrupted or error-free service. Scheduled maintenance or technical outages may occur without notice.</p>
+        <h3>Limitation of liability</h3>
+        <p>To the extent permitted by applicable law, the Platform's technical operator is not liable for indirect damages arising from use or inability to use the service, except in cases of willful misconduct or gross negligence.</p>
+        <h3>Changes to these terms</h3>
+        <p>These terms may be updated over time. Material changes will be communicated through the Platform or by your administrator.</p>
+        <h3>Contact</h3>
+        <p>For questions about these terms, contact your company's administrator on this Platform.</p>`,
+    },
+  };
+
+  function legalText(key) {
+    const lang = getLang();
+    return (LEGAL_CONTENT[lang] && LEGAL_CONTENT[lang][key]) || LEGAL_CONTENT.it[key] || '';
   }
 
   const NAV_KEY_BY_ROUTE = {
@@ -2225,7 +2313,7 @@
   });
 
   const PUBLIC_ROUTES = new Set(['login', 'register']);
-  const OPEN_ROUTES = new Set(['login', 'register', 'settings']);
+  const OPEN_ROUTES = new Set(['login', 'register', 'settings', 'privacy-policy', 'terms']);
 
   const TICKET_TABS_KEY = 'ticketing_open_tabs';
   const TICKET_TABS_MAX = 10;
@@ -2356,6 +2444,8 @@
         case 'report': return renderInsights('report');
         case 'audit': return renderInsights('audit');
         case 'asset-letters': return renderAssetLetterSign(param);
+        case 'privacy-policy': return renderLegalPage('privacy');
+        case 'terms': return renderLegalPage('terms');
         default: return renderNotFound();
       }
     } catch (err) {
@@ -2388,6 +2478,7 @@
           </form>
           <div id="ssoContainer"></div>
           <p class="hint">${t('login_no_account')} <a href="#/register">${t('login_register_link')}</a></p>
+          <p class="hint auth-legal-links"><a href="#/privacy-policy">${t('footer_privacy_link')}</a> · <a href="#/terms">${t('footer_terms_link')}</a></p>
         </div>
       </div>`;
 
@@ -2453,6 +2544,22 @@
     });
   }
 
+  function renderLegalPage(kind) {
+    const titleKey = kind === 'terms' ? 'terms_title' : 'privacy_title';
+    const updatedKey = kind === 'terms' ? 'terms_updated' : 'privacy_updated';
+    const bodyKey = kind === 'terms' ? 'terms_body' : 'privacy_body';
+    const backHash = state.user ? '#/dashboard' : '#/login';
+    appEl.innerHTML = `
+      <div class="auth-wrap">
+        <div class="card auth-card legal-card">
+          <a href="${backHash}" class="btn btn-ghost btn-sm">${icon('arrowLeft')} ${t('back_btn')}</a>
+          <h1>${legalText(titleKey)}</h1>
+          <p class="hint">${legalText(updatedKey)}</p>
+          <div class="legal-body">${legalText(bodyKey)}</div>
+        </div>
+      </div>`;
+  }
+
   function renderRegister() {
     appEl.innerHTML = `
       <div class="auth-wrap">
@@ -2487,6 +2594,10 @@
               </div>
               <span class="hint" id="pwMatchHint"></span>
             </div>
+            <label class="checkbox-field">
+              <input id="registerPrivacyAccepted" type="checkbox" required />
+              <span>${t('register_privacy_consent_prefix')} <a href="#/privacy-policy" target="_blank" rel="noopener">${t('register_privacy_consent_privacy_link')}</a> ${t('register_privacy_consent_and')} <a href="#/terms" target="_blank" rel="noopener">${t('register_privacy_consent_terms_link')}</a></span>
+            </label>
             <p class="error-text" id="registerError"></p>
             <button class="btn btn-block" type="submit">${t('register_submit')}</button>
           </form>
@@ -2517,6 +2628,7 @@
       const password2 = document.getElementById('password2').value;
       const companyWrap = document.getElementById('registerCompanyWrap');
       const companyId = companyWrap.hidden ? undefined : document.getElementById('registerCompany').value || undefined;
+      const privacyAccepted = document.getElementById('registerPrivacyAccepted').checked;
       const errEl = document.getElementById('registerError');
       errEl.textContent = '';
       if (password !== password2) {
@@ -2527,8 +2639,12 @@
         errEl.textContent = t('company_select_required');
         return;
       }
+      if (!privacyAccepted) {
+        errEl.textContent = t('register_privacy_consent_required');
+        return;
+      }
       try {
-        const { token, user } = await api('/auth/register', { method: 'POST', body: { name, email, password, companyId } });
+        const { token, user } = await api('/auth/register', { method: 'POST', body: { name, email, password, companyId, privacyAccepted } });
         setSession(token, user);
         showToast(`${t('toast_account_created')} ${user.name}`, 'success');
         location.hash = '#/dashboard';

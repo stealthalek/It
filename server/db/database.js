@@ -1045,6 +1045,10 @@ async function migrate() {
     await run('UPDATE app_settings SET flexible_time_entry = 1, flexible_time_entry_defaulted = 1 WHERE id = 1');
     await run('UPDATE companies SET flexible_time_entry = 1');
   }
+  const userCols8 = await all('PRAGMA table_info(users)');
+  if (!userCols8.some((c) => c.name === 'privacy_accepted_at')) {
+    await run('ALTER TABLE users ADD COLUMN privacy_accepted_at TEXT');
+  }
 }
 
 async function seedDefaultCompany() {

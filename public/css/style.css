@@ -916,6 +916,28 @@ body:not(.role-customer):not(.role-agent):not(.role-admin) .nav-toggle { display
   box-sizing: border-box;
 }
 
+.auth-legal-links {
+  text-align: center;
+}
+.legal-card {
+  max-width: 640px;
+}
+.legal-card > .btn {
+  margin-bottom: 0.75rem;
+}
+.legal-body h3 {
+  font-size: 1rem;
+  margin: 1.25rem 0 0.4rem;
+}
+.legal-body h3:first-child {
+  margin-top: 0.75rem;
+}
+.legal-body p {
+  color: var(--text);
+  line-height: 1.55;
+  margin: 0 0 0.6rem;
+}
+
 .sso-divider {
   display: flex;
   align-items: center;
