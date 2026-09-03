@@ -687,6 +687,7 @@
       ticket_list_truncated_hint: 'Vengono mostrati solo i ticket più recenti: affina i filtri per una vista completa.',
       report_truncated_hint: 'Il volume di ticket supera quanto questo report può caricare in una volta: grafici ed export riflettono solo i ticket più recenti, non lo storico completo. Restringi l\'intervallo di date per un\'analisi esatta.',
       audit_truncated_hint: 'Ci sono più voci di quelle mostrate: elenco ed export riflettono solo le più recenti. Restringi l\'intervallo di date per una vista completa.',
+      team_list_truncated_hint: 'Ci sono più richieste di quelle mostrate: alcune voci meno recenti, comprese quelle in attesa, potrebbero non essere visibili qui.',
       widget_unassigned_by_group_title: 'Non assegnati per gruppo', widget_unassigned_by_group_empty: 'Nessun ticket non assegnato al momento.',
       widget_sla_watch_title: 'Ticket a rischio SLA', widget_sla_watch_empty: 'Nessun ticket a rischio SLA al momento.',
       widget_sla_overdue_label: 'SLA superata', widget_sla_elapsed_label: 'del tempo SLA trascorso',
@@ -1184,6 +1185,7 @@
       ticket_list_truncated_hint: 'Only the most recent tickets are shown: refine the filters for a complete view.',
       report_truncated_hint: 'Ticket volume exceeds what this report can load at once: charts and exports reflect only the most recent tickets, not the full history. Narrow the date range for an exact analysis.',
       audit_truncated_hint: 'There are more entries than shown: the list and export reflect only the most recent ones. Narrow the date range for a complete view.',
+      team_list_truncated_hint: 'There are more requests than shown: some older entries, including pending ones, may not be visible here.',
       widget_unassigned_by_group_title: 'Unassigned by group', widget_unassigned_by_group_empty: 'No unassigned tickets right now.',
       widget_sla_watch_title: 'SLA at-risk tickets', widget_sla_watch_empty: 'No tickets at SLA risk right now.',
       widget_sla_overdue_label: 'SLA breached', widget_sla_elapsed_label: 'of SLA time elapsed',
@@ -10492,6 +10494,7 @@
           <h3 class="section-title" style="margin-top:0">${icon('users')} ${t('timesheet_team_title')}</h3>
           <p class="hint">${t('timesheet_team_hint')}</p>
           <div id="timesheetTeamList" class="spinner-row">${t('loading')}</div>
+          <p class="hint" id="timesheetTeamTruncatedHint" hidden>${t('team_list_truncated_hint')}</p>
         </div>` : ''}
         <div class="card admin-grid-full" id="timesheetManualCard" hidden>
           <h3 class="section-title" style="margin-top:0">${icon('clock')} ${t('timesheet_manual_title')}</h3>
@@ -10568,6 +10571,7 @@
             </select>
           </div>
           <div id="leaveTeamWrap" class="card-list spinner-row">${t('loading')}</div>
+          <p class="hint" id="leaveTeamTruncatedHint" hidden>${t('team_list_truncated_hint')}</p>
         </div>` : ''}
       </div>`;
 
@@ -10826,10 +10830,12 @@
     async function loadTeam() {
       const el = document.getElementById('timesheetTeamList');
       if (!el) return;
+      const hintEl = document.getElementById('timesheetTeamTruncatedHint');
       try {
-        const { entries } = await api('/time-entries/team');
+        const { entries, truncated } = await api('/time-entries/team');
         el.className = '';
         el.innerHTML = entriesTableHtml(entries, true);
+        if (hintEl) hintEl.hidden = !truncated;
       } catch (err) {
         el.className = '';
         el.innerHTML = `<p class="error-text">${escapeHtml(err.message)}</p>`;
@@ -10954,12 +10960,14 @@
       const wrap = document.getElementById('leaveTeamWrap');
       if (!wrap) return;
       const statusFilter = document.getElementById('leaveTeamStatusFilter');
+      const hintEl = document.getElementById('leaveTeamTruncatedHint');
       wrap.className = 'card-list spinner-row';
       wrap.textContent = t('loading');
       try {
         const params = new URLSearchParams();
         if (statusFilter.value) params.set('status', statusFilter.value);
-        const { requests } = await api(`/leave-requests/team?${params.toString()}`);
+        const { requests, truncated } = await api(`/leave-requests/team?${params.toString()}`);
+        if (hintEl) hintEl.hidden = !truncated;
         wrap.className = 'card-list';
         wrap.innerHTML = requests.length ? requests.map((r) => leaveCardHtml(r, { showUser: true, canReview: true })).join('') : `<p class="hint">${t('leave_none_found')}</p>`;
         wrap.querySelectorAll('.leaveApproveBtn').forEach((btn) => {
@@ -11551,6 +11559,7 @@
           </select>
         </div>
         <div id="expenseTeamWrap" class="card-list spinner-row">${t('loading')}</div>
+        <p class="hint" id="expenseTeamTruncatedHint" hidden>${t('team_list_truncated_hint')}</p>
       </div>` : ''}
     `;
 
@@ -11604,12 +11613,14 @@
       const wrap = document.getElementById('expenseTeamWrap');
       if (!wrap) return;
       const statusFilter = document.getElementById('expenseTeamStatusFilter');
+      const hintEl = document.getElementById('expenseTeamTruncatedHint');
       wrap.className = 'card-list spinner-row';
       wrap.textContent = t('loading');
       try {
         const params = new URLSearchParams();
         if (statusFilter.value) params.set('status', statusFilter.value);
-        const { reports } = await api(`/expenses/team?${params.toString()}`);
+        const { reports, truncated } = await api(`/expenses/team?${params.toString()}`);
+        if (hintEl) hintEl.hidden = !truncated;
         wrap.className = 'card-list';
         wrap.innerHTML = reports.length ? reports.map((r) => expenseCardHtml(r, { showUser: true, canReview: true })).join('') : `<p class="hint">${t('expense_none_found')}</p>`;
         wrap.querySelectorAll('.expenseApproveBtn').forEach((btn) => {

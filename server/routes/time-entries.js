@@ -13,6 +13,8 @@ const ENTRY_SELECT = `
 `;
 
 const DATETIME_RE = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
+const SELF_LIMIT = 500;
+const TEAM_LIMIT = 1000;
 
 function isTimeAdmin(user) {
   return user.role === 'admin' || user.is_super_admin;
@@ -138,10 +140,19 @@ router.get(
       params.push(to);
     }
     const entries = await db.all(
-      `${ENTRY_SELECT} WHERE ${conditions.join(' AND ')} ORDER BY te.clock_in DESC LIMIT 500`,
+      `${ENTRY_SELECT} WHERE ${conditions.join(' AND ')} ORDER BY te.clock_in DESC LIMIT ${SELF_LIMIT}`,
       params
     );
-    res.json({ entries });
+
+    let total = entries.length;
+    let truncated = false;
+    if (entries.length === SELF_LIMIT) {
+      const totalRow = await db.get(`SELECT COUNT(*) AS n FROM time_entries te WHERE ${conditions.join(' AND ')}`, params);
+      total = totalRow.n;
+      truncated = total > SELF_LIMIT;
+    }
+
+    res.json({ entries, total, truncated });
   })
 );
 
@@ -203,8 +214,17 @@ router.get(
       params.push(to);
     }
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const entries = await db.all(`${ENTRY_SELECT} ${where} ORDER BY te.clock_in DESC LIMIT 1000`, params);
-    res.json({ entries });
+    const entries = await db.all(`${ENTRY_SELECT} ${where} ORDER BY te.clock_in DESC LIMIT ${TEAM_LIMIT}`, params);
+
+    let total = entries.length;
+    let truncated = false;
+    if (entries.length === TEAM_LIMIT) {
+      const totalRow = await db.get(`SELECT COUNT(*) AS n FROM time_entries te ${where}`, params);
+      total = totalRow.n;
+      truncated = total > TEAM_LIMIT;
+    }
+
+    res.json({ entries, total, truncated });
   })
 );
 
