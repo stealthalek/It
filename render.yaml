@@ -32,3 +32,5 @@ services:
         sync: false
       - key: SMTP_FROM
         sync: false
+      - key: SENTRY_DSN
+        sync: false
