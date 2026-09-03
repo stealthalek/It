@@ -642,6 +642,7 @@
       admin_automations_title: 'Automazioni', admin_automations_hint: 'Regole "se succede X allora fai Y": alla creazione o aggiornamento di un ticket, se le condizioni combaciano, le azioni scelte vengono applicate automaticamente.',
       field_rule_name: 'Nome regola', field_rule_trigger: 'Quando si attiva', trigger_created: 'Alla creazione del ticket', trigger_updated: 'Quando il ticket viene aggiornato',
       rule_conditions_label: 'Condizioni (tutte opzionali)', field_group_condition: 'Gruppo del ticket',
+      rule_if_label: 'SE', rule_then_label: 'ALLORA',
       rule_actions_label: 'Azioni', action_set_status: 'Imposta stato', action_set_priority: 'Imposta priorità',
       action_assign_group: 'Assegna al gruppo', action_assign_user: 'Assegna all\'utente',
       action_add_note: 'Aggiungi nota interna', action_add_note_placeholder: 'Testo della nota interna da aggiungere automaticamente',
@@ -1149,6 +1150,7 @@
       admin_automations_title: 'Automations', admin_automations_hint: '"If X happens then do Y" rules: on ticket creation or update, if the conditions match, the chosen actions are applied automatically.',
       field_rule_name: 'Rule name', field_rule_trigger: 'When it fires', trigger_created: 'On ticket creation', trigger_updated: 'When the ticket is updated',
       rule_conditions_label: 'Conditions (all optional)', field_group_condition: 'Ticket group',
+      rule_if_label: 'IF', rule_then_label: 'THEN',
       rule_actions_label: 'Actions', action_set_status: 'Set status', action_set_priority: 'Set priority',
       action_assign_group: 'Assign to group', action_assign_user: 'Assign to user',
       action_add_note: 'Add internal note', action_add_note_placeholder: 'Internal note text to add automatically',
@@ -7314,8 +7316,8 @@
                 ${ruleBadge(rule.trigger_event === 'created' ? 'trigger_created' : 'trigger_updated')}
                 <button type="button" class="icon-btn deleteRuleBtn" data-id="${rule.id}" title="${t('delete_rule_title')}">${icon('trash')}</button>
               </div>
-              <p class="hint" style="margin:0.3rem 0 0"><strong>${t('rule_conditions_label')}:</strong> ${ruleConditionSummary(rule)}</p>
-              <p class="hint" style="margin:0.15rem 0 0"><strong>${t('rule_actions_label')}:</strong> ${ruleActionSummary(rule)}</p>
+              <p class="hint rule-clause" style="margin:0.35rem 0 0"><span class="rule-clause-tag rule-clause-if">${t('rule_if_label')}</span> ${ruleConditionSummary(rule)}</p>
+              <p class="hint rule-clause" style="margin:0.2rem 0 0"><span class="rule-clause-tag rule-clause-then">${t('rule_then_label')}</span> ${ruleActionSummary(rule)}</p>
             </div>`).join('') : `<p class="hint">${t('no_rules_hint')}</p>`;
 
           listEl.querySelectorAll('.ruleEnabledToggle').forEach((cb) => {
